@@ -1,0 +1,11 @@
+teleport:
+  # If true, players can only teleport within the same world
+  same-world-only: true
+  # List of world UUIDs where teleportation is completely disabled
+  disabled-worlds: []
+  # Message shown when cross-world teleport is attempted
+  cross-world-message: "&cYou can only teleport to players in the same world!"
+  # Message shown when teleporting in a disabled world
+  disabled-world-message: "&cTeleportation is disabled in this world!"
+  # List of denying all players
+  deny-all: []

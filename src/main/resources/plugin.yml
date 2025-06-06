@@ -1,0 +1,57 @@
+name: furious
+version: '1.0-SNAPSHOT'
+main: com.spillhuset.furious.Furious
+api-version: '1.21'
+commands:
+  teleport:
+    description: Teleport command for requesting and managing teleports
+    aliases: [tp]
+    usage: /<command> [request|accept|decline|list|abort|deny|world]
+  invsee:
+    description: View other player's inventory
+    usage: /<command> <player>
+  endersee:
+    description: View other player's enderchest
+    usage: /<command> <player>
+
+permissions:
+  furious.teleport.*:
+    description: Gives access to all teleport commands
+    children:
+      furious.teleport.request: true
+      furious.teleport.accept: true
+      furious.teleport.decline: true
+      furious.teleport.list: true
+      furious.teleport.abort: true
+      furious.teleport.deny: true
+      furious.teleport.worldconfig: true
+      furious.teleport.coords: true
+      furious.teleport.force: true
+  furious.teleport.request:
+    description: Allows requesting teleports to other players
+    default: true
+  furious.teleport.accept:
+    description: Allows accepting teleport requests
+    default: true
+  furious.teleport.decline:
+    description: Allows declining teleport requests
+    default: true
+  furious.teleport.list:
+    description: Allows listing teleport requests
+    default: true
+  furious.teleport.abort:
+    description: Allows aborting outgoing teleport requests
+    default: true
+  furious.teleport.deny:
+    description: Allows toggling auto-deny of teleport requests
+    default: true
+  furious.teleport.worldconfig:
+    description: Allows configuring world teleport settings
+    default: op
+  furious.teleport.coords:
+    description: Allows using coordinate teleport commands
+    default: op
+  furious.teleport.force:
+    description: Allows using force teleport commands
+    default: op
+
