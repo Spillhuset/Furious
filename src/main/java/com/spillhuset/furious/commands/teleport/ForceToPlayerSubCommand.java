@@ -22,9 +22,19 @@ public class ForceToPlayerSubCommand implements SubCommand {
     }
 
     @Override
+    public String getName() {
+        return "force";
+    }
+
+    @Override
+    public String getDescription() {
+        return "";
+    }
+
+    @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (args.length < 1 || args.length > 2) {
-            showUsage(sender);
+            getUsage(sender);
             return true;
         }
 
@@ -42,13 +52,17 @@ public class ForceToPlayerSubCommand implements SubCommand {
         return Bukkit.dispatchCommand(sender, command);
     }
 
-    private void showUsage(CommandSender sender) {
+    @Override
+    public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
         if (!(sender instanceof ConsoleCommandSender)) {
-            sender.sendMessage(Component.text("/teleport <player> - Teleport yourself to a player", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/teleport force <source player> <destination player>", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport force <source player>", NamedTextColor.YELLOW));
         }
-        sender.sendMessage(Component.text("/teleport <source> <destination> - Teleport a player to another player",
-                NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/teleport force <destination player>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If no destination player is specified, the player will be teleported to their current location.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the source player is not online, the teleport will be attempted when they log in.", NamedTextColor.YELLOW));
     }
 
     @Override

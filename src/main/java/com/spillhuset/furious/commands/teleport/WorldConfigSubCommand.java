@@ -31,7 +31,7 @@ public class WorldConfigSubCommand implements SubCommand {
     }
 
     @Override
-    public String getUsage(CommandSender sender) {
+    public void getUsage(CommandSender sender) {
         if (sender instanceof ConsoleCommandSender) {
             return "/teleport world <list|disable|enable> <world>";
         } else {

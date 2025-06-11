@@ -109,7 +109,7 @@ public class TeleportManager {
             plugin.saveResource("teleport-preferences.yml", false);
         }
 
-        config = YamlConfiguration.loadConfiguration(configFile);
+        config = plugin.getConfig();
 
         // Load the deny-all list from config
         List<String> denyList = config.getStringList("deny-all");

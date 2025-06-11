@@ -22,6 +22,29 @@ public class ListSubCommand implements SubCommand {
     }
 
     @Override
+    public String getName() {
+        return "list";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Lists all pending teleport requests.";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Component.text("/teleport list <in|out|all>", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport list <in|out|all>", NamedTextColor.YELLOW));
+        }
+        sender.sendMessage(Component.text("Lists all pending teleport requests.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If no teleport request is in progress, this command will have no effect.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player has a pending teleport request to another player, this command will be ignored.", NamedTextColor.YELLOW));
+    }
+
+    @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));

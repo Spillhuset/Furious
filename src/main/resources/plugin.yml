@@ -13,6 +13,10 @@ commands:
   endersee:
     description: View other player's enderchest
     usage: /<command> <player>
+  guild:
+    description: Guild command for creating and managing guilds
+    aliases: [g]
+    usage: /<command> [create|invite|join|leave|info|list|kick|disband|transfer|description]
 
 permissions:
   furious.teleport.*:
@@ -55,3 +59,62 @@ permissions:
     description: Allows using force teleport commands
     default: op
 
+  furious.guild.*:
+    description: Gives access to all guild commands
+    children:
+      furious.guild.create: true
+      furious.guild.invite: true
+      furious.guild.join: true
+      furious.guild.leave: true
+      furious.guild.info: true
+      furious.guild.list: true
+      furious.guild.kick: true
+      furious.guild.disband: true
+      furious.guild.transfer: true
+      furious.guild.description: true
+      furious.guild.claim: true
+      furious.guild.unclaim: true
+      furious.guild.claims: true
+      furious.guild.mobs: true
+  furious.guild.create:
+    description: Allows creating guilds
+    default: true
+  furious.guild.invite:
+    description: Allows inviting players to guilds
+    default: true
+  furious.guild.join:
+    description: Allows joining guilds
+    default: true
+  furious.guild.leave:
+    description: Allows leaving guilds
+    default: true
+  furious.guild.info:
+    description: Allows viewing guild information
+    default: true
+  furious.guild.list:
+    description: Allows listing all guilds
+    default: true
+  furious.guild.kick:
+    description: Allows kicking players from guilds
+    default: true
+  furious.guild.disband:
+    description: Allows disbanding guilds
+    default: true
+  furious.guild.transfer:
+    description: Allows transferring guild ownership
+    default: true
+  furious.guild.description:
+    description: Allows setting guild descriptions
+    default: true
+  furious.guild.claim:
+    description: Allows claiming chunks for a guild
+    default: true
+  furious.guild.unclaim:
+    description: Allows unclaiming chunks from a guild
+    default: true
+  furious.guild.claims:
+    description: Allows viewing claimed chunks of a guild
+    default: true
+  furious.guild.mobs:
+    description: Allows controlling mob spawning in guild claimed chunks
+    default: true

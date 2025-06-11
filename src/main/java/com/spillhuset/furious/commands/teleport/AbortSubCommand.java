@@ -21,6 +21,29 @@ public class AbortSubCommand implements SubCommand {
     }
 
     @Override
+    public String getName() {
+        return "abort";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Aborts the current teleport request.";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Component.text("/teleport abort", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport abort", NamedTextColor.YELLOW));
+        }
+        sender.sendMessage(Component.text("Aborts the current teleport request.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If no teleport request is in progress, this command will have no effect.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player has a pending teleport request to another player, this command will be ignored.", NamedTextColor.YELLOW));
+    }
+
+    @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player requester)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));

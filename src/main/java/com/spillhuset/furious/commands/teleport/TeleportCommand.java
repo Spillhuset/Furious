@@ -34,6 +34,7 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
         subCommands.put("deny", new DenySubCommand(plugin));
         subCommands.put("world", new WorldConfigSubCommand(plugin));
         subCommands.put("coords", new CoordsSubCommand(plugin));
+        subCommands.put("worldspawn", new WorldSpawnSubCommand(plugin));
     }
 
     @Override
@@ -74,7 +75,7 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
 
     private void showHelp(CommandSender sender) {
         sender.sendMessage(Component.text("Teleport Commands:", NamedTextColor.GOLD));
-        if (!(sender instanceof ConsoleCommandSender)){
+        if (!(sender instanceof ConsoleCommandSender)) {
             sender.sendMessage(Component.text("/teleport request <player> - Request to teleport to a player", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport accept [player] - Accept teleport request", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport decline [player] - Decline teleport request", NamedTextColor.YELLOW));
@@ -84,6 +85,7 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
             if (sender.isOp()) {
                 sender.sendMessage(Component.text("/teleport <playerA> [playerB] - Teleports yourself to playerA | Teleport playerA to playerB", NamedTextColor.YELLOW));
                 sender.sendMessage(Component.text("/teleport coords [player] <x> <y> <z> [world] - Teleports you to a given position | Teleports a given player to a specified location", NamedTextColor.YELLOW));
+                sender.sendMessage(Component.text("/teleport worldspawn <player> [world] - Teleport player to world's spawn location", NamedTextColor.YELLOW));
             }
         } else {
             sender.sendMessage(Component.text("/teleport deny <player> - Toggle auto-decline of requests by given player", NamedTextColor.YELLOW));
@@ -92,6 +94,7 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("/teleport world disable <world> - Disables teleportation requests to a given world, if same-world is disabled", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport world list - Shows a list of worlds where teleportation is disabled", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport <playerA> <playerB> - Teleport playerA to playerB", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/teleport worldspawn <player> <world> - Teleport player to world's spawn location", NamedTextColor.YELLOW));
         }
     }
 

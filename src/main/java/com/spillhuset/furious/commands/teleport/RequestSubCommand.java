@@ -20,6 +20,29 @@ public class RequestSubCommand implements SubCommand {
     }
 
     @Override
+    public String getName() {
+        return "request";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Requests a teleport to another player.";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Component.text("/teleport request <player>", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport request <player>", NamedTextColor.YELLOW));
+        }
+        sender.sendMessage(Component.text("Requests a teleport to another player.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player is not online, the teleport will be attempted when they log in.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player has a pending teleport request to another player, this command will be ignored.", NamedTextColor.YELLOW));
+    }
+
+    @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player requester)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));

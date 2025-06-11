@@ -19,6 +19,30 @@ public class DenySubCommand implements SubCommand {
     }
 
     @Override
+    public String getName() {
+        return "deny";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Toggles whether or not teleport requests are automatically denied. " +
+                "If the player has a pending teleport request to another player, this command will be ignored.";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Component.text("/teleport deny", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport deny", NamedTextColor.YELLOW));
+        }
+        sender.sendMessage(Component.text("Toggles whether or not teleport requests are automatically denied.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player has a pending teleport request to another player, this command will be ignored.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player has no pending teleport requests, this command will have no effect.", NamedTextColor.YELLOW));
+    }
+
+    @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));

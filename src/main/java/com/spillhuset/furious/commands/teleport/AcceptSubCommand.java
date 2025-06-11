@@ -22,13 +22,35 @@ public class AcceptSubCommand implements SubCommand {
     }
 
     @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+    public String getName() {
+        return "accept";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Accepts the current teleport request. If the player has a pending teleport request to another player, this command will be ignored.";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
         if (!(sender instanceof Player)) {
+            sender.sendMessage(Component.text("/teleport accept", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport accept", NamedTextColor.YELLOW));
+        }
+        sender.sendMessage(Component.text("Accepts the current teleport request.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If no teleport request is in progress, this command will have no effect.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player has a pending teleport request to another player, this command will be ignored.", NamedTextColor.YELLOW));
+    }
+
+    @Override
+    public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!(sender instanceof Player target)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
             return true;
         }
 
-        Player target = (Player) sender;
         Set<UUID> requests = plugin.getTeleportManager().getIncomingRequests(target);
 
         if (requests.isEmpty()) {

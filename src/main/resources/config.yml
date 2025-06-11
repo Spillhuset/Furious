@@ -1,0 +1,32 @@
+economy:
+  currency:
+    name: "Scrap"
+    plural: "Scraps"
+    symbol: "⚙" # Optional: Unicode scrap/gear symbol
+    # Or just 'S' if you prefer text
+    format: "%symbol%%amount%"  # e.g., ⚙50 or S50
+    material: "IRON_NUGGET"
+
+teleport:
+  # If true, players can only teleport within the same world
+  same-world-only: true
+  # List of world UUIDs where teleportation is completely disabled
+  disabled-worlds: []
+  # Message shown when cross-world teleport is attempted
+  cross-world-message: "&cYou can only teleport to players in the same world!"
+  # Message shown when teleporting in a disabled world
+  disabled-world-message: "&cTeleportation is disabled in this world!"
+  # List of denying all players
+  deny-all: []
+
+guilds:
+  # Minimum length for guild names
+  min-name-length: 3
+  # Maximum length for guild names
+  max-name-length: 16
+  # Maximum number of members in a guild (0 for unlimited)
+  max-members: 0
+  # Maximum number of guilds a player can create (0 for unlimited)
+  max-guilds-per-player: 1
+  # Maximum number of plots (chunks) a guild can claim
+  max-plots-per-guild: 16

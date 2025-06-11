@@ -16,7 +16,7 @@ public interface SubCommand {
 
     String getDescription();
 
-    String getUsage(CommandSender sender);
+    void getUsage(CommandSender sender);
 
     default boolean allowPlayer() {
         return true;

@@ -22,12 +22,33 @@ public class CoordsSubCommand implements SubCommand {
     }
 
     @Override
+    public String getName() {
+        return "coords";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Teleport to a set of coordinates.";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
+        if (!(sender instanceof ConsoleCommandSender)) sender.sendMessage(Component.text("/teleport coords <x> <y> <z> [world]", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/teleport coords <player> <x> <y> <z> [world]", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If no world is specified, the player's current world will be used.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player is not online, the teleport will be attempted when they log in.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player is not online and no world is specified, the teleport will be attempted when they log in in the player's current world.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the player is not online and a world is specified, the teleport will be attempted when they log in in that world.", NamedTextColor.YELLOW));
+    }
+
+    @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         // /teleport coords [player] <x> <y> <z> [world]
 
         // Check minimum args (coords + x y z)
         if (args.length < 4) {
-            showUsage(sender);
+            getUsage(sender);
             return true;
         }
 
@@ -53,7 +74,7 @@ public class CoordsSubCommand implements SubCommand {
 
             // Check if we have enough args for coordinates
             if (args.length < 5) {
-                showUsage(sender);
+                getUsage(sender);
                 return true;
             }
 
@@ -74,12 +95,6 @@ public class CoordsSubCommand implements SubCommand {
         } catch (NumberFormatException e) {
             return false;
         }
-    }
-
-    private void showUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        if (!(sender instanceof ConsoleCommandSender)) sender.sendMessage(Component.text("/teleport coords <x> <y> <z> [world]", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("/teleport coords <player> <x> <y> <z> [world]", NamedTextColor.YELLOW));
     }
 
     @Override
