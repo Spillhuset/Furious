@@ -33,9 +33,9 @@ public class WorldConfigSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         if (sender instanceof ConsoleCommandSender) {
-            return "/teleport world <list|disable|enable> <world>";
+            sender.sendMessage(Component.text("/teleport world <list|disable|enable> <world>",NamedTextColor.YELLOW));
         } else {
-            return "/teleport world <list|disable|enable> [world]";
+            sender.sendMessage(Component.text("/teleport world <list|disable|enable> [world]",NamedTextColor.YELLOW));
         }
     }
 
