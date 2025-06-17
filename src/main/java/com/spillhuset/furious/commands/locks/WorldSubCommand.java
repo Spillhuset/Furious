@@ -1,4 +1,4 @@
-package com.spillhuset.furious.commands.teleport;
+package com.spillhuset.furious.commands.locks;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
@@ -10,13 +10,19 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-public class WorldConfigSubCommand implements SubCommand {
+/**
+ * Subcommand for managing locks world settings
+ */
+public class WorldSubCommand implements SubCommand {
     private final Furious plugin;
 
-    public WorldConfigSubCommand(Furious plugin) {
+    public WorldSubCommand(Furious plugin) {
         this.plugin = plugin;
     }
 
@@ -27,23 +33,18 @@ public class WorldConfigSubCommand implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Changing the settings of teleportation between worlds.";
+        return "Manage locks world settings";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
-        if (sender instanceof ConsoleCommandSender) {
-            sender.sendMessage(Component.text("/teleport world <list|disable|enable> <world>",NamedTextColor.YELLOW));
-        } else {
-            sender.sendMessage(Component.text("/teleport world <list|disable|enable> [world]",NamedTextColor.YELLOW));
-        }
+        sender.sendMessage(Component.text("/locks world <list|enable|disable> [world]", NamedTextColor.YELLOW));
     }
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!sender.hasPermission(getPermission())) {
-            sender.sendMessage(Component.text("You don't have permission to use this command!",
-                    NamedTextColor.RED));
+        if (!checkPermission(sender)) {
+            sender.sendMessage(Component.text("You don't have permission to use this command!", NamedTextColor.RED));
             return true;
         }
 
@@ -86,20 +87,19 @@ public class WorldConfigSubCommand implements SubCommand {
     }
 
     private void listWorlds(CommandSender sender) {
-        sender.sendMessage(Component.text("Available Worlds:", NamedTextColor.YELLOW));
-        for (Map.Entry<String, UUID> entry : plugin.getTeleportManager().getWorldUUIDs().entrySet()) {
+        sender.sendMessage(Component.text("Locks World Settings:", NamedTextColor.YELLOW));
+        Map<String, Boolean> worldsStatus = plugin.getLocksManager().getWorldsStatus();
+
+        if (worldsStatus.isEmpty()) {
+            sender.sendMessage(Component.text("No worlds available.", NamedTextColor.GRAY));
+            return;
+        }
+
+        for (Map.Entry<String, Boolean> entry : worldsStatus.entrySet()) {
             String worldName = entry.getKey();
-
-            // Skip game worlds
-            if (worldName.equals(plugin.getWorldManager().getGameWorldName()) ||
-                worldName.equals(plugin.getWorldManager().getGameBackupName()) ||
-                worldName.startsWith("minigame_")) {
-                continue;
-            }
-
-            boolean disabled = plugin.getTeleportManager().isWorldDisabled(entry.getValue());
-            NamedTextColor color = disabled ? NamedTextColor.RED : NamedTextColor.GREEN;
-            sender.sendMessage(Component.text("- " + worldName + (disabled ? " [DISABLED]" : ""), color));
+            boolean enabled = entry.getValue();
+            NamedTextColor color = enabled ? NamedTextColor.GREEN : NamedTextColor.RED;
+            sender.sendMessage(Component.text("- " + worldName + (enabled ? " [ENABLED]" : " [DISABLED]"), color));
         }
     }
 
@@ -110,9 +110,11 @@ public class WorldConfigSubCommand implements SubCommand {
             return;
         }
 
-        plugin.getTeleportManager().addDisabledWorld(world);
-        sender.sendMessage(Component.text("Teleportation disabled in world: " + worldName,
-                NamedTextColor.GREEN));
+        if (plugin.getLocksManager().disableWorld(world)) {
+            sender.sendMessage(Component.text("Locks disabled in world: " + worldName, NamedTextColor.GREEN));
+        } else {
+            sender.sendMessage(Component.text("Failed to disable locks in world: " + worldName, NamedTextColor.RED));
+        }
     }
 
     private void enableWorld(CommandSender sender, String worldName) {
@@ -122,24 +124,23 @@ public class WorldConfigSubCommand implements SubCommand {
             return;
         }
 
-        plugin.getTeleportManager().removeDisabledWorld(world);
-        sender.sendMessage(Component.text("Teleportation enabled in world: " + worldName,
-                NamedTextColor.GREEN));
+        if (plugin.getLocksManager().enableWorld(world)) {
+            sender.sendMessage(Component.text("Locks enabled in world: " + worldName, NamedTextColor.GREEN));
+        } else {
+            sender.sendMessage(Component.text("Failed to enable locks in world: " + worldName, NamedTextColor.RED));
+        }
     }
 
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("World Configuration Commands:", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("/teleport world list - Show all worlds and their UUIDs",
-                NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/teleport world disable <world> - Disable teleportation in a world",
-                NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/teleport world enable <world> - Enable teleportation in a world",
-                NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("Locks World Commands:", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/locks world list - Show all worlds and their locks settings", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/locks world disable <world> - Disable locks in a world", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/locks world enable <world> - Enable locks in a world", NamedTextColor.GOLD));
     }
 
     @Override
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!sender.hasPermission(getPermission())) {
+        if (!checkPermission(sender)) {
             return new ArrayList<>();
         }
 
@@ -147,8 +148,7 @@ public class WorldConfigSubCommand implements SubCommand {
             return Arrays.asList("list", "disable", "enable");
         }
 
-        if (args.length == 3 && (args[1].equalsIgnoreCase("disable") ||
-                args[1].equalsIgnoreCase("enable"))) {
+        if (args.length == 3 && (args[1].equalsIgnoreCase("disable") || args[1].equalsIgnoreCase("enable"))) {
             return plugin.getServer().getWorlds().stream()
                     .map(World::getName)
                     .filter(name -> !name.equals(plugin.getWorldManager().getGameWorldName()) &&
@@ -162,6 +162,20 @@ public class WorldConfigSubCommand implements SubCommand {
 
     @Override
     public String getPermission() {
-        return "furious.teleport.worldconfig";
+        return "furious.locks.world";
+    }
+
+    @Override
+    public boolean checkPermission(CommandSender sender) {
+        return sender.hasPermission(getPermission());
+    }
+
+    @Override
+    public boolean checkPermission(CommandSender sender, boolean sendMessage) {
+        boolean hasPermission = sender.hasPermission(getPermission());
+        if (!hasPermission && sendMessage) {
+            sender.sendMessage(Component.text("You don't have permission to use this command!", NamedTextColor.RED));
+        }
+        return hasPermission;
     }
 }

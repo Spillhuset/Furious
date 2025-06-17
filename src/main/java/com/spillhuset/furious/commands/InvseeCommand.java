@@ -1,6 +1,7 @@
 package com.spillhuset.furious.commands;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.managers.PlayerDataManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -9,6 +10,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,7 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class InvseeCommand implements CommandExecutor, TabCompleter {
+    private final Furious plugin;
+    private final PlayerDataManager playerDataManager;
+
     public InvseeCommand(Furious furious) {
+        this.plugin = furious;
+        this.playerDataManager = furious.getPlayerDataManager();
     }
 
     @Override
@@ -27,22 +34,36 @@ public class InvseeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // Check if the player has permission
+        if (!sender.hasPermission("furious.invsee")) {
+            sender.sendMessage(Component.text("You don't have permission to use this command!", NamedTextColor.RED));
+            return true;
+        }
+
         // Check if a target player was specified
         if (args.length != 1) {
             sender.sendMessage(Component.text("Usage: /invsee <player>", NamedTextColor.YELLOW));
             return true;
         }
 
-        Player target = Bukkit.getPlayer(args[0]);
+        String targetName = args[0];
 
-        // Check if the target player exists and is online
-        if (target == null) {
-            sender.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
+        // Check if the player is trying to view their own inventory
+        if (targetName.equalsIgnoreCase(viewer.getName())) {
+            sender.sendMessage(Component.text("You cannot view your own inventory with this command!", NamedTextColor.RED));
             return true;
         }
 
-        // Open target's inventory to the viewer
-        viewer.openInventory(target.getInventory());
+        // Try to get the player's inventory (works for both online and offline players)
+        Inventory inventory = playerDataManager.getPlayerInventory(targetName);
+
+        if (inventory == null) {
+            sender.sendMessage(Component.text("Player not found or has never played on this server!", NamedTextColor.RED));
+            return true;
+        }
+
+        // Open the inventory to the viewer
+        viewer.openInventory(inventory);
         return true;
     }
     @Override
