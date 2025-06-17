@@ -17,8 +17,40 @@ commands:
     description: Guild command for creating and managing guilds
     aliases: [g]
     usage: /<command> [create|invite|join|leave|info|list|kick|disband|transfer|description]
+  heal:
+    description: Heals yourself, or given players to maximum
+    usage: /<command> [player1] ...
+  feed:
+    description: Feeds yourself, or given players to maximum
+    usage: /<command> [player1] ...
+    aliases: [food]
+  locks:
+    description: Manage locks for blocks
+    usage: /<command> [lock|unlock|info|key]
+  minigame:
+    description: Manage minigames
+    usage: /<command> [join|leave|list|info|create|disable|enable|start|stop|edit|spawn|save]
+    aliases: [mg]
+  homes:
+    description: Manage your homes
+    usage: /<command> [set|move|rename|delete|list|tp|buy]
+    aliases: [home, h]
+  warps:
+    description: Manage and use warps
+    usage: /<command> [create|relocate|cost|passwd|rename|delete|link|warp|list]
+    aliases: [warp]
 
 permissions:
+  furious.invsee:
+    description: Allows viewing other players' inventories
+    default: op
+  furious.endersee:
+    description: Allows viewing other players' enderchests
+    default: op
+  furious.endersee.offline:
+    description: Allows viewing offline players' enderchests
+    default: op
+
   furious.teleport.*:
     description: Gives access to all teleport commands
     children:
@@ -58,6 +90,14 @@ permissions:
   furious.teleport.force:
     description: Allows using force teleport commands
     default: op
+  heal.others:
+    default: op
+  heal.self:
+    default: op
+  feed.others:
+    default: op
+  feed.self:
+    default: op
 
   furious.guild.*:
     description: Gives access to all guild commands
@@ -73,9 +113,14 @@ permissions:
       furious.guild.transfer: true
       furious.guild.description: true
       furious.guild.claim: true
+      furious.guild.claim.unmanned: true
       furious.guild.unclaim: true
+      furious.guild.unclaim.unmanned: true
       furious.guild.claims: true
       furious.guild.mobs: true
+      furious.guild.homes: true
+      furious.guild.homes.set: true
+      furious.guild.homes.teleport: true
   furious.guild.create:
     description: Allows creating guilds
     default: true
@@ -109,12 +154,188 @@ permissions:
   furious.guild.claim:
     description: Allows claiming chunks for a guild
     default: true
+  furious.guild.claim.unmanned:
+    description: Allows claiming chunks for unmanned guilds (SAFE, WAR, WILD)
+    default: op
   furious.guild.unclaim:
     description: Allows unclaiming chunks from a guild
     default: true
+  furious.guild.unclaim.unmanned:
+    description: Allows unclaiming chunks from unmanned guilds (SAFE, WAR, WILD)
+    default: op
   furious.guild.claims:
     description: Allows viewing claimed chunks of a guild
     default: true
   furious.guild.mobs:
     description: Allows controlling mob spawning in guild claimed chunks
+    default: true
+  furious.guild.homes:
+    description: Allows managing guild homes
+    default: true
+  furious.guild.homes.set:
+    description: Allows setting guild homes
+    default: true
+  furious.guild.homes.teleport:
+    description: Allows teleporting to guild homes
+    default: true
+
+  furious.locks.*:
+    description: Gives access to all locks commands
+    children:
+      furious.locks.lock: true
+      furious.locks.unlock: true
+      furious.locks.info: true
+      furious.locks.key: true
+  furious.locks.lock:
+    description: Allows creating lock items
+    default: true
+  furious.locks.unlock:
+    description: Allows creating unlock items
+    default: true
+  furious.locks.info:
+    description: Allows checking lock ownership
+    default: true
+  furious.locks.key:
+    description: Allows creating key items
+    default: true
+
+  furious.minigame.*:
+    description: Gives access to all minigame commands
+    children:
+      furious.minigame.join: true
+      furious.minigame.leave: true
+      furious.minigame.list: true
+      furious.minigame.info: true
+      furious.minigame.create: true
+      furious.minigame.disable: true
+      furious.minigame.enable: true
+      furious.minigame.start: true
+      furious.minigame.stop: true
+      furious.minigame.edit: true
+      furious.minigame.tp: true
+  furious.minigame.join:
+    description: Allows joining minigame queues
+    default: true
+  furious.minigame.leave:
+    description: Allows leaving minigame queues
+    default: true
+  furious.minigame.list:
+    description: Allows listing available minigames
+    default: true
+  furious.minigame.info:
+    description: Allows viewing minigame information
+    default: true
+  furious.minigame.create:
+    description: Allows creating minigames
+    default: op
+  furious.minigame.disable:
+    description: Allows disabling minigames
+    default: op
+  furious.minigame.enable:
+    description: Allows enabling minigames
+    default: op
+  furious.minigame.start:
+    description: Allows starting minigames
+    default: op
+  furious.minigame.stop:
+    description: Allows stopping minigames
+    default: op
+  furious.minigame.edit:
+    description: Allows editing minigames
+    default: op
+  furious.minigame.tp:
+    description: Allows teleporting to the GameWorld
+    default: op
+
+
+  furious.homes.*:
+    description: Gives access to all homes commands
+    children:
+      furious.homes.set: true
+      furious.homes.move: true
+      furious.homes.rename: true
+      furious.homes.delete: true
+      furious.homes.list: true
+      furious.homes.tp: true
+      furious.homes.buy: true
+      furious.homes.admin: true
+      furious.homes.limit.*: true
+  furious.homes.set:
+    description: Allows setting homes
+    default: true
+  furious.homes.move:
+    description: Allows moving homes
+    default: true
+  furious.homes.rename:
+    description: Allows renaming homes
+    default: true
+  furious.homes.delete:
+    description: Allows deleting homes
+    default: true
+  furious.homes.list:
+    description: Allows listing homes
+    default: true
+  furious.homes.tp:
+    description: Allows teleporting to homes
+    default: true
+  furious.homes.buy:
+    description: Allows purchasing additional home slots
+    default: true
+  furious.homes.admin:
+    description: Allows managing other players' homes
+    default: op
+  furious.homes.limit.1:
+    description: Sets home limit to 1
+    default: false
+  furious.homes.limit.2:
+    description: Sets home limit to 2
+    default: false
+  furious.homes.limit.3:
+    description: Sets home limit to 3
+    default: true
+  furious.homes.limit.5:
+    description: Sets home limit to 5
+    default: false
+  furious.homes.limit.10:
+    description: Sets home limit to 10
+    default: false
+
+  furious.warps.*:
+    description: Gives access to all warps commands
+    children:
+      furious.warps.create: true
+      furious.warps.relocate: true
+      furious.warps.cost: true
+      furious.warps.passwd: true
+      furious.warps.rename: true
+      furious.warps.delete: true
+      furious.warps.link: true
+      furious.warps.warp: true
+      furious.warps.list: true
+  furious.warps.create:
+    description: Allows creating warps
+    default: op
+  furious.warps.relocate:
+    description: Allows relocating warps
+    default: op
+  furious.warps.cost:
+    description: Allows setting warp costs
+    default: op
+  furious.warps.passwd:
+    description: Allows setting warp passwords
+    default: op
+  furious.warps.rename:
+    description: Allows renaming warps
+    default: op
+  furious.warps.delete:
+    description: Allows deleting warps
+    default: op
+  furious.warps.link:
+    description: Allows linking warps to portals
+    default: op
+  furious.warps.warp:
+    description: Allows teleporting to warps
+    default: true
+  furious.warps.list:
+    description: Allows listing warps
     default: true

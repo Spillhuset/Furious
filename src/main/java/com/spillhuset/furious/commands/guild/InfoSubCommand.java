@@ -2,7 +2,8 @@ package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
-import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -18,7 +19,7 @@ import java.util.UUID;
 /**
  * Subcommand for displaying information about a guild.
  */
-public class InfoSubCommand implements SubCommand {
+public class InfoSubCommand implements GuildSubCommand {
     private final Furious plugin;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
@@ -50,6 +51,10 @@ public class InfoSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!checkGuildPermission(sender)) {
+            return true;
+        }
+
         Guild guild = null;
 
         if (args.length == 1) {
@@ -59,12 +64,12 @@ public class InfoSubCommand implements SubCommand {
                 return true;
             }
 
-            if (!plugin.getGuildManager().isInGuild(player.getUniqueId())) {
-                player.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
+            // Check if player is in a guild
+            guild = isInGuild(player);
+            if (guild == null) {
+                sender.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
                 return true;
             }
-
-            guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
         } else {
             // Guild specified
             String guildName = args[1];
@@ -168,5 +173,21 @@ public class InfoSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.info";
+    }
+
+    @Override
+    public GuildRole getRequiredRole() {
+        // This command doesn't require a guild role if a guild name is specified
+        return null;
+    }
+
+    @Override
+    public boolean checkGuildPermission(@NotNull CommandSender sender, boolean feedback) {
+        // First check regular permissions
+        if (!checkPermission(sender, feedback)) {
+            return false;
+        }
+
+        return true;
     }
 }

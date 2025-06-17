@@ -2,7 +2,8 @@ package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
-import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -15,7 +16,7 @@ import java.util.List;
 /**
  * Subcommand for joining a guild.
  */
-public class JoinSubCommand implements SubCommand {
+public class JoinSubCommand implements GuildSubCommand {
     private final Furious plugin;
 
     /**
@@ -46,8 +47,7 @@ public class JoinSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+        if (!checkGuildPermission(sender)) {
             return true;
         }
 
@@ -56,11 +56,7 @@ public class JoinSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is already in a guild
-        if (plugin.getGuildManager().isInGuild(player.getUniqueId())) {
-            player.sendMessage(Component.text("You are already in a guild! Leave your current guild first.", NamedTextColor.RED));
-            return true;
-        }
+        Player player = (Player) sender;
 
         // Get the guild
         String guildName = args[1];
@@ -116,5 +112,37 @@ public class JoinSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.join";
+    }
+
+    @Override
+    public GuildRole getRequiredRole() {
+        // This command doesn't require a guild role since it's used by players who are not in a guild
+        return null;
+    }
+
+    @Override
+    public boolean checkGuildPermission(@NotNull CommandSender sender, boolean feedback) {
+        // First check regular permissions
+        if (!checkPermission(sender, feedback)) {
+            return false;
+        }
+
+        // If not a player, they can't join a guild
+        if (!(sender instanceof Player player)) {
+            if (feedback) {
+                sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        // Check if player is already in a guild
+        if (plugin.getGuildManager().isInGuild(player.getUniqueId())) {
+            if (feedback) {
+                sender.sendMessage(Component.text("You are already in a guild! Leave your current guild first.", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        return true;
     }
 }

@@ -18,17 +18,6 @@ public interface SubCommand {
 
     void getUsage(CommandSender sender);
 
-    default boolean allowPlayer() {
-        return true;
-    }
-
-    default boolean allowNonPlayer() {
-        return true;
-    }
-
-    default boolean allowOp() {
-        return true;
-    }
 
     default boolean denyPlayer() {
         return false;
@@ -49,23 +38,29 @@ public interface SubCommand {
     String getPermission();
 
     default boolean checkPermission(@NotNull CommandSender sender) {
-        if (sender.isOp() && !allowOp() && denyOp()) {
-            sender.sendMessage(Component.text("Op players cannot use this command! Please use ")
-                    .append(Component.text("/furious op")
-                            .clickEvent(ClickEvent.runCommand("/furious op"))
-                            .hoverEvent(HoverEvent.showText(Component.text("Click to run /furious op")))
-                            .color(NamedTextColor.AQUA))
-                    .append(Component.text(" to remove your op status."))
-                    .color(NamedTextColor.RED));
+        return checkPermission(sender, true);
+    }
 
+    default boolean checkPermission(@NotNull CommandSender sender, boolean feedback) {
+        if (sender.isOp() && denyOp() && (sender instanceof Player)) {
+            if (feedback) {
+                sender.sendMessage(Component.text("Op players cannot use this command! ")
+                        .append(Component.text("Please use "))
+                        .append(Component.text("/deop " + sender.getName())
+                                .clickEvent(ClickEvent.runCommand("/deop " + sender.getName()))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to deop yourself")))
+                                .color(NamedTextColor.AQUA))
+                        .append(Component.text(" to remove your op status."))
+                        .color(NamedTextColor.RED));
+            }
             return false;
         }
-        if (sender instanceof ConsoleCommandSender && !allowNonPlayer() && denyNonPlayer()) {
-            sender.sendMessage(Component.text("Console cannot use this command!", NamedTextColor.RED));
+        if (sender instanceof ConsoleCommandSender && denyNonPlayer()) {
+            if (feedback) sender.sendMessage(Component.text("Console cannot use this command!", NamedTextColor.RED));
             return false;
         }
-        if (sender instanceof Player && !allowPlayer() && denyPlayer()) {
-            sender.sendMessage(Component.text("Players cannot use this command!", NamedTextColor.RED));
+        if (sender instanceof Player && denyPlayer()) {
+            if (feedback) sender.sendMessage(Component.text("Players cannot use this command!", NamedTextColor.RED));
             return false;
         }
 
@@ -75,8 +70,10 @@ public interface SubCommand {
         if (sender.hasPermission(getPermission())) {
             return true;
         } else {
-            sender.sendMessage(Component.text("You do not have permission to use this command!", NamedTextColor.RED));
+            if (feedback)
+                sender.sendMessage(Component.text("You do not have permission to use this command!", NamedTextColor.RED));
             return false;
         }
     }
+
 }

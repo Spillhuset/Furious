@@ -3,10 +3,12 @@ package com.spillhuset.furious.managers;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
 import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.enums.GuildType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -29,6 +31,14 @@ public class GuildManager {
     private final int MIN_GUILD_NAME_LENGTH;
     private final int MAX_PLOTS_PER_GUILD;
 
+    // Store references to the unmanned guilds for easy access
+    private Guild safeGuild;
+    private Guild warGuild;
+    private Guild wildGuild;
+
+    // Store UUIDs of worlds where guilds are disabled
+    private Set<UUID> disabledWorlds;
+
     /**
      * Creates a new GuildManager.
      *
@@ -39,6 +49,7 @@ public class GuildManager {
         this.guilds = new HashMap<>();
         this.playerGuilds = new HashMap<>();
         this.configFile = new File(plugin.getDataFolder(), "guilds.yml");
+        this.disabledWorlds = new HashSet<>();
 
         // Load configuration values
         this.MAX_GUILD_NAME_LENGTH = plugin.getConfig().getInt("guilds.max-name-length", 16);
@@ -46,6 +57,53 @@ public class GuildManager {
         this.MAX_PLOTS_PER_GUILD = plugin.getConfig().getInt("guilds.max-plots-per-guild", 16);
 
         loadConfiguration();
+
+        // Create unmanned guilds if they don't exist
+        createUnmannedGuilds();
+    }
+
+    /**
+     * Creates the unmanned guilds (SAFE, WAR, WILD) if they don't already exist.
+     */
+    private void createUnmannedGuilds() {
+        // Create a server UUID to use as the owner for unmanned guilds
+        UUID serverUUID = new UUID(0, 0); // Special UUID for server-owned guilds
+
+        // Check if SAFE guild exists, create if not
+        safeGuild = getGuildByName("SAFE");
+        if (safeGuild == null) {
+            safeGuild = new Guild("SAFE", serverUUID, GuildType.SAFE);
+            guilds.put(safeGuild.getId(), safeGuild);
+            plugin.getLogger().info("Created SAFE zone guild");
+        } else if (safeGuild.getType() != GuildType.SAFE) {
+            // Ensure correct type
+            safeGuild.setType(GuildType.SAFE);
+        }
+
+        // Check if WAR guild exists, create if not
+        warGuild = getGuildByName("WAR");
+        if (warGuild == null) {
+            warGuild = new Guild("WAR", serverUUID, GuildType.WAR);
+            guilds.put(warGuild.getId(), warGuild);
+            plugin.getLogger().info("Created WAR zone guild");
+        } else if (warGuild.getType() != GuildType.WAR) {
+            // Ensure correct type
+            warGuild.setType(GuildType.WAR);
+        }
+
+        // Check if WILD guild exists, create if not
+        wildGuild = getGuildByName("WILD");
+        if (wildGuild == null) {
+            wildGuild = new Guild("WILD", serverUUID, GuildType.WILD);
+            guilds.put(wildGuild.getId(), wildGuild);
+            plugin.getLogger().info("Created WILD zone guild");
+        } else if (wildGuild.getType() != GuildType.WILD) {
+            // Ensure correct type
+            wildGuild.setType(GuildType.WILD);
+        }
+
+        // Save configuration to persist the unmanned guilds
+        saveConfiguration();
     }
 
     /**
@@ -62,6 +120,17 @@ public class GuildManager {
 
         config = YamlConfiguration.loadConfiguration(configFile);
 
+        // Load disabled worlds
+        List<String> disabledWorldsList = config.getStringList("disabled-worlds");
+        for (String worldUuidStr : disabledWorldsList) {
+            try {
+                UUID worldUuid = UUID.fromString(worldUuidStr);
+                disabledWorlds.add(worldUuid);
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Invalid world UUID in guilds.yml: " + worldUuidStr);
+            }
+        }
+
         // Load guilds
         ConfigurationSection guildsSection = config.getConfigurationSection("guilds");
         if (guildsSection != null) {
@@ -74,8 +143,18 @@ public class GuildManager {
                         String name = guildSection.getString("name");
                         UUID owner = UUID.fromString(guildSection.getString("owner"));
 
+                        // Get guild type if exists, default to GUILD
+                        GuildType type = GuildType.GUILD;
+                        if (guildSection.contains("type")) {
+                            try {
+                                type = GuildType.valueOf(guildSection.getString("type"));
+                            } catch (IllegalArgumentException e) {
+                                plugin.getLogger().warning("Invalid guild type in guild " + guildIdStr + ": " + guildSection.getString("type"));
+                            }
+                        }
+
                         // Create the guild
-                        Guild guild = new Guild(name, owner);
+                        Guild guild = new Guild(name, owner, type);
 
                         // Set description if exists
                         if (guildSection.contains("description")) {
@@ -152,6 +231,13 @@ public class GuildManager {
         // Clear existing data
         config.set("guilds", null);
 
+        // Save disabled worlds
+        List<String> disabledWorldsList = new ArrayList<>();
+        for (UUID worldUuid : disabledWorlds) {
+            disabledWorldsList.add(worldUuid.toString());
+        }
+        config.set("disabled-worlds", disabledWorldsList);
+
         // Save guilds
         for (Map.Entry<UUID, Guild> entry : guilds.entrySet()) {
             UUID guildId = entry.getKey();
@@ -162,6 +248,7 @@ public class GuildManager {
             config.set(guildPath + ".name", guild.getName());
             config.set(guildPath + ".owner", guild.getOwner().toString());
             config.set(guildPath + ".description", guild.getDescription());
+            config.set(guildPath + ".type", guild.getType().name());
 
             // Save members with their roles
             ConfigurationSection membersSection = config.createSection(guildPath + ".members");
@@ -229,8 +316,8 @@ public class GuildManager {
             return null;
         }
 
-        // Create the guild
-        Guild guild = new Guild(name, owner.getUniqueId());
+        // Create the guild (explicitly set type to GUILD for clarity)
+        Guild guild = new Guild(name, owner.getUniqueId(), GuildType.GUILD);
         guilds.put(guild.getId(), guild);
         playerGuilds.put(owner.getUniqueId(), guild.getId());
 
@@ -611,6 +698,43 @@ public class GuildManager {
     }
 
     /**
+     * Gets the SAFE zone guild.
+     *
+     * @return The SAFE zone guild
+     */
+    public Guild getSafeGuild() {
+        return safeGuild;
+    }
+
+    /**
+     * Gets the WAR zone guild.
+     *
+     * @return The WAR zone guild
+     */
+    public Guild getWarGuild() {
+        return warGuild;
+    }
+
+    /**
+     * Gets the WILD zone guild.
+     *
+     * @return The WILD zone guild
+     */
+    public Guild getWildGuild() {
+        return wildGuild;
+    }
+
+    /**
+     * Checks if a guild is an unmanned guild.
+     *
+     * @param guild The guild to check
+     * @return true if the guild is an unmanned guild (SAFE, WAR, WILD), false otherwise
+     */
+    public boolean isUnmannedGuild(Guild guild) {
+        return guild != null && guild.isUnmanned();
+    }
+
+    /**
      * Changes a member's role in a guild.
      *
      * @param guild The guild to change the role in
@@ -661,5 +785,73 @@ public class GuildManager {
         }
 
         return false;
+    }
+
+    /**
+     * Checks if guilds are enabled in the specified world.
+     *
+     * @param world The world to check
+     * @return true if guilds are enabled in the world, false otherwise
+     */
+    public boolean isWorldEnabled(World world) {
+        return world != null && !disabledWorlds.contains(world.getUID());
+    }
+
+    /**
+     * Enables guilds in the specified world.
+     *
+     * @param world The world to enable guilds in
+     * @return true if the operation was successful, false otherwise
+     */
+    public boolean enableWorld(World world) {
+        if (world == null) {
+            return false;
+        }
+
+        boolean removed = disabledWorlds.remove(world.getUID());
+        if (removed) {
+            saveConfiguration();
+        }
+        return true;
+    }
+
+    /**
+     * Disables guilds in the specified world.
+     *
+     * @param world The world to disable guilds in
+     * @return true if the operation was successful, false otherwise
+     */
+    public boolean disableWorld(World world) {
+        if (world == null) {
+            return false;
+        }
+
+        boolean added = disabledWorlds.add(world.getUID());
+        if (added) {
+            saveConfiguration();
+        }
+        return true;
+    }
+
+    /**
+     * Gets a list of all worlds and whether guilds are enabled in them.
+     *
+     * @return A map of world names to boolean values indicating if guilds are enabled
+     */
+    public Map<String, Boolean> getWorldsStatus() {
+        Map<String, Boolean> worldsStatus = new HashMap<>();
+
+        for (World world : plugin.getServer().getWorlds()) {
+            // Skip game worlds
+            if (world.getName().equals(plugin.getWorldManager().getGameWorldName()) ||
+                world.getName().equals(plugin.getWorldManager().getGameBackupName()) ||
+                world.getName().startsWith("minigame_")) {
+                continue;
+            }
+
+            worldsStatus.put(world.getName(), isWorldEnabled(world));
+        }
+
+        return worldsStatus;
     }
 }

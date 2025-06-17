@@ -73,8 +73,11 @@ public class WorldSpawnSubCommand implements SubCommand {
             }
         } else if (args.length == 3) {
             String partial = args[2].toLowerCase();
+            String gameBackupName = plugin.getWorldManager().getGameBackupName();
+
             for (World world : Bukkit.getWorlds()) {
-                if (world.getName().toLowerCase().startsWith(partial)) {
+                // Skip GameBackup world
+                if (!world.getName().equals(gameBackupName) && world.getName().toLowerCase().startsWith(partial)) {
                     completions.add(world.getName());
                 }
             }

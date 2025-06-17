@@ -3,7 +3,7 @@ package com.spillhuset.furious.commands.guild;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
 import com.spillhuset.furious.enums.GuildRole;
-import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -13,11 +13,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Subcommand for inviting a player to a guild.
  */
-public class InviteSubCommand implements SubCommand {
+public class InviteSubCommand implements GuildSubCommand {
     private final Furious plugin;
 
     /**
@@ -58,20 +59,8 @@ public class InviteSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is in a guild
-        if (!plugin.getGuildManager().isInGuild(player.getUniqueId())) {
-            player.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
-            return true;
-        }
-
         // Get the guild
         Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-
-        // Check if player has permission to invite players (owner or admin)
-        if (!guild.hasRole(player.getUniqueId(), GuildRole.ADMIN)) {
-            player.sendMessage(Component.text("You need to be a guild admin or owner to invite players!", NamedTextColor.RED));
-            return true;
-        }
 
         // Get the target player
         Player target = Bukkit.getPlayer(args[1]);
@@ -124,5 +113,49 @@ public class InviteSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.invite";
+    }
+
+    @Override
+    public GuildRole getRequiredRole() {
+        return GuildRole.ADMIN;
+    }
+
+    @Override
+    public Guild isInGuild(@NotNull Player player) {
+        return plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
+    }
+
+    @Override
+    public Guild isInGuild(@NotNull UUID playerUUID) {
+        return plugin.getGuildManager().getPlayerGuild(playerUUID);
+    }
+
+    @Override
+    public boolean isGuildOwner(@NotNull Player player) {
+        Guild guild = isInGuild(player);
+        if (guild == null) {
+            return false;
+        }
+        return guild.getOwner().equals(player.getUniqueId());
+    }
+
+    @Override
+    public boolean isGuildOwner(@NotNull UUID playerUUID) {
+        Guild guild = isInGuild(playerUUID);
+        if (guild == null) {
+            return false;
+        }
+        return guild.getOwner().equals(playerUUID);
+    }
+
+    @Override
+    public boolean hasRole(@NotNull Player player, @NotNull GuildRole role) {
+        Guild guild = isInGuild(player);
+        if (guild == null) {
+            return false;
+        }
+
+        // Get the player's guild and check their role
+        return guild.hasRole(player.getUniqueId(), role);
     }
 }

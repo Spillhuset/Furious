@@ -2,7 +2,8 @@ package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
-import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -16,7 +17,7 @@ import java.util.*;
 /**
  * Subcommand for listing all claimed chunks of a guild.
  */
-public class ClaimsSubCommand implements SubCommand {
+public class ClaimsSubCommand implements GuildSubCommand {
     private final Furious plugin;
 
     /**
@@ -47,8 +48,7 @@ public class ClaimsSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+        if (!checkGuildPermission(sender)) {
             return true;
         }
 
@@ -57,14 +57,10 @@ public class ClaimsSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is in a guild
-        if (!plugin.getGuildManager().isInGuild(player.getUniqueId())) {
-            player.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
-            return true;
-        }
+        Player player = (Player) sender;
 
         // Get the guild
-        Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
+        Guild guild = isInGuild(player);
 
         // Get claimed chunks
         Set<String> claimedChunks = guild.getClaimedChunks();
@@ -131,5 +127,38 @@ public class ClaimsSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.claims";
+    }
+
+    @Override
+    public GuildRole getRequiredRole() {
+        // This command requires the player to be in a guild but doesn't require a specific role
+        return GuildRole.USER;
+    }
+
+    @Override
+    public boolean checkGuildPermission(@NotNull CommandSender sender, boolean feedback) {
+        // First check regular permissions
+        if (!checkPermission(sender, feedback)) {
+            return false;
+        }
+
+        // If not a player, they can't view guild claims
+        if (!(sender instanceof Player player)) {
+            if (feedback) {
+                sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        // Check if player is in a guild
+        Guild guild = isInGuild(player);
+        if (guild == null) {
+            if (feedback) {
+                sender.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        return true;
     }
 }

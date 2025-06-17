@@ -2,7 +2,8 @@ package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
-import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -17,7 +18,7 @@ import java.util.List;
 /**
  * Subcommand for listing all guilds.
  */
-public class ListSubCommand implements SubCommand {
+public class ListSubCommand implements GuildSubCommand {
     private final Furious plugin;
 
     /**
@@ -48,6 +49,10 @@ public class ListSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (!checkGuildPermission(sender)) {
+            return true;
+        }
+
         if (args.length != 1) {
             getUsage(sender);
             return true;
@@ -88,5 +93,17 @@ public class ListSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.list";
+    }
+
+    @Override
+    public GuildRole getRequiredRole() {
+        // This command doesn't require a guild role
+        return null;
+    }
+
+    @Override
+    public boolean checkGuildPermission(@NotNull CommandSender sender, boolean feedback) {
+        // Only check regular permissions
+        return checkPermission(sender, feedback);
     }
 }

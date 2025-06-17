@@ -1,9 +1,9 @@
 package com.spillhuset.furious.entities;
 
 import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.enums.GuildType;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.*;
@@ -22,6 +22,7 @@ public class Guild {
     private final Date creationDate;
     private final Set<String> claimedChunks; // Format: "worldUUID:chunkX:chunkZ"
     private boolean mobSpawningEnabled; // Whether mobs can spawn in claimed chunks
+    private GuildType type; // The type of guild (SAFE, WAR, WILD, GUILD)
 
     /**
      * Creates a new guild with the given name and owner.
@@ -30,6 +31,17 @@ public class Guild {
      * @param owner The UUID of the guild owner
      */
     public Guild(String name, UUID owner) {
+        this(name, owner, GuildType.GUILD);
+    }
+
+    /**
+     * Creates a new guild with the given name, owner, and type.
+     *
+     * @param name  The name of the guild
+     * @param owner The UUID of the guild owner
+     * @param type  The type of guild
+     */
+    public Guild(String name, UUID owner, GuildType type) {
         this.id = UUID.randomUUID();
         this.name = name;
         this.owner = owner;
@@ -39,6 +51,7 @@ public class Guild {
         this.creationDate = new Date();
         this.claimedChunks = new HashSet<>();
         this.mobSpawningEnabled = false; // Default: mobs cannot spawn in claimed chunks
+        this.type = type;
 
         // Add the owner as a member with OWNER role
         this.members.put(owner, GuildRole.OWNER);
@@ -203,16 +216,12 @@ public class Guild {
         }
 
         // Check role hierarchy
-        switch (role) {
-            case USER:
-                return true; // All members are at least users
-            case MOD:
-                return memberRole == GuildRole.MOD || memberRole == GuildRole.ADMIN;
-            case ADMIN:
-                return memberRole == GuildRole.ADMIN;
-            default:
-                return false;
-        }
+        return switch (role) {
+            case USER -> true; // All members are at least users
+            case MOD -> memberRole == GuildRole.MOD || memberRole == GuildRole.ADMIN;
+            case ADMIN -> memberRole == GuildRole.ADMIN;
+            default -> false;
+        };
     }
 
     /**
@@ -394,5 +403,41 @@ public class Guild {
     public boolean toggleMobSpawning() {
         this.mobSpawningEnabled = !this.mobSpawningEnabled;
         return this.mobSpawningEnabled;
+    }
+
+    /**
+     * Gets the type of this guild.
+     *
+     * @return The guild type
+     */
+    public GuildType getType() {
+        return type;
+    }
+
+    /**
+     * Sets the type of this guild.
+     *
+     * @param type The new type for the guild
+     */
+    public void setType(GuildType type) {
+        this.type = type;
+    }
+
+    /**
+     * Checks if this guild is an unmanned guild.
+     *
+     * @return true if this is an unmanned guild (SAFE, WAR, WILD), false otherwise
+     */
+    public boolean isUnmanned() {
+        return type.isUnmanned();
+    }
+
+    /**
+     * Checks if this guild is a safe zone.
+     *
+     * @return true if this is a safe zone (SAFE or GUILD), false otherwise
+     */
+    public boolean isSafe() {
+        return type.isSafe();
     }
 }

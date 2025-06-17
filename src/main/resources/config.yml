@@ -30,3 +30,19 @@ guilds:
   max-guilds-per-player: 1
   # Maximum number of plots (chunks) a guild can claim
   max-plots-per-guild: 16
+
+homes:
+  # Default maximum number of homes a player can have
+  default-max-player-homes: 3
+  # Default maximum number of homes a guild can have
+  default-max-guild-homes: 1
+  # Base cost for purchasing an additional home slot
+  base-home-cost: 100.0
+  # Cost multiplier for each additional home slot (cost = base * multiplier^purchased)
+  cost-multiplier: 1.5
+  # Additional cost multiplier for guild homes (cost = base * guild-multiplier * multiplier^purchased)
+  guild-cost-multiplier: 3.0
+  # List of worlds where homes cannot be set
+  disabled-worlds: []
+  # List of world types where homes cannot be set (NORMAL, NETHER, THE_END, CUSTOM)
+  disabled-world-types: []

@@ -114,8 +114,11 @@ public class CoordsSubCommand implements SubCommand {
         else if ((args.length == 5 && isNumeric(args[1])) ||   // /tp coords x y z [world]
                 (args.length == 6 && !isNumeric(args[1]))) {   // /tp coords player x y z [world]
             String partial = args[args.length - 1].toLowerCase();
+            String gameBackupName = plugin.getWorldManager().getGameBackupName();
+
             for (World world : Bukkit.getWorlds()) {
-                if (world.getName().toLowerCase().startsWith(partial)) {
+                // Skip GameBackup world
+                if (!world.getName().equals(gameBackupName) && world.getName().toLowerCase().startsWith(partial)) {
                     completions.add(world.getName());
                 }
             }

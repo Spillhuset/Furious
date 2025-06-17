@@ -25,14 +25,17 @@ public class WalletListener implements Listener {
         Player player = event.getPlayer();
         double droppedAmount = walletManager.getBalance(player);
         if (droppedAmount > 0) {
-            walletManager.setBalance(player, 0);
-            // Optionally drop physical scraps that other players can pick up
-            player.getWorld().dropItem(player.getLocation(),
-                    plugin.createScrapItem(droppedAmount));
+            if (walletManager.setBalance(player, 0)) {
+                // Drop physical scraps that other players can pick up
+                player.getWorld().dropItem(player.getLocation(),
+                        plugin.createScrapItem(droppedAmount));
 
-            player.sendMessage(Component.text("You dropped " +
-                            walletManager.formatAmount(droppedAmount) + " upon death!",
-                    NamedTextColor.RED));
+                player.sendMessage(Component.text("You dropped " +
+                                walletManager.formatAmount(droppedAmount) + " upon death!",
+                        NamedTextColor.RED));
+            } else {
+                plugin.getLogger().warning("Failed to set balance to 0 for player " + player.getName() + " on death");
+            }
         }
     }
 
@@ -46,8 +49,10 @@ public class WalletListener implements Listener {
     }
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        // Optionally save wallet to storage
-        // Wallet stays in memory for now
+        // Save wallet data to storage when player quits
+        // This ensures that wallet data is not lost if the server crashes
+        // The wallet data is also saved periodically and on server shutdown
+        walletManager.saveWalletData();
     }
 
 }

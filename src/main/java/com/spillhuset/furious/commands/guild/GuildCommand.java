@@ -1,6 +1,7 @@
 package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -56,6 +57,12 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         subCommands.put("unclaim", new UnclaimSubCommand(plugin));
         subCommands.put("claims", new ClaimsSubCommand(plugin));
         subCommands.put("mobs", new MobsSubCommand(plugin));
+
+        // Guild homes commands
+        subCommands.put("homes", new HomesSubCommand(plugin));
+
+        // Guild world commands
+        subCommands.put("world", new WorldSubCommand(plugin));
     }
 
     @Override
@@ -73,9 +80,17 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (!sender.hasPermission(subCommand.getPermission())) {
-            sender.sendMessage(Component.text("You don't have permission to use this command!", NamedTextColor.RED));
-            return true;
+        // Check permissions based on whether it's a GuildSubCommand or regular SubCommand
+        if (subCommand instanceof GuildSubCommand guildSubCommand) {
+            if (!guildSubCommand.checkGuildPermission(sender)) {
+                // Message already sent by checkGuildPermission
+                return true;
+            }
+        } else {
+            if (!subCommand.checkPermission(sender)) {
+                sender.sendMessage(Component.text("You don't have permission to use this command!", NamedTextColor.RED));
+                return true;
+            }
         }
 
         return subCommand.execute(sender, args);
@@ -89,30 +104,32 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
     private void showHelp(CommandSender sender) {
         sender.sendMessage(Component.text("Guild Commands:", NamedTextColor.GOLD));
 
-        if (sender instanceof Player) {
-            sender.sendMessage(Component.text("/guild create <name> - Create a new guild", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild invite <player> - Invite a player to your guild", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild join <guild> - Join a guild you've been invited to", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild leave - Leave your current guild", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild info [guild] - Show information about your guild or another guild", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild list - List all guilds", NamedTextColor.YELLOW));
+        if (sender instanceof Player player) {
+            boolean isInGuild = plugin.getGuildManager().isInGuild(player.getUniqueId());
+            boolean isGuildOwner = isInGuild && plugin.getGuildManager().getPlayerGuild(player.getUniqueId()).getOwner().equals(player.getUniqueId());
+
+            // Display commands based on permissions
+            for (SubCommand subCommand : subCommands.values()) {
+                boolean canUse = false;
+
+                if (subCommand instanceof GuildSubCommand guildSubCommand) {
+                    canUse = guildSubCommand.checkGuildPermission(sender, false);
+                } else {
+                    canUse = subCommand.checkPermission(sender, false);
+                }
+
+                if (canUse) {
+                    sender.sendMessage(Component.text("/guild " + subCommand.getName() + " - " + subCommand.getDescription(), NamedTextColor.YELLOW));
+                }
+            }
 
             // Show owner-only commands if the player is in a guild and is the owner
-            Player player = (Player) sender;
-            if (plugin.getGuildManager().isInGuild(player.getUniqueId())) {
-                if (plugin.getGuildManager().getPlayerGuild(player.getUniqueId()).getOwner().equals(player.getUniqueId())) {
-                    // These commands are not implemented yet
-                    // sender.sendMessage(Component.text("/guild kick <player> - Kick a player from your guild", NamedTextColor.YELLOW));
-                    // sender.sendMessage(Component.text("/guild disband - Disband your guild", NamedTextColor.YELLOW));
-                    // sender.sendMessage(Component.text("/guild transfer <player> - Transfer ownership of your guild", NamedTextColor.YELLOW));
-                    // sender.sendMessage(Component.text("/guild description <text> - Set your guild's description", NamedTextColor.YELLOW));
-
-                    // Plot management commands
-                    sender.sendMessage(Component.text("/guild claim - Claim the chunk you are standing in for your guild", NamedTextColor.YELLOW));
-                    sender.sendMessage(Component.text("/guild unclaim - Unclaim the chunk you are standing in from your guild", NamedTextColor.YELLOW));
-                    sender.sendMessage(Component.text("/guild claims - List all chunks claimed by your guild", NamedTextColor.YELLOW));
-                    sender.sendMessage(Component.text("/guild mobs - Toggle mob spawning in your guild's claimed chunks", NamedTextColor.YELLOW));
-                }
+            if (isInGuild && isGuildOwner) {
+                // These commands are not implemented yet
+                // sender.sendMessage(Component.text("/guild kick <player> - Kick a player from your guild", NamedTextColor.YELLOW));
+                // sender.sendMessage(Component.text("/guild disband - Disband your guild", NamedTextColor.YELLOW));
+                // sender.sendMessage(Component.text("/guild transfer <player> - Transfer ownership of your guild", NamedTextColor.YELLOW));
+                // sender.sendMessage(Component.text("/guild description <text> - Set your guild's description", NamedTextColor.YELLOW));
             }
         } else {
             // Console commands
@@ -129,15 +146,33 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
-            for (String subCmd : subCommands.keySet()) {
-                if (subCmd.startsWith(partial) && sender.hasPermission(subCommands.get(subCmd).getPermission())) {
-                    completions.add(subCmd);
+            for (SubCommand subCmd : subCommands.values()) {
+                boolean canUse = false;
+
+                if (subCmd instanceof GuildSubCommand guildSubCmd) {
+                    canUse = guildSubCmd.checkGuildPermission(sender, false);
+                } else {
+                    canUse = subCmd.checkPermission(sender, false);
+                }
+
+                if (subCmd.getName().startsWith(partial) && canUse) {
+                    completions.add(subCmd.getName());
                 }
             }
         } else if (args.length > 1) {
             SubCommand subCommand = subCommands.get(args[0].toLowerCase());
-            if (subCommand != null && sender.hasPermission(subCommand.getPermission())) {
-                return subCommand.tabComplete(sender, args);
+            if (subCommand != null) {
+                boolean canUse = false;
+
+                if (subCommand instanceof GuildSubCommand guildSubCommand) {
+                    canUse = guildSubCommand.checkGuildPermission(sender, false);
+                } else {
+                    canUse = subCommand.checkPermission(sender, false);
+                }
+
+                if (canUse) {
+                    return subCommand.tabComplete(sender, args);
+                }
             }
         }
 

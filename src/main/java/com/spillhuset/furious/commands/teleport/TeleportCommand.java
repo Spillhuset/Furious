@@ -35,10 +35,17 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
         subCommands.put("world", new WorldConfigSubCommand(plugin));
         subCommands.put("coords", new CoordsSubCommand(plugin));
         subCommands.put("worldspawn", new WorldSpawnSubCommand(plugin));
+        subCommands.put("setworldspawn", new SetWorldSpawnSubCommand(plugin));
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        // Check if the player is in a minigame
+        if (sender instanceof Player player && plugin.getMinigameManager().isInGame(player)) {
+            player.sendMessage(Component.text("You cannot use teleport commands while in a minigame!", NamedTextColor.RED));
+            return true;
+        }
+
         if (args.length == 0) {
             showHelp(sender);
             return true;
@@ -86,6 +93,7 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Component.text("/teleport <playerA> [playerB] - Teleports yourself to playerA | Teleport playerA to playerB", NamedTextColor.YELLOW));
                 sender.sendMessage(Component.text("/teleport coords [player] <x> <y> <z> [world] - Teleports you to a given position | Teleports a given player to a specified location", NamedTextColor.YELLOW));
                 sender.sendMessage(Component.text("/teleport worldspawn <player> [world] - Teleport player to world's spawn location", NamedTextColor.YELLOW));
+                sender.sendMessage(Component.text("/teleport setworldspawn [world] - Set the spawn location of a world to your current position", NamedTextColor.YELLOW));
             }
         } else {
             sender.sendMessage(Component.text("/teleport deny <player> - Toggle auto-decline of requests by given player", NamedTextColor.YELLOW));
@@ -95,6 +103,7 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Component.text("/teleport world list - Shows a list of worlds where teleportation is disabled", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport <playerA> <playerB> - Teleport playerA to playerB", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport worldspawn <player> <world> - Teleport player to world's spawn location", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/teleport setworldspawn <world> - Set the spawn location of a world", NamedTextColor.YELLOW));
         }
     }
 

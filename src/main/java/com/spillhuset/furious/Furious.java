@@ -1,15 +1,19 @@
 package com.spillhuset.furious;
 
 import com.spillhuset.furious.commands.EnderseeCommand;
+import com.spillhuset.furious.commands.FeedCommand;
+import com.spillhuset.furious.commands.HealCommand;
 import com.spillhuset.furious.commands.InvseeCommand;
 import com.spillhuset.furious.commands.guild.GuildCommand;
+import com.spillhuset.furious.commands.homes.HomesCommand;
+import com.spillhuset.furious.commands.locks.LocksCommand;
+import com.spillhuset.furious.commands.minigame.GameWorldCommand;
+import com.spillhuset.furious.commands.minigame.MinigameCommand;
 import com.spillhuset.furious.commands.teleport.TeleportCommand;
-import com.spillhuset.furious.listeners.GuildListener;
-import com.spillhuset.furious.listeners.TeleportListener;
-import com.spillhuset.furious.listeners.WalletListener;
-import com.spillhuset.furious.managers.GuildManager;
-import com.spillhuset.furious.managers.TeleportManager;
-import com.spillhuset.furious.managers.WalletManager;
+import com.spillhuset.furious.commands.warps.WarpsCommand;
+import com.spillhuset.furious.listeners.*;
+import com.spillhuset.furious.managers.*;
+import com.spillhuset.furious.minigames.hungergames.ContainerRegistry;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
@@ -21,25 +25,52 @@ public final class Furious extends JavaPlugin {
     private TeleportManager teleportManager;
     private WalletManager walletManager;
     private GuildManager guildManager;
+    private LocksManager locksManager;
+    private MinigameManager minigameManager;
+    private WorldManager worldManager;
+    private HomesManager homesManager;
+    private WarpsManager warpsManager;
+    private ContainerRegistry containerRegistry;
+    private PlayerDataManager playerDataManager;
+    private static Furious instance;
 
     @Override
     public void onEnable() {
         // Plugin startup logic
-
+        instance = this;
         saveDefaultConfig();
 
         teleportManager = new TeleportManager(this);
         walletManager = new WalletManager(this);
         guildManager = new GuildManager(this);
+        locksManager = new LocksManager(this);
+        worldManager = new WorldManager(this);
+        minigameManager = new MinigameManager(this);
+        homesManager = new HomesManager(this);
+        warpsManager = new WarpsManager(this);
+        playerDataManager = new PlayerDataManager(this);
 
         getCommand("invsee").setExecutor(new InvseeCommand(this));
         getCommand("endersee").setExecutor(new EnderseeCommand(this));
         getCommand("teleport").setExecutor(new TeleportCommand(this));
         getCommand("guild").setExecutor(new GuildCommand(this));
+        getCommand("heal").setExecutor(new HealCommand(this));
+        getCommand("feed").setExecutor(new FeedCommand(this));
+        getCommand("locks").setExecutor(new LocksCommand(this));
+        getCommand("minigame").setExecutor(new MinigameCommand(this));
+        getCommand("homes").setExecutor(new HomesCommand(this));
+        getCommand("warps").setExecutor(new WarpsCommand(this));
 
         getServer().getPluginManager().registerEvents(new TeleportListener(this), this);
         getServer().getPluginManager().registerEvents(new WalletListener(this), this);
         getServer().getPluginManager().registerEvents(new GuildListener(this), this);
+        getServer().getPluginManager().registerEvents(new MinigameListener(this), this);
+        getServer().getPluginManager().registerEvents(new WarpsListener(this), this);
+        getServer().getPluginManager().registerEvents(new LocksListener(this), this);
+
+        // Register container listener for hunger games
+        containerRegistry = new ContainerRegistry(this);
+        getServer().getPluginManager().registerEvents(new ContainerListener(this, containerRegistry), this);
 
 
         getLogger().info("Furious is enabled!");
@@ -57,6 +88,24 @@ public final class Furious extends JavaPlugin {
         if (guildManager != null) {
             guildManager.shutdown();
         }
+        if (locksManager != null) {
+            locksManager.shutdown();
+        }
+        if (worldManager != null) {
+            worldManager.shutdown();
+        }
+        if (minigameManager != null) {
+            minigameManager.shutdown();
+        }
+        if (homesManager != null) {
+            homesManager.shutdown();
+        }
+        if (warpsManager != null) {
+            warpsManager.shutdown();
+        }
+        if (containerRegistry != null) {
+            containerRegistry.shutdown();
+        }
     }
 
     public TeleportManager getTeleportManager() {
@@ -71,16 +120,54 @@ public final class Furious extends JavaPlugin {
         return guildManager;
     }
 
+    public LocksManager getLocksManager() {
+        return locksManager;
+    }
+
+    public MinigameManager getMinigameManager() {
+        return minigameManager;
+    }
+
+    public WorldManager getWorldManager() {
+        return worldManager;
+    }
+
+    public HomesManager getHomesManager() {
+        return homesManager;
+    }
+
+    public WarpsManager getWarpsManager() {
+        return warpsManager;
+    }
+
+    public ContainerRegistry getContainerRegistry() {
+        return containerRegistry;
+    }
+
+    public PlayerDataManager getPlayerDataManager() {
+        return playerDataManager;
+    }
+
     public ItemStack createScrapItem(double amount) {
-        Material scrapMaterial = Material.getMaterial(getConfig().getString("economy.currency.material", "IRON_INGOT"));
+        // Use the cached currency configuration from the WalletManager
+        String material = walletManager.getCurrencyMaterial();
+        Material scrapMaterial = Material.getMaterial(material);
         if (scrapMaterial == null) {
             scrapMaterial = Material.IRON_INGOT;
         }
         ItemStack scrapItem = new ItemStack(scrapMaterial, 1);
         ItemMeta scrapMeta = scrapItem.getItemMeta();
-        scrapMeta.displayName(Component.text(getConfig().getString("economy.currency.symbol","⚙ ")).append(Component.text(amount, NamedTextColor.GOLD)).append(Component.text(" "+getConfig().getString("economy.currency.name", "Scrap"))));
+
+        // Use the cached currency symbol and name
+        String symbol = walletManager.getCurrencySymbol();
+        String name = amount == 1 ? walletManager.getCurrencyName() : walletManager.getCurrencyPlural();
+
+        scrapMeta.displayName(Component.text(symbol + " ").append(Component.text(amount, NamedTextColor.GOLD)).append(Component.text(" " + name)));
         scrapItem.setItemMeta(scrapMeta);
         return scrapItem;
     }
 
+    public static Furious getInstance() {
+        return instance;
+    }
 }

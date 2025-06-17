@@ -2,7 +2,8 @@ package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
-import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.misc.GuildSubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -15,7 +16,7 @@ import java.util.List;
 /**
  * Subcommand for controlling mob spawning in guild claimed chunks.
  */
-public class MobsSubCommand implements SubCommand {
+public class MobsSubCommand implements GuildSubCommand {
     private final Furious plugin;
 
     /**
@@ -48,8 +49,7 @@ public class MobsSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+        if (!checkGuildPermission(sender)) {
             return true;
         }
 
@@ -58,26 +58,10 @@ public class MobsSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is in a guild
-        if (!plugin.getGuildManager().isInGuild(player.getUniqueId())) {
-            player.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
-            return true;
-        }
+        Player player = (Player) sender;
 
         // Get the guild
-        Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-
-        // Check if player is the owner
-        if (!guild.getOwner().equals(player.getUniqueId())) {
-            player.sendMessage(Component.text("Only the guild owner can control mob spawning!", NamedTextColor.RED));
-            return true;
-        }
-
-        // Check if guild has any claimed chunks
-        if (guild.getClaimedChunkCount() == 0) {
-            player.sendMessage(Component.text("Your guild has not claimed any chunks yet!", NamedTextColor.RED));
-            return true;
-        }
+        Guild guild = isInGuild(player);
 
         // Toggle mob spawning
         plugin.getGuildManager().toggleMobSpawning(guild, player);
@@ -94,5 +78,54 @@ public class MobsSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.mobs";
+    }
+
+    @Override
+    public GuildRole getRequiredRole() {
+        // This command requires the player to be the guild owner
+        return GuildRole.OWNER;
+    }
+
+    @Override
+    public boolean checkGuildPermission(@NotNull CommandSender sender, boolean feedback) {
+        // First check regular permissions
+        if (!checkPermission(sender, feedback)) {
+            return false;
+        }
+
+        // If not a player, they can't control mob spawning
+        if (!(sender instanceof Player player)) {
+            if (feedback) {
+                sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        // Check if player is in a guild
+        Guild guild = isInGuild(player);
+        if (guild == null) {
+            if (feedback) {
+                sender.sendMessage(Component.text("You are not in a guild!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        // Check if player is the owner
+        if (!isGuildOwner(player)) {
+            if (feedback) {
+                sender.sendMessage(Component.text("Only the guild owner can control mob spawning!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        // Check if guild has any claimed chunks
+        if (guild.getClaimedChunkCount() == 0) {
+            if (feedback) {
+                sender.sendMessage(Component.text("Your guild has not claimed any chunks yet!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
+        return true;
     }
 }

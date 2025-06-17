@@ -3,6 +3,7 @@ package com.spillhuset.furious.listeners;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
 import com.spillhuset.furious.enums.GuildRole;
+import com.spillhuset.furious.enums.GuildType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
@@ -165,8 +166,24 @@ public class GuildListener implements Listener {
             return;
         }
 
-        // Check if the player is using flint and steel
+        // Handle based on guild type for flint and steel
         if (itemInHand == Material.FLINT_AND_STEEL) {
+            if (guild.isUnmanned()) {
+                // For unmanned guilds (SAFE, WAR, WILD)
+                if (guild.getType() == GuildType.WILD) {
+                    // WILD zones allow normal players to use flint and steel
+                    return;
+                } else {
+                    // SAFE and WAR zones don't allow normal players to use flint and steel
+                    event.setCancelled(true);
+                    player.sendMessage(Component.text("You cannot use flint and steel in " +
+                                    guild.getName() + " zone.",
+                            NamedTextColor.RED));
+                    return;
+                }
+            }
+
+            // For player guilds (GUILD)
             // Check if the player is a member of the guild
             if (!guild.isMember(player.getUniqueId())) {
                 // If the player is not a member, cancel the interaction
@@ -192,6 +209,32 @@ public class GuildListener implements Listener {
             return;
         }
 
+        // Handle based on guild type for chests and doors
+        if (guild.isUnmanned()) {
+            // For unmanned guilds (SAFE, WAR, WILD)
+            if (guild.getType() == GuildType.WILD) {
+                // WILD zones allow normal players to access chests and doors
+                return;
+            } else if (guild.getType() == GuildType.SAFE) {
+                // SAFE zones allow access to doors but not chests
+                if (isChest(blockType)) {
+                    event.setCancelled(true);
+                    player.sendMessage(Component.text("Chests in SAFE zones are protected.",
+                            NamedTextColor.RED));
+                }
+                return;
+            } else {
+                // WAR zones don't allow normal players to access chests or doors
+                event.setCancelled(true);
+                player.sendMessage(Component.text("This " +
+                                (isChest(blockType) ? "chest" : "door") +
+                                " is in a WAR zone and is protected.",
+                        NamedTextColor.RED));
+                return;
+            }
+        }
+
+        // For player guilds (GUILD)
         // Check if the player is a member of the guild
         if (!guild.isMember(player.getUniqueId())) {
             // If the player is not a member, cancel the interaction
@@ -240,6 +283,23 @@ public class GuildListener implements Listener {
             return;
         }
 
+        // Handle based on guild type
+        if (guild.isUnmanned()) {
+            // For unmanned guilds (SAFE, WAR, WILD)
+            if (guild.getType() == GuildType.WILD) {
+                // WILD zones allow normal players to use buckets
+                return;
+            } else {
+                // SAFE and WAR zones don't allow normal players to use buckets
+                event.setCancelled(true);
+                player.sendMessage(Component.text("You cannot use buckets in " +
+                                guild.getName() + " zone.",
+                        NamedTextColor.RED));
+                return;
+            }
+        }
+
+        // For player guilds (GUILD)
         // Check if the player is a member of the guild
         if (!guild.isMember(player.getUniqueId())) {
             // If the player is not a member, cancel the bucket use
@@ -345,13 +405,30 @@ public class GuildListener implements Listener {
             return;
         }
 
+        // Handle based on guild type
+        if (guild.isUnmanned()) {
+            // For unmanned guilds (SAFE, WAR, WILD)
+            if (guild.getType() == GuildType.WILD) {
+                // WILD zones allow normal players to build/destroy
+                return;
+            } else {
+                // SAFE and WAR zones don't allow normal players to build/destroy
+                event.setCancelled(true);
+                player.sendMessage(Component.text("You cannot break blocks in " +
+                                guild.getName() + " zone.",
+                        NamedTextColor.RED));
+                return;
+            }
+        }
+
+        // For player guilds (GUILD)
         // Check if the player is a member of the guild
         if (!guild.isMember(player.getUniqueId())) {
             // If the player is not a member, cancel the break
             event.setCancelled(true);
-            player.sendMessage(net.kyori.adventure.text.Component.text("You cannot break blocks in " +
+            player.sendMessage(Component.text("You cannot break blocks in " +
                             guild.getName() + "'s territory.",
-                    net.kyori.adventure.text.format.NamedTextColor.RED));
+                    NamedTextColor.RED));
             return;
         }
 
@@ -360,8 +437,8 @@ public class GuildListener implements Listener {
         if (role == null || !role.canBuild()) {
             // If the player doesn't have the appropriate role, cancel the break
             event.setCancelled(true);
-            player.sendMessage(net.kyori.adventure.text.Component.text("You don't have permission to break blocks in this guild territory.",
-                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            player.sendMessage(Component.text("You don't have permission to break blocks in this guild territory.",
+                    NamedTextColor.RED));
         }
     }
 
@@ -390,13 +467,30 @@ public class GuildListener implements Listener {
             return;
         }
 
+        // Handle based on guild type
+        if (guild.isUnmanned()) {
+            // For unmanned guilds (SAFE, WAR, WILD)
+            if (guild.getType() == GuildType.WILD) {
+                // WILD zones allow normal players to build/destroy
+                return;
+            } else {
+                // SAFE and WAR zones don't allow normal players to build/destroy
+                event.setCancelled(true);
+                player.sendMessage(Component.text("You cannot place blocks in " +
+                                guild.getName() + " zone.",
+                        NamedTextColor.RED));
+                return;
+            }
+        }
+
+        // For player guilds (GUILD)
         // Check if the player is a member of the guild
         if (!guild.isMember(player.getUniqueId())) {
             // If the player is not a member, cancel the place
             event.setCancelled(true);
-            player.sendMessage(net.kyori.adventure.text.Component.text("You cannot place blocks in " +
+            player.sendMessage(Component.text("You cannot place blocks in " +
                             guild.getName() + "'s territory.",
-                    net.kyori.adventure.text.format.NamedTextColor.RED));
+                    NamedTextColor.RED));
             return;
         }
 
@@ -405,8 +499,8 @@ public class GuildListener implements Listener {
         if (role == null || !role.canBuild()) {
             // If the player doesn't have the appropriate role, cancel the place
             event.setCancelled(true);
-            player.sendMessage(net.kyori.adventure.text.Component.text("You don't have permission to place blocks in this guild territory.",
-                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            player.sendMessage(Component.text("You don't have permission to place blocks in this guild territory.",
+                    NamedTextColor.RED));
         }
     }
 }
