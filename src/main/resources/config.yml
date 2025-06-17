@@ -1,48 +1,29 @@
-economy:
-  currency:
-    name: "Scrap"
-    plural: "Scraps"
-    symbol: "⚙" # Optional: Unicode scrap/gear symbol
-    # Or just 'S' if you prefer text
-    format: "%symbol%%amount%"  # e.g., ⚙50 or S50
-    material: "IRON_NUGGET"
+# Furious Plugin Configuration
 
-teleport:
-  # If true, players can only teleport within the same world
-  same-world-only: true
-  # List of world UUIDs where teleportation is completely disabled
-  disabled-worlds: []
-  # Message shown when cross-world teleport is attempted
-  cross-world-message: "&cYou can only teleport to players in the same world!"
-  # Message shown when teleporting in a disabled world
-  disabled-world-message: "&cTeleportation is disabled in this world!"
-  # List of denying all players
-  deny-all: []
+# General plugin settings
+plugin:
+  # If true, debug messages will be logged
+  debug: false
 
-guilds:
-  # Minimum length for guild names
-  min-name-length: 3
-  # Maximum length for guild names
-  max-name-length: 16
-  # Maximum number of members in a guild (0 for unlimited)
-  max-members: 0
-  # Maximum number of guilds a player can create (0 for unlimited)
-  max-guilds-per-player: 1
-  # Maximum number of plots (chunks) a guild can claim
-  max-plots-per-guild: 16
+  # If true, metrics will be collected
+  metrics: true
 
-homes:
-  # Default maximum number of homes a player can have
-  default-max-player-homes: 3
-  # Default maximum number of homes a guild can have
-  default-max-guild-homes: 1
-  # Base cost for purchasing an additional home slot
-  base-home-cost: 100.0
-  # Cost multiplier for each additional home slot (cost = base * multiplier^purchased)
-  cost-multiplier: 1.5
-  # Additional cost multiplier for guild homes (cost = base * guild-multiplier * multiplier^purchased)
-  guild-cost-multiplier: 3.0
-  # List of worlds where homes cannot be set
-  disabled-worlds: []
-  # List of world types where homes cannot be set (NORMAL, NETHER, THE_END, CUSTOM)
-  disabled-world-types: []
+  # If true, update checks will be performed
+  update-check: true
+
+  # Language for messages (en, fr, de, es, etc.)
+  language: "en"
+
+  # If true, colored messages will be used
+  colored-messages: true
+
+# Default configuration files
+# These files will be loaded when the plugin starts
+config-files:
+  - "teleport.yml"
+  - "guilds.yml"
+  - "homes.yml"
+  - "locks.yml"
+  - "minigames.yml"
+  - "warps.yml"
+  - "wallet.yml"

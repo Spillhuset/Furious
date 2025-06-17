@@ -186,6 +186,7 @@ permissions:
       furious.locks.unlock: true
       furious.locks.info: true
       furious.locks.key: true
+      furious.locks.world: true
   furious.locks.lock:
     description: Allows creating lock items
     default: true
@@ -198,6 +199,9 @@ permissions:
   furious.locks.key:
     description: Allows creating key items
     default: true
+  furious.locks.world:
+    description: Allows managing locks world settings
+    default: op
 
   furious.minigame.*:
     description: Gives access to all minigame commands

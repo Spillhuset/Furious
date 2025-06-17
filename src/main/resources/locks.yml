@@ -1,0 +1,25 @@
+# Locks Configuration
+
+# List of worlds where locks cannot be used
+disabled-worlds: []
+
+# Message shown when lock functionality is attempted in a disabled world
+disabled-world-message: "&cLocks cannot be used in this world!"
+
+# If true, only the owner of a lock can unlock it
+owner-only-unlock: false
+
+# If true, locks will persist even if the block is broken and replaced
+persistent-locks: true
+
+# Maximum number of locks a player can create (0 for unlimited)
+max-locks-per-player: 0
+
+# List of block types that cannot be locked
+unlockable-blocks: []
+
+# If true, locks will be automatically removed when a player is offline for a certain period
+auto-remove-locks: false
+
+# Number of days after which locks will be automatically removed if the player is offline
+auto-remove-days: 30

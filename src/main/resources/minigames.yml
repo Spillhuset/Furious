@@ -1,0 +1,53 @@
+# Minigames Configuration
+
+# Default minimum number of players required to start a minigame
+default-min-players: 2
+
+# Default maximum number of players allowed in a minigame
+default-max-players: 16
+
+# Default countdown time (in seconds) before a minigame starts
+default-countdown: 30
+
+# Default game duration (in seconds, 0 for unlimited)
+default-duration: 600
+
+# If true, players will be teleported back to their previous location after a minigame ends
+teleport-back: true
+
+# If true, players' inventories will be saved and restored after a minigame ends
+save-inventory: true
+
+# If true, players' health and hunger will be restored after a minigame ends
+restore-health: true
+
+# List of worlds where minigames cannot be played
+disabled-worlds: []
+
+# Message shown when minigame functionality is attempted in a disabled world
+disabled-world-message: "&cMinigames cannot be played in this world!"
+
+# Specific minigame configurations
+minigames:
+  hunger_games:
+    min-players: 4
+    max-players: 24
+    countdown: 60
+    duration: 1200
+    grace-period: 30
+    chest-refill-interval: 300
+
+  spleef:
+    min-players: 2
+    max-players: 16
+    countdown: 30
+    duration: 300
+    floor-material: SNOW_BLOCK
+
+  zombie_survival:
+    min-players: 2
+    max-players: 8
+    countdown: 30
+    duration: 600
+    waves: 10
+    zombies-per-wave: 5

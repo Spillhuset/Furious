@@ -1,8 +1,14 @@
 # Security Audit Report for Furious Plugin
 
+**Last Updated:** June 15, 2023
+
 ## Executive Summary
 
 This report presents the findings of a security audit conducted on the Furious Minecraft plugin. The audit identified several security vulnerabilities, primarily related to permission handling in certain commands. These vulnerabilities have been addressed with appropriate fixes. The plugin is now more secure and follows best practices for permission management.
+
+## Recent Updates
+
+This security report has been updated to include additional recommendations and best practices. The core security issues identified in the initial audit have been resolved, and this update focuses on further enhancing the security posture of the plugin.
 
 ## Identified Issues and Fixes
 
@@ -54,6 +60,12 @@ The plugin already follows several security best practices:
 3. **Rate Limiting**: Consider implementing rate limiting for commands that could be abused.
 
 4. **Regular Security Reviews**: Conduct regular security reviews as the plugin evolves.
+
+5. **Input Sanitization**: Enhance input sanitization for all user-provided inputs, especially for commands that modify game data or interact with the file system.
+
+6. **Secure Configuration Handling**: Implement encryption for sensitive configuration data such as passwords stored in configuration files.
+
+7. **Permission Hierarchy Review**: Conduct a comprehensive review of the permission hierarchy to ensure that permissions are properly nested and that no unintended privilege escalation is possible.
 
 ## Conclusion
 

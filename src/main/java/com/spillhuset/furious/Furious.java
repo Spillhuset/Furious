@@ -7,7 +7,6 @@ import com.spillhuset.furious.commands.InvseeCommand;
 import com.spillhuset.furious.commands.guild.GuildCommand;
 import com.spillhuset.furious.commands.homes.HomesCommand;
 import com.spillhuset.furious.commands.locks.LocksCommand;
-import com.spillhuset.furious.commands.minigame.GameWorldCommand;
 import com.spillhuset.furious.commands.minigame.MinigameCommand;
 import com.spillhuset.furious.commands.teleport.TeleportCommand;
 import com.spillhuset.furious.commands.warps.WarpsCommand;
@@ -20,6 +19,9 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.File;
+import java.util.List;
 
 public final class Furious extends JavaPlugin {
     private TeleportManager teleportManager;
@@ -39,6 +41,9 @@ public final class Furious extends JavaPlugin {
         // Plugin startup logic
         instance = this;
         saveDefaultConfig();
+
+        // Save default configuration files
+        saveDefaultConfigFiles();
 
         teleportManager = new TeleportManager(this);
         walletManager = new WalletManager(this);
@@ -169,5 +174,17 @@ public final class Furious extends JavaPlugin {
 
     public static Furious getInstance() {
         return instance;
+    }
+
+    /**
+     * Saves default configuration files listed in the config.yml file.
+     */
+    private void saveDefaultConfigFiles() {
+        List<String> configFiles = getConfig().getStringList("config-files");
+        for (String configFile : configFiles) {
+            if (!new File(getDataFolder(), configFile).exists()) {
+                saveResource(configFile, false);
+            }
+        }
     }
 }

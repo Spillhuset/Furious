@@ -33,7 +33,7 @@ public class HomesManager {
     private final double BASE_HOME_COST;
     private final double COST_MULTIPLIER;
     private final double GUILD_COST_MULTIPLIER;
-    private final List<String> DISABLED_WORLDS;
+    private List<String> DISABLED_WORLDS;
     private final List<String> DISABLED_WORLD_TYPES;
 
     /**
@@ -368,6 +368,71 @@ public class HomesManager {
         // Check if world type is in disabled world types list
         String worldType = world.getEnvironment().name();
         return DISABLED_WORLD_TYPES.contains(worldType);
+    }
+
+    /**
+     * Enables homes in the specified world.
+     *
+     * @param world The world to enable homes in
+     * @return true if the operation was successful, false otherwise
+     */
+    public boolean enableWorld(World world) {
+        if (world == null) {
+            return false;
+        }
+
+        String worldName = world.getName();
+        boolean removed = DISABLED_WORLDS.remove(worldName);
+        if (removed) {
+            // Update the config
+            plugin.getConfig().set("homes.disabled-worlds", DISABLED_WORLDS);
+            plugin.saveConfig();
+        }
+        return true;
+    }
+
+    /**
+     * Disables homes in the specified world.
+     *
+     * @param world The world to disable homes in
+     * @return true if the operation was successful, false otherwise
+     */
+    public boolean disableWorld(World world) {
+        if (world == null) {
+            return false;
+        }
+
+        String worldName = world.getName();
+        if (!DISABLED_WORLDS.contains(worldName)) {
+            DISABLED_WORLDS.add(worldName);
+            // Update the config
+            plugin.getConfig().set("homes.disabled-worlds", DISABLED_WORLDS);
+            plugin.saveConfig();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Gets a list of all worlds and whether homes are enabled in them.
+     *
+     * @return A map of world names to boolean values indicating if homes are enabled
+     */
+    public Map<String, Boolean> getWorldsStatus() {
+        Map<String, Boolean> worldsStatus = new HashMap<>();
+
+        for (World world : plugin.getServer().getWorlds()) {
+            // Skip game worlds
+            if (world.getName().equals(plugin.getWorldManager().getGameWorldName()) ||
+                world.getName().equals(plugin.getWorldManager().getGameBackupName()) ||
+                world.getName().startsWith("minigame_")) {
+                continue;
+            }
+
+            worldsStatus.put(world.getName(), !isWorldDisabled(world));
+        }
+
+        return worldsStatus;
     }
 
     /**

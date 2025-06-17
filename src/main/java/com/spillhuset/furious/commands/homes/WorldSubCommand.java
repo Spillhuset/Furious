@@ -88,25 +88,16 @@ public class WorldSubCommand implements SubCommand {
 
     private void listWorlds(CommandSender sender) {
         sender.sendMessage(Component.text("Homes World Settings:", NamedTextColor.YELLOW));
+        Map<String, Boolean> worldsStatus = plugin.getHomesManager().getWorldsStatus();
 
-        List<World> worlds = plugin.getServer().getWorlds();
-        if (worlds.isEmpty()) {
+        if (worldsStatus.isEmpty()) {
             sender.sendMessage(Component.text("No worlds available.", NamedTextColor.GRAY));
             return;
         }
 
-        for (World world : worlds) {
-            String worldName = world.getName();
-
-            // Skip game worlds
-            if (worldName.equals(plugin.getWorldManager().getGameWorldName()) ||
-                worldName.equals(plugin.getWorldManager().getGameBackupName()) ||
-                worldName.startsWith("minigame_")) {
-                continue;
-            }
-
-            boolean disabled = plugin.getHomesManager().isWorldDisabled(world);
-            boolean enabled = !disabled;
+        for (Map.Entry<String, Boolean> entry : worldsStatus.entrySet()) {
+            String worldName = entry.getKey();
+            boolean enabled = entry.getValue();
             NamedTextColor color = enabled ? NamedTextColor.GREEN : NamedTextColor.RED;
             sender.sendMessage(Component.text("- " + worldName + (enabled ? " [ENABLED]" : " [DISABLED]"), color));
         }
@@ -119,14 +110,10 @@ public class WorldSubCommand implements SubCommand {
             return;
         }
 
-        boolean isDisabled = plugin.getHomesManager().isWorldDisabled(world);
-        if (isDisabled) {
-            sender.sendMessage(Component.text("Homes are already disabled in world: " + worldName, NamedTextColor.YELLOW));
+        if (plugin.getHomesManager().disableWorld(world)) {
+            sender.sendMessage(Component.text("Homes disabled in world: " + worldName, NamedTextColor.GREEN));
         } else {
-            sender.sendMessage(Component.text("To disable homes in this world, add '" + worldName + "' to the 'homes.disabled-worlds' list in the config.yml file.", NamedTextColor.YELLOW));
-            if (sender.isOp() || sender.hasPermission("furious.admin")) {
-                sender.sendMessage(Component.text("After editing the config, restart the server or reload the plugin for changes to take effect.", NamedTextColor.YELLOW));
-            }
+            sender.sendMessage(Component.text("Homes are already disabled in world: " + worldName, NamedTextColor.YELLOW));
         }
     }
 
@@ -137,14 +124,10 @@ public class WorldSubCommand implements SubCommand {
             return;
         }
 
-        boolean isDisabled = plugin.getHomesManager().isWorldDisabled(world);
-        if (!isDisabled) {
-            sender.sendMessage(Component.text("Homes are already enabled in world: " + worldName, NamedTextColor.YELLOW));
+        if (plugin.getHomesManager().enableWorld(world)) {
+            sender.sendMessage(Component.text("Homes enabled in world: " + worldName, NamedTextColor.GREEN));
         } else {
-            sender.sendMessage(Component.text("To enable homes in this world, remove '" + worldName + "' from the 'homes.disabled-worlds' list in the config.yml file.", NamedTextColor.YELLOW));
-            if (sender.isOp() || sender.hasPermission("furious.admin")) {
-                sender.sendMessage(Component.text("After editing the config, restart the server or reload the plugin for changes to take effect.", NamedTextColor.YELLOW));
-            }
+            sender.sendMessage(Component.text("Homes are already enabled in world: " + worldName, NamedTextColor.YELLOW));
         }
     }
 

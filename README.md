@@ -1,6 +1,8 @@
 # Furious Plugin
 
-A comprehensive Minecraft plugin for server administrators looking to enhance their Minecraft server with a variety of features. Furious provides teleportation, guild systems, home management, warps, locks, minigames, and more in a single plugin.
+A comprehensive Minecraft plugin for server administrators looking to enhance their Minecraft server with a variety of features. Furious provides teleportation, guild systems, home management, warps, locks, minigames, economy, and more in a single plugin.
+
+**Current Version:** 1.0-SNAPSHOT
 
 ## Features
 
@@ -12,7 +14,7 @@ A comprehensive Minecraft plugin for server administrators looking to enhance th
 - **Minigames**: Built-in minigames including Hunger Games, Spleef, and Zombie Survival
 - **Game World Management**: Tools for managing game worlds
 - **Player Utilities**: Commands for healing and feeding players
-- **Economy Integration**: Built-in currency system
+- **Economy Integration**: Built-in currency system with player wallets, transactions, and integration with other features (homes, warps)
 
 ## Requirements
 
@@ -34,6 +36,13 @@ The plugin has undergone a security audit and implements best practices for perm
 - Disabled unsafe offline player data access
 - Added self-checks in inventory commands to prevent confusion
 - Implemented secure file operations and input validation
+
+The security report was recently updated (June 15, 2023) with additional recommendations:
+
+- Enhanced input sanitization for user-provided inputs
+- Secure configuration handling with encryption for sensitive data
+- Comprehensive permission hierarchy review
+- Regular security audits and rate limiting for commands
 
 For more details, see the [Security Report](SECURITY_REPORT.md).
 
@@ -69,7 +78,10 @@ The plugin includes a built-in currency system that can be configured in the `wa
   - `/teleport list` - List all pending teleport requests
   - `/teleport abort [player]` - Abort an outgoing teleport request
   - `/teleport deny` - Toggle auto-deny of teleport requests
-  - `/teleport world <world>` - Configure world teleport settings
+  - `/teleport world` - Configure world teleport settings
+    - `/teleport world enable <world>` - Enable teleportation in a world
+    - `/teleport world disable <world>` - Disable teleportation in a world
+  - `/teleport worlds` - List all worlds and their teleportation status
   - `/teleport coords <x> <y> <z> [world]` - Teleport to specific coordinates
   - Permission: `furious.teleport.*` (includes all teleport permissions)
 
@@ -97,6 +109,10 @@ The plugin includes a built-in currency system that can be configured in the `wa
   - `/guild claims` - View claimed chunks of your guild
   - `/guild mobs <allow|deny>` - Control mob spawning in guild claimed chunks
   - `/guild homes` - Manage guild homes
+  - `/guild world` - Manage guild world settings
+    - `/guild world list` - Show all worlds and their guild settings
+    - `/guild world disable <world>` - Disable guilds in a world
+    - `/guild world enable <world>` - Enable guilds in a world
   - Permission: `furious.guild.*` (includes all guild permissions)
 
 ### Player Status Commands
@@ -111,6 +127,10 @@ The plugin includes a built-in currency system that can be configured in the `wa
   - `/locks unlock` - Create unlock items
   - `/locks info` - Check lock ownership
   - `/locks key` - Create key items
+  - `/locks world` - Manage locks world settings
+    - `/locks world list` - Show all worlds and their locks settings
+    - `/locks world disable <world>` - Disable locks in a world
+    - `/locks world enable <world>` - Enable locks in a world
   - Permission: `furious.locks.*` (includes all locks permissions)
 
 ### Minigame Commands
@@ -131,11 +151,6 @@ The plugin includes a built-in currency system that can be configured in the `wa
   - Permission: `furious.minigame.*` (includes all minigame permissions)
   - Available minigame types: Hunger Games (hungergame), Spleef (spleef), Zombie Survival (zombiesurvival)
 
-### GameWorld Commands
-- `/gameworld` (aliases: `/gw`) - Manage game worlds
-  - `/gameworld tp` - Teleport to the GameWorld
-  - `/gameworld save` - Save the GameWorld to GameBackup
-  - Permission: `furious.gameworld.*` (includes all gameworld permissions)
 
 ### Homes Commands
 - `/homes` (aliases: `/home`, `/h`) - Manage your homes
@@ -146,6 +161,10 @@ The plugin includes a built-in currency system that can be configured in the `wa
   - `/homes list` - List all your homes
   - `/homes tp <name>` - Teleport to a home
   - `/homes buy` - Purchase additional home slots
+  - `/homes world` - Manage homes world settings
+    - `/homes world list` - Show all worlds and their homes settings
+    - `/homes world disable <world>` - Disable homes in a world
+    - `/homes world enable <world>` - Enable homes in a world
   - Permission: `furious.homes.*` (includes all homes permissions)
   - Home limits: Permissions from `furious.homes.limit.1` to `furious.homes.limit.10`
 
@@ -197,6 +216,7 @@ The plugin includes a built-in currency system that can be configured in the `wa
 - `furious.guild.homes` - Manage guild homes (default: true)
 - `furious.guild.homes.set` - Set guild homes (default: true)
 - `furious.guild.homes.teleport` - Teleport to guild homes (default: true)
+- `furious.guild.world` - Manage guild world settings (default: op)
 
 ### Locks Permissions
 - `furious.locks.*` - Access to all locks commands
@@ -204,6 +224,7 @@ The plugin includes a built-in currency system that can be configured in the `wa
 - `furious.locks.unlock` - Create unlock items (default: true)
 - `furious.locks.info` - Check lock ownership (default: true)
 - `furious.locks.key` - Create key items (default: true)
+- `furious.locks.world` - Manage locks world settings (default: op)
 
 ### Minigame Permissions
 - `furious.minigame.*` - Access to all minigame commands
@@ -217,11 +238,8 @@ The plugin includes a built-in currency system that can be configured in the `wa
 - `furious.minigame.start` - Start minigames (default: op)
 - `furious.minigame.stop` - Stop minigames (default: op)
 - `furious.minigame.edit` - Edit minigames (default: op)
+- `furious.minigame.tp` - Teleport to the GameWorld (default: op)
 
-### GameWorld Permissions
-- `furious.gameworld.*` - Access to all game world commands
-- `furious.gameworld.tp` - Teleport to the GameWorld (default: op)
-- `furious.gameworld.save` - Save the GameWorld to GameBackup (default: op)
 
 ### Homes Permissions
 - `furious.homes.*` - Access to all homes commands
@@ -233,6 +251,7 @@ The plugin includes a built-in currency system that can be configured in the `wa
 - `furious.homes.tp` - Teleport to homes (default: true)
 - `furious.homes.buy` - Purchase additional home slots (default: true)
 - `furious.homes.admin` - Manage other players' homes (default: op)
+- `furious.homes.world` - Manage homes world settings (default: op)
 - `furious.homes.limit.*` - Home limit permissions
   - `furious.homes.limit.1` - Sets home limit to 1 (default: false)
   - `furious.homes.limit.2` - Sets home limit to 2 (default: false)

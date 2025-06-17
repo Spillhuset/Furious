@@ -39,11 +39,31 @@ public class HealCommand implements CommandExecutor, TabCompleter {
             StringBuilder found = new StringBuilder();
             StringBuilder notFound = new StringBuilder();
             for (String arg : args) {
-                Player target = plugin.getServer().getPlayer(arg);
-                if (target == null) {
-                    notFound.append(arg).append(", ");
+                List<Player> targets = new ArrayList<>();
+
+                // Handle selectors
+                if (arg.equals("@a")) {
+                    // Get all online players
+                    targets.addAll(plugin.getServer().getOnlinePlayers());
+                } else if (arg.equals("@p") && sender instanceof Player senderPlayer) {
+                    // Get nearest player to sender
+                    Player nearestPlayer = getNearestPlayer(senderPlayer);
+                    if (nearestPlayer != null) {
+                        targets.add(nearestPlayer);
+                    }
                 } else {
-                    found.append(arg).append(", ");
+                    // Regular player name
+                    Player target = plugin.getServer().getPlayer(arg);
+                    if (target != null) {
+                        targets.add(target);
+                    } else {
+                        notFound.append(arg).append(", ");
+                    }
+                }
+
+                // Heal all found targets
+                for (Player target : targets) {
+                    found.append(target.getName()).append(", ");
                     double targetMaxHealth = Objects.requireNonNull(target.getAttribute(Attribute.MAX_HEALTH)).getValue();
                     target.setHealth(targetMaxHealth);
                     target.sendMessage(Component.text("You have been healed to full health!", NamedTextColor.GREEN));
@@ -65,6 +85,36 @@ public class HealCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * Gets the nearest player to the given player
+     * @param player The player to find the nearest player to
+     * @return The nearest player, or null if no other players are online
+     */
+    private Player getNearestPlayer(Player player) {
+        Player nearestPlayer = null;
+        double nearestDistance = Double.MAX_VALUE;
+
+        for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
+            // Skip the player themselves
+            if (onlinePlayer.equals(player)) {
+                continue;
+            }
+
+            // Skip players in different worlds
+            if (!onlinePlayer.getWorld().equals(player.getWorld())) {
+                continue;
+            }
+
+            double distance = player.getLocation().distance(onlinePlayer.getLocation());
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestPlayer = onlinePlayer;
+            }
+        }
+
+        return nearestPlayer;
+    }
+
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         List<String> completions = new ArrayList<>();
@@ -78,6 +128,14 @@ public class HealCommand implements CommandExecutor, TabCompleter {
                 for (int i = 0; i < args.length - 1; i++) {
                     alreadyAdded.add(args[i].toLowerCase());
                 }
+            }
+
+            // Add selectors if they match the partial input
+            if ("@a".startsWith(partial) && !alreadyAdded.contains("@a")) {
+                completions.add("@a");
+            }
+            if ("@p".startsWith(partial) && !alreadyAdded.contains("@p")) {
+                completions.add("@p");
             }
 
             // Add matching player names that haven't been added yet
