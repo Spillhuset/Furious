@@ -54,7 +54,22 @@ public class RequestSubCommand implements SubCommand {
             return true;
         }
 
-        Player target = Bukkit.getPlayer(args[1]);
+        // Sanitize the player name
+        String targetName = com.spillhuset.furious.utils.InputSanitizer.sanitizePlayerName(args[1]);
+
+        // Check if the player name is valid
+        if (targetName == null) {
+            sender.sendMessage(Component.text("Invalid player name! Please use a valid Minecraft username.", NamedTextColor.RED));
+            return true;
+        }
+
+        // Check if the input is safe
+        if (!com.spillhuset.furious.utils.InputSanitizer.isSafeInput(args[1])) {
+            sender.sendMessage(Component.text("Invalid input detected! Please use only alphanumeric characters and underscores.", NamedTextColor.RED));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(targetName);
 
         if (target == null) {
             sender.sendMessage(Component.text("Player not found!", NamedTextColor.RED));

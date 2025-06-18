@@ -201,9 +201,14 @@ public class HomesManager {
      * Gets the maximum number of homes a player can have.
      *
      * @param player The player to check
-     * @return The maximum number of homes
+     * @return The maximum number of homes, or Integer.MAX_VALUE for ops
      */
     public int getMaxPlayerHomes(Player player) {
+        // Ops have unlimited homes
+        if (player.isOp()) {
+            return Integer.MAX_VALUE;
+        }
+
         int maxHomes = DEFAULT_MAX_PLAYER_HOMES;
 
         // Check for permission-based additional homes

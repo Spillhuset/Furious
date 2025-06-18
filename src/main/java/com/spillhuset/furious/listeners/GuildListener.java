@@ -22,15 +22,20 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Listener for guild-related events.
  */
 public class GuildListener implements Listener {
     private final Furious plugin;
+    private final Map<UUID, UUID> lastPlayerGuild = new HashMap<>();
 
     /**
      * Creates a new GuildListener.
@@ -39,6 +44,57 @@ public class GuildListener implements Listener {
      */
     public GuildListener(Furious plugin) {
         this.plugin = plugin;
+    }
+
+    /**
+     * Handles player movement between chunks to show guild title-screens.
+     * When a player moves between chunks owned by different guilds, a title-screen
+     * is shown indicating which guild they are entering.
+     *
+     * @param event The player move event
+     */
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        // Get the player
+        Player player = event.getPlayer();
+
+        // Get the from and to locations
+        Chunk fromChunk = event.getFrom().getChunk();
+        Chunk toChunk = event.getTo().getChunk();
+
+        // Check if the player has moved to a different chunk
+        if (fromChunk.getX() == toChunk.getX() && fromChunk.getZ() == toChunk.getZ()) {
+            // Player is still in the same chunk, no need to check guild
+            return;
+        }
+
+        // Get the guild that owns the chunk the player is moving to
+        Guild toGuild = plugin.getGuildManager().getChunkOwner(toChunk);
+
+        // Get the player's UUID
+        UUID playerUUID = player.getUniqueId();
+
+        // Get the UUID of the last guild the player was in
+        UUID lastGuildUUID = lastPlayerGuild.get(playerUUID);
+
+        // Get the UUID of the guild the player is moving to
+        UUID toGuildUUID = toGuild != null ? toGuild.getId() : null;
+
+        // Check if the player has moved to a different guild's territory
+        if (toGuildUUID != null && (lastGuildUUID == null || !lastGuildUUID.equals(toGuildUUID))) {
+            // Player has moved to a different guild's territory, show title-screen
+            player.sendTitle(
+                toGuild.getName(),
+                "You have entered this guild's territory",
+                10, 70, 20
+            );
+
+            // Update the last guild the player was in
+            lastPlayerGuild.put(playerUUID, toGuildUUID);
+        } else if (toGuildUUID == null && lastGuildUUID != null) {
+            // Player has moved out of any guild's territory
+            lastPlayerGuild.remove(playerUUID);
+        }
     }
 
     /**

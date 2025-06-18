@@ -42,9 +42,12 @@ public class WalletListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         // Load wallet from storage if needed
-        // For now, new players start with 0
+        // New players start with 50S
         if (event.getPlayer().getFirstPlayed() == 0) {
-            walletManager.init(event.getPlayer().getUniqueId());
+            walletManager.init(event.getPlayer().getUniqueId(), 50.0);
+
+            // Initialize bank account in RubberBank with 100S
+            plugin.getBankManager().initPlayer(event.getPlayer().getUniqueId());
         }
     }
     @EventHandler

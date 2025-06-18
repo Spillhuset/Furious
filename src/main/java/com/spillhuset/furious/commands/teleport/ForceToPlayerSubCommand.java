@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.teleport;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -16,9 +17,11 @@ import java.util.List;
 public class ForceToPlayerSubCommand implements SubCommand {
 
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     public ForceToPlayerSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -39,17 +42,43 @@ public class ForceToPlayerSubCommand implements SubCommand {
         }
 
         String command;
+        String sourcePlayer;
+        String destinationPlayer;
+
         if (args.length == 1) {
             if (!(sender instanceof Player)) {
                 sender.sendMessage(Component.text("Console must specify both source and destination players!", NamedTextColor.RED));
                 return true;
             }
+            sourcePlayer = sender.getName();
+            destinationPlayer = args[0];
             command = "minecraft:teleport " + args[0];
         } else {
+            sourcePlayer = args[0];
+            destinationPlayer = args[1];
             command = "minecraft:teleport " + args[0] + " " + args[1];
         }
 
-        return Bukkit.dispatchCommand(sender, command);
+        boolean success = Bukkit.dispatchCommand(sender, command);
+
+        // Log the teleport operation
+        if (success) {
+            auditLogger.logTeleportOperation(
+                sender,
+                sourcePlayer,
+                destinationPlayer,
+                "Force teleport command executed"
+            );
+        } else {
+            auditLogger.logFailedAccess(
+                sender,
+                sourcePlayer,
+                "force teleport to " + destinationPlayer,
+                "Command execution failed"
+            );
+        }
+
+        return success;
     }
 
     @Override

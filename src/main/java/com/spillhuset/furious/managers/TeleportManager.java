@@ -1,6 +1,7 @@
 package com.spillhuset.furious.managers;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.misc.TeleportTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -45,7 +46,7 @@ public class TeleportManager {
     }
 
     public void cancelTeleportTask(Player player) {
-        com.spillhuset.furious.managers.TeleportTask task = teleportTasks.remove(player.getUniqueId());
+        TeleportTask task = teleportTasks.remove(player.getUniqueId());
         if (task != null) {
             task.cancel();
             player.sendMessage(Component.text("Teleport cancelled!", NamedTextColor.RED));
@@ -231,6 +232,12 @@ public class TeleportManager {
      * @return True if the request was sent successfully, false otherwise.
      */
     public boolean sendRequest(Player requester, Player target) {
+        // Check if the target is an op (ops cannot be teleported to)
+        if (target.isOp()) {
+            requester.sendMessage(Component.text("You cannot send teleport requests to ops!", NamedTextColor.RED));
+            return false;
+        }
+
         // Check if the requester is in a disabled world
         if (isWorldDisabled(requester.getWorld().getUID())) {
             requester.sendMessage(getDisabledWorldMessage());
@@ -254,8 +261,9 @@ public class TeleportManager {
             return false;
         }
 
-        // Check if the target has already sent a request to the requester
+        // Check if the requester already has an outgoing request
         if (outgoingRequests.containsKey(requester.getUniqueId())) {
+            requester.sendMessage(Component.text("You already have an outgoing teleport request. Cancel it first.", NamedTextColor.RED));
             return false;
         }
 
@@ -268,6 +276,7 @@ public class TeleportManager {
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             if (hasOutgoingRequest(requester)) {
                 cancelRequest(requester);
+                requester.sendMessage(Component.text("Your teleport request has expired.", NamedTextColor.YELLOW));
             }
         }, 20 * 60);
 
@@ -284,6 +293,9 @@ public class TeleportManager {
         if (hasIncomingRequest(target, requester)) {
             // Remove request from incoming map
             removeRequest(requester, target);
+
+            // Start the teleportation process with countdown
+            teleportQueue(requester, target.getLocation());
         }
     }
 

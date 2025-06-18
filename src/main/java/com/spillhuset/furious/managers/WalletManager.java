@@ -207,9 +207,13 @@ public class WalletManager {
      * Retrieves the balance for the specified player's wallet.
      *
      * @param player the player whose balance is to be retrieved
-     * @return the balance of the player's wallet, or 0.0 if the player does not have a wallet
+     * @return the balance of the player's wallet, or 0.0 if the player does not have a wallet or is an op
      */
     public double getBalance(Player player) {
+        // Ops don't have wallets
+        if (player.isOp()) {
+            return 0.0;
+        }
         return wallets.getOrDefault(player.getUniqueId(), 0.0);
     }
 
@@ -217,9 +221,13 @@ public class WalletManager {
      * Checks if the specified player has an associated wallet.
      *
      * @param player the player whose wallet existence is being checked
-     * @return true if the player's wallet exists, false otherwise
+     * @return true if the player's wallet exists, false otherwise or if player is an op
      */
     public boolean has(Player player) {
+        // Ops don't have wallets
+        if (player.isOp()) {
+            return false;
+        }
         return wallets.containsKey(player.getUniqueId());
     }
 
@@ -228,9 +236,13 @@ public class WalletManager {
      *
      * @param player the player whose wallet is being checked
      * @param amount the amount to check against the player's wallet balance
-     * @return true if the player's wallet balance is greater than or equal to the specified amount, false otherwise
+     * @return true if the player's wallet balance is greater than or equal to the specified amount, false otherwise or if player is an op
      */
     public boolean has(Player player, double amount) {
+        // Ops don't have wallets
+        if (player.isOp()) {
+            return false;
+        }
         return getBalance(player) >= amount;
     }
 
@@ -239,9 +251,14 @@ public class WalletManager {
      *
      * @param player the player whose wallet will be debited
      * @param amount the amount to withdraw from the player's wallet
-     * @return true if the withdrawal was successful, false if the player has insufficient funds or the amount is negative
+     * @return true if the withdrawal was successful, false if the player has insufficient funds, is an op, or the amount is negative
      */
     public boolean withdraw(Player player, double amount) {
+        // Ops don't have wallets
+        if (player.isOp()) {
+            return false;
+        }
+
         if (amount < 0) {
             return false;
         }
@@ -262,9 +279,14 @@ public class WalletManager {
      *
      * @param player the player whose wallet will be credited
      * @param amount the amount to deposit into the player's wallet
-     * @return true if the deposit was successful, false if the amount is negative
+     * @return true if the deposit was successful, false if the player is an op or the amount is negative
      */
     public boolean deposit(Player player, double amount) {
+        // Ops don't have wallets
+        if (player.isOp()) {
+            return false;
+        }
+
         if (amount < 0) {
             return false;
         }
@@ -280,9 +302,14 @@ public class WalletManager {
      *
      * @param player the player whose wallet balance is to be set
      * @param amount the new balance to set in the player's wallet
-     * @return true if the balance was set successfully, false if the amount is negative
+     * @return true if the balance was set successfully, false if the player is an op or the amount is negative
      */
     public boolean setBalance(Player player, double amount) {
+        // Ops don't have wallets
+        if (player.isOp()) {
+            return false;
+        }
+
         if (amount < 0) {
             return false;
         }
@@ -298,9 +325,14 @@ public class WalletManager {
      * @param from the player whose wallet will be debited
      * @param to the player whose wallet will be credited
      * @param amount the amount to transfer
-     * @return true if the transfer was successful, false if the from player has insufficient funds or the amount is negative
+     * @return true if the transfer was successful, false if either player is an op, the from player has insufficient funds, or the amount is negative
      */
     public boolean transfer(Player from, Player to, double amount) {
+        // Ops don't have wallets
+        if (from.isOp() || to.isOp()) {
+            return false;
+        }
+
         if (amount < 0) {
             return false;
         }
@@ -381,4 +413,30 @@ public class WalletManager {
         return true;
     }
 
+    /**
+     * Gets the balance for the specified player's wallet by UUID.
+     *
+     * @param playerId the UUID of the player whose balance is to be retrieved
+     * @return the balance of the player's wallet, or 0.0 if the player does not have a wallet
+     */
+    public double getWallet(UUID playerId) {
+        return wallets.getOrDefault(playerId, 0.0);
+    }
+
+    /**
+     * Sets the balance for the specified player's wallet by UUID.
+     *
+     * @param playerId the UUID of the player whose wallet balance is to be set
+     * @param amount the new balance to set in the player's wallet
+     * @return true if the balance was set successfully, false if the amount is negative
+     */
+    public boolean setWallet(UUID playerId, double amount) {
+        if (amount < 0) {
+            return false;
+        }
+        wallets.put(playerId, amount);
+        logTransaction(playerId, "set_balance", amount, amount);
+        saveWallets();
+        return true;
+    }
 }

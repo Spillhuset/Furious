@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.teleport;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -16,9 +17,11 @@ import java.util.List;
 
 public class CoordsSubCommand implements SubCommand {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     public CoordsSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -56,7 +59,7 @@ public class CoordsSubCommand implements SubCommand {
         String[] coordsArgs;
 
         // Check if a player name is specified
-        if (isNumeric(args[1])) {
+        if (com.spillhuset.furious.utils.InputSanitizer.sanitizeCoordinate(args[1]) != null) {
             // No player specified, use sender
             if (!(sender instanceof Player)) {
                 sender.sendMessage(Component.text("Console must specify a player!", NamedTextColor.RED));
@@ -65,8 +68,22 @@ public class CoordsSubCommand implements SubCommand {
             target = (Player) sender;
             coordsArgs = args;
         } else {
-            // Player name specified
-            target = Bukkit.getPlayer(args[1]);
+            // Player name specified - sanitize it
+            String targetName = com.spillhuset.furious.utils.InputSanitizer.sanitizePlayerName(args[1]);
+
+            // Check if the player name is valid
+            if (targetName == null) {
+                sender.sendMessage(Component.text("Invalid player name! Please use a valid Minecraft username.", NamedTextColor.RED));
+                return true;
+            }
+
+            // Check if the input is safe
+            if (!com.spillhuset.furious.utils.InputSanitizer.isSafeInput(args[1])) {
+                sender.sendMessage(Component.text("Invalid input detected! Please use only alphanumeric characters and underscores.", NamedTextColor.RED));
+                return true;
+            }
+
+            target = Bukkit.getPlayer(targetName);
             if (target == null) {
                 sender.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
                 return true;
@@ -84,8 +101,77 @@ public class CoordsSubCommand implements SubCommand {
             System.arraycopy(args, 2, coordsArgs, 1, args.length - 2);
         }
 
+        // Sanitize coordinates
+        int coordIndex = (coordsArgs == args) ? 1 : 1; // Index of x coordinate
+
+        // Validate x coordinate
+        Double x = com.spillhuset.furious.utils.InputSanitizer.sanitizeCoordinate(coordsArgs[coordIndex]);
+        if (x == null) {
+            sender.sendMessage(Component.text("Invalid x coordinate! Please use a valid number.", NamedTextColor.RED));
+            return true;
+        }
+
+        // Validate y coordinate
+        Double y = com.spillhuset.furious.utils.InputSanitizer.sanitizeCoordinate(coordsArgs[coordIndex + 1]);
+        if (y == null) {
+            sender.sendMessage(Component.text("Invalid y coordinate! Please use a valid number.", NamedTextColor.RED));
+            return true;
+        }
+
+        // Validate z coordinate
+        Double z = com.spillhuset.furious.utils.InputSanitizer.sanitizeCoordinate(coordsArgs[coordIndex + 2]);
+        if (z == null) {
+            sender.sendMessage(Component.text("Invalid z coordinate! Please use a valid number.", NamedTextColor.RED));
+            return true;
+        }
+
+        // Check if world name is provided
+        if (coordsArgs.length > coordIndex + 3) {
+            // Sanitize world name
+            String worldName = com.spillhuset.furious.utils.InputSanitizer.sanitizeWorldName(coordsArgs[coordIndex + 3]);
+            if (worldName == null) {
+                sender.sendMessage(Component.text("Invalid world name! Please use a valid world name.", NamedTextColor.RED));
+                return true;
+            }
+
+            // Update the coordsArgs with sanitized values
+            coordsArgs[coordIndex + 3] = worldName;
+        }
+
+        // Update the coordsArgs with sanitized values
+        coordsArgs[coordIndex] = String.valueOf(x);
+        coordsArgs[coordIndex + 1] = String.valueOf(y);
+        coordsArgs[coordIndex + 2] = String.valueOf(z);
+
+        // Build destination string for logging
+        String destination = x + ", " + y + ", " + z;
+        if (coordsArgs.length > coordIndex + 3) {
+            destination += " in world " + coordsArgs[coordIndex + 3];
+        } else {
+            destination += " in current world";
+        }
+
         // Execute teleport
-        return plugin.getTeleportManager().teleportCoords(target, sender, coordsArgs);
+        boolean success = plugin.getTeleportManager().teleportCoords(target, sender, coordsArgs);
+
+        // Log the teleport operation
+        if (success) {
+            auditLogger.logTeleportOperation(
+                sender,
+                target.getName(),
+                destination,
+                "Coordinates teleport command executed"
+            );
+        } else {
+            auditLogger.logFailedAccess(
+                sender,
+                target.getName(),
+                "teleport to coordinates " + destination,
+                "Teleport failed"
+            );
+        }
+
+        return success;
     }
 
     private boolean isNumeric(String str) {

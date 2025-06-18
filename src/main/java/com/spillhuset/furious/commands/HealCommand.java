@@ -1,31 +1,64 @@
 package com.spillhuset.furious.commands;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.misc.StandaloneCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public class HealCommand implements CommandExecutor, TabCompleter {
-    private final Furious plugin;
+public class HealCommand extends StandaloneCommand {
     public HealCommand(Furious furious) {
-        this.plugin = furious;
+        super(furious);
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
+    public String getName() {
+        return "heal";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Heal yourself or other players";
+    }
+
+    @Override
+    public void getUsage(CommandSender sender) {
+        sender.sendMessage(Component.text("Usage: /heal [player]", NamedTextColor.YELLOW));
+    }
+
+    @Override
+    public String getPermission() {
+        return "furious.heal.self";
+    }
+
+    /**
+     * Checks if the sender has permission to heal other players.
+     *
+     * @param sender The command sender
+     * @return true if the sender has permission, false otherwise
+     */
+    private boolean checkHealOthersPermission(CommandSender sender) {
+        if (sender.hasPermission("furious.heal.others")) {
+            return true;
+        } else {
+            sender.sendMessage(Component.text("You don't have permission to heal other players!", NamedTextColor.RED));
+            return false;
+        }
+    }
+
+    @Override
+    protected boolean executeCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         double maxHealth = 20;
 
-        if (args.length == 0 && sender.hasPermission("furious.heal.self")) {
+        if (args.length == 0) {
             if (!(sender instanceof Player player)) {
                 sender.sendMessage("This command can only be used by players!");
                 return true;
@@ -34,8 +67,10 @@ public class HealCommand implements CommandExecutor, TabCompleter {
             maxHealth = Objects.requireNonNull(player.getAttribute(Attribute.MAX_HEALTH)).getValue();
             player.setHealth(maxHealth);
             player.sendMessage(Component.text("You have been healed to full health!", NamedTextColor.GREEN));
+            return true;
         }
-        if (args.length >= 1 && sender.hasPermission("furious.heal.others")) {
+
+        if (args.length >= 1 && checkHealOthersPermission(sender)) {
             StringBuilder found = new StringBuilder();
             StringBuilder notFound = new StringBuilder();
             for (String arg : args) {
@@ -116,7 +151,7 @@ public class HealCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
+    public @Nullable List<String> tabComplete(@NotNull CommandSender sender, @NotNull String @NotNull [] args) {
         List<String> completions = new ArrayList<>();
 
         if (args.length >= 1) {

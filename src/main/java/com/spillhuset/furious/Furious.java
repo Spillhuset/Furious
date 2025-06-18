@@ -1,18 +1,28 @@
 package com.spillhuset.furious;
 
+import com.spillhuset.furious.commands.BankCommand;
 import com.spillhuset.furious.commands.EnderseeCommand;
 import com.spillhuset.furious.commands.FeedCommand;
 import com.spillhuset.furious.commands.HealCommand;
 import com.spillhuset.furious.commands.InvseeCommand;
+import com.spillhuset.furious.commands.SecurityCommand;
+import com.spillhuset.furious.commands.TombstonesCommand;
 import com.spillhuset.furious.commands.guild.GuildCommand;
 import com.spillhuset.furious.commands.homes.HomesCommand;
 import com.spillhuset.furious.commands.locks.LocksCommand;
 import com.spillhuset.furious.commands.minigame.MinigameCommand;
 import com.spillhuset.furious.commands.teleport.TeleportCommand;
+import com.spillhuset.furious.commands.teleport.TpaCommand;
+import com.spillhuset.furious.commands.teleport.TpacceptCommand;
+import com.spillhuset.furious.commands.teleport.TpdeclineCommand;
 import com.spillhuset.furious.commands.warps.WarpsCommand;
 import com.spillhuset.furious.listeners.*;
 import com.spillhuset.furious.managers.*;
 import com.spillhuset.furious.minigames.hungergames.ContainerRegistry;
+import com.spillhuset.furious.utils.AuditLogger;
+import com.spillhuset.furious.utils.EncryptionUtil;
+import com.spillhuset.furious.utils.RateLimiter;
+import com.spillhuset.furious.utils.SecurityReviewManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
@@ -34,6 +44,14 @@ public final class Furious extends JavaPlugin {
     private WarpsManager warpsManager;
     private ContainerRegistry containerRegistry;
     private PlayerDataManager playerDataManager;
+    private AuditLogger auditLogger;
+    private RateLimiter rateLimiter;
+    private TombstoneManager tombstoneManager;
+    private SecurityReviewManager securityReviewManager;
+    private CombatManager combatManager;
+    private EncryptionUtil encryptionUtil;
+    private BankManager bankManager;
+    private BankInterestListener bankInterestListener;
     private static Furious instance;
 
     @Override
@@ -54,10 +72,20 @@ public final class Furious extends JavaPlugin {
         homesManager = new HomesManager(this);
         warpsManager = new WarpsManager(this);
         playerDataManager = new PlayerDataManager(this);
+        auditLogger = new AuditLogger(this);
+        rateLimiter = new RateLimiter(this);
+        tombstoneManager = new TombstoneManager(this);
+        securityReviewManager = new SecurityReviewManager(this);
+        combatManager = new CombatManager(this);
+        encryptionUtil = new EncryptionUtil(getLogger(), getDataFolder());
+        bankManager = new BankManager(this);
 
         getCommand("invsee").setExecutor(new InvseeCommand(this));
         getCommand("endersee").setExecutor(new EnderseeCommand(this));
         getCommand("teleport").setExecutor(new TeleportCommand(this));
+        getCommand("tpa").setExecutor(new TpaCommand(this));
+        getCommand("tpaccept").setExecutor(new TpacceptCommand(this));
+        getCommand("tpdecline").setExecutor(new TpdeclineCommand(this));
         getCommand("guild").setExecutor(new GuildCommand(this));
         getCommand("heal").setExecutor(new HealCommand(this));
         getCommand("feed").setExecutor(new FeedCommand(this));
@@ -65,6 +93,9 @@ public final class Furious extends JavaPlugin {
         getCommand("minigame").setExecutor(new MinigameCommand(this));
         getCommand("homes").setExecutor(new HomesCommand(this));
         getCommand("warps").setExecutor(new WarpsCommand(this));
+        getCommand("tombstones").setExecutor(new TombstonesCommand(this));
+        getCommand("security").setExecutor(new SecurityCommand(this, securityReviewManager));
+        getCommand("bank").setExecutor(new BankCommand(this));
 
         getServer().getPluginManager().registerEvents(new TeleportListener(this), this);
         getServer().getPluginManager().registerEvents(new WalletListener(this), this);
@@ -72,6 +103,12 @@ public final class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MinigameListener(this), this);
         getServer().getPluginManager().registerEvents(new WarpsListener(this), this);
         getServer().getPluginManager().registerEvents(new LocksListener(this), this);
+        getServer().getPluginManager().registerEvents(new TombstoneListener(this), this);
+        getServer().getPluginManager().registerEvents(new CombatListener(this), this);
+
+        // Register bank interest listener for tracking day cycles and applying interest
+        bankInterestListener = new BankInterestListener(this);
+        getServer().getPluginManager().registerEvents(bankInterestListener, this);
 
         // Register container listener for hunger games
         containerRegistry = new ContainerRegistry(this);
@@ -110,6 +147,18 @@ public final class Furious extends JavaPlugin {
         }
         if (containerRegistry != null) {
             containerRegistry.shutdown();
+        }
+        if (tombstoneManager != null) {
+            tombstoneManager.shutdown();
+        }
+        if (combatManager != null) {
+            combatManager.shutdown();
+        }
+        if (bankInterestListener != null) {
+            bankInterestListener.shutdown();
+        }
+        if (bankManager != null) {
+            bankManager.shutdown();
         }
     }
 
@@ -151,6 +200,34 @@ public final class Furious extends JavaPlugin {
 
     public PlayerDataManager getPlayerDataManager() {
         return playerDataManager;
+    }
+
+    public AuditLogger getAuditLogger() {
+        return auditLogger;
+    }
+
+    public RateLimiter getRateLimiter() {
+        return rateLimiter;
+    }
+
+    public TombstoneManager getTombstoneManager() {
+        return tombstoneManager;
+    }
+
+    public SecurityReviewManager getSecurityReviewManager() {
+        return securityReviewManager;
+    }
+
+    public CombatManager getCombatManager() {
+        return combatManager;
+    }
+
+    public EncryptionUtil getEncryptionUtil() {
+        return encryptionUtil;
+    }
+
+    public BankManager getBankManager() {
+        return bankManager;
     }
 
     public ItemStack createScrapItem(double amount) {

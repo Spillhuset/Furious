@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.homes;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ import java.util.List;
  */
 public class DeleteSubCommand implements SubCommand {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     /**
      * Creates a new DeleteSubCommand.
@@ -25,6 +27,7 @@ public class DeleteSubCommand implements SubCommand {
      */
     public DeleteSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -61,8 +64,10 @@ public class DeleteSubCommand implements SubCommand {
             if (plugin.getHomesManager().deletePlayerHome(target.getUniqueId(), homeName)) {
                 sender.sendMessage(Component.text("Home '" + homeName + "' deleted for " + target.getName() + "!", NamedTextColor.GREEN));
                 target.sendMessage(Component.text(sender.getName() + " deleted your home '" + homeName + "'!", NamedTextColor.YELLOW));
+                auditLogger.logSensitiveOperation(sender, "delete home", "Deleted home '" + homeName + "' for player " + target.getName());
             } else {
                 sender.sendMessage(Component.text("Failed to delete home for " + target.getName() + "! The home may not exist.", NamedTextColor.RED));
+                auditLogger.logFailedAccess(sender, target.getName(), "delete home", "Failed to delete home '" + homeName + "', home may not exist");
             }
             return true;
         }

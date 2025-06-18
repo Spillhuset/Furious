@@ -3,6 +3,7 @@ package com.spillhuset.furious.managers;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
 import com.spillhuset.furious.entities.Warp;
+import com.spillhuset.furious.utils.EncryptionUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -30,6 +31,7 @@ public class WarpsManager {
     private final Map<Location, Warp> portalLocations; // Portal Location -> Warp
     private final File configFile;
     private FileConfiguration config;
+    private EncryptionUtil encryptionUtil;
 
     // Configuration values
     private final double DEFAULT_WARP_COST;
@@ -46,6 +48,7 @@ public class WarpsManager {
         this.warps = new HashMap<>();
         this.portalLocations = new HashMap<>();
         this.configFile = new File(plugin.getDataFolder(), "warps.yml");
+        this.encryptionUtil = plugin.getEncryptionUtil();
 
         // Load configuration values
         this.DEFAULT_WARP_COST = plugin.getConfig().getDouble("warps.default-cost", 0.0);
@@ -85,7 +88,22 @@ public class WarpsManager {
                         float yaw = (float) warpSection.getDouble("yaw");
                         float pitch = (float) warpSection.getDouble("pitch");
                         double cost = warpSection.getDouble("cost", DEFAULT_WARP_COST);
-                        String password = warpSection.getString("password");
+                        String encryptedPassword = warpSection.getString("password");
+                        String password = null;
+
+                        // Decrypt password if it exists and is encrypted
+                        if (encryptedPassword != null && !encryptedPassword.isEmpty()) {
+                            if (encryptionUtil.isEncrypted(encryptedPassword)) {
+                                password = encryptionUtil.decrypt(encryptedPassword);
+                                plugin.getLogger().info("Decrypted password for warp: " + warpName);
+                            } else {
+                                // This is a plain text password from before encryption was implemented
+                                // We'll leave it as is for now, it will be encrypted when saved
+                                password = encryptedPassword;
+                                plugin.getLogger().info("Found plain text password for warp: " + warpName + " (will be encrypted on next save)");
+                            }
+                        }
+
                         boolean hasPortal = warpSection.getBoolean("has-portal", false);
                         String portalFilling = warpSection.getString("portal-filling", "air");
 
@@ -142,7 +160,20 @@ public class WarpsManager {
             config.set(path + ".cost", warp.getCost());
 
             if (warp.hasPassword()) {
-                config.set(path + ".password", warp.getPassword());
+                String plainPassword = warp.getPassword();
+                String encryptedPassword;
+
+                // Check if the password is already encrypted
+                if (encryptionUtil.isEncrypted(plainPassword)) {
+                    // Already encrypted, use as is
+                    encryptedPassword = plainPassword;
+                } else {
+                    // Encrypt the password
+                    encryptedPassword = encryptionUtil.encrypt(plainPassword);
+                    plugin.getLogger().info("Encrypted password for warp: " + warp.getName());
+                }
+
+                config.set(path + ".password", encryptedPassword);
             }
 
             config.set(path + ".has-portal", warp.hasPortal());
@@ -318,7 +349,11 @@ public class WarpsManager {
         }
 
         // Update warp password
+        // We store the plain text password in the Warp object
+        // It will be encrypted when saved to the configuration file
         warp.setPassword(password);
+
+        // Save configuration (this will encrypt the password)
         saveConfiguration();
 
         if (password == null || password.isEmpty()) {
@@ -689,8 +724,8 @@ public class WarpsManager {
             return false;
         }
 
-        // Check password if required
-        if (warp.hasPassword()) {
+        // Check password if required (ops bypass password check)
+        if (warp.hasPassword() && !player.isOp()) {
             if (password == null || !password.equals(warp.getPassword())) {
                 player.sendMessage(Component.text("Incorrect password for warp '" + warpName + "'!", NamedTextColor.RED));
                 return false;

@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.warps;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -16,6 +17,7 @@ import java.util.List;
  */
 public class WarpSubCommand implements SubCommand {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     /**
      * Creates a new WarpSubCommand.
@@ -24,6 +26,7 @@ public class WarpSubCommand implements SubCommand {
      */
     public WarpSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -46,6 +49,7 @@ public class WarpSubCommand implements SubCommand {
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
+            auditLogger.logFailedAccess(sender, "unknown", "use warp", "Command can only be used by players");
             return true;
         }
 
@@ -58,9 +62,26 @@ public class WarpSubCommand implements SubCommand {
         String warpName = args[1];
         String password = args.length >= 3 ? args[2] : null;
 
+        // Log details about the warp attempt
+        String passwordDetails = password != null ? "with password" : "without password";
+
         // Teleport to the warp
-        if (plugin.getWarpsManager().teleportToWarp(player, warpName, password)) {
-            // Success message is sent by the manager
+        boolean success = plugin.getWarpsManager().teleportToWarp(player, warpName, password);
+
+        // Log the warp operation
+        if (success) {
+            auditLogger.logWarpOperation(
+                sender,
+                warpName,
+                passwordDetails
+            );
+        } else {
+            auditLogger.logFailedAccess(
+                sender,
+                warpName,
+                "use warp",
+                "Warp teleport failed - " + passwordDetails
+            );
         }
 
         return true;

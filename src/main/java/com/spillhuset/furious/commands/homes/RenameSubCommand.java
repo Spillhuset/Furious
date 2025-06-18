@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.homes;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ import java.util.List;
  */
 public class RenameSubCommand implements SubCommand {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     /**
      * Creates a new RenameSubCommand.
@@ -25,6 +27,7 @@ public class RenameSubCommand implements SubCommand {
      */
     public RenameSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -63,8 +66,10 @@ public class RenameSubCommand implements SubCommand {
             if (plugin.getHomesManager().renamePlayerHome(target.getUniqueId(), oldName, newName)) {
                 sender.sendMessage(Component.text("Home renamed from '" + oldName + "' to '" + newName + "' for " + target.getName() + "!", NamedTextColor.GREEN));
                 target.sendMessage(Component.text(sender.getName() + " renamed your home from '" + oldName + "' to '" + newName + "'!", NamedTextColor.YELLOW));
+                auditLogger.logSensitiveOperation(sender, "rename home", "Renamed home from '" + oldName + "' to '" + newName + "' for player " + target.getName());
             } else {
                 sender.sendMessage(Component.text("Failed to rename home for " + target.getName() + "! The home may not exist or the new name is already taken.", NamedTextColor.RED));
+                auditLogger.logFailedAccess(sender, target.getName(), "rename home", "Failed to rename home from '" + oldName + "' to '" + newName + "', home may not exist or new name is already taken");
             }
             return true;
         }

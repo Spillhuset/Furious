@@ -1,6 +1,7 @@
 package com.spillhuset.furious.managers;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -21,6 +22,7 @@ import java.util.logging.Level;
  */
 public class PlayerDataManager {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     /**
      * Creates a new PlayerDataManager.
@@ -29,6 +31,7 @@ public class PlayerDataManager {
      */
     public PlayerDataManager(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = new AuditLogger(plugin);
     }
 
     /**
@@ -54,9 +57,9 @@ public class PlayerDataManager {
         // Create a message inventory to inform the user that offline viewing is not supported
         Inventory messageInventory = Bukkit.createInventory(null, 9, Component.text(playerName + "'s Inventory (Offline - View Only)", NamedTextColor.YELLOW));
 
-        // Log the attempt
-        plugin.getLogger().info("Attempted to view offline inventory for " + playerName +
-                               ", but this feature requires the player to be online.");
+        // Log the attempt with more detailed audit information
+        auditLogger.logSensitiveOperation(null, "offline inventory access attempt",
+                                         "Player: " + playerName + ", Status: OFFLINE, Result: Feature requires player to be online");
 
         return messageInventory;
     }
@@ -84,9 +87,9 @@ public class PlayerDataManager {
         // Create a message inventory to inform the user that offline viewing is not supported
         Inventory messageInventory = Bukkit.createInventory(null, 9, Component.text(playerName + "'s Enderchest (Offline - View Only)", NamedTextColor.YELLOW));
 
-        // Log the attempt
-        plugin.getLogger().info("Attempted to view offline enderchest for " + playerName +
-                               ", but this feature requires the player to be online.");
+        // Log the attempt with more detailed audit information
+        auditLogger.logSensitiveOperation(null, "offline enderchest access attempt",
+                                         "Player: " + playerName + ", Status: OFFLINE, Result: Feature requires player to be online");
 
         return messageInventory;
     }
@@ -113,11 +116,16 @@ public class PlayerDataManager {
             // For offline players, we return null for now
             // A complete implementation would require server-specific code
             // or additional plugins to safely load offline player data
-            plugin.getLogger().info("Attempted to load offline player data for " + offlinePlayer.getName() +
-                                   ", but this feature is not fully implemented for security reasons.");
+            auditLogger.logSensitiveOperation(null, "offline player data load attempt",
+                                             "Player: " + offlinePlayer.getName() +
+                                             ", UUID: " + uuid +
+                                             ", Result: Feature not fully implemented for security reasons");
             return null;
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Error loading offline player data for " + uuid, e);
+            auditLogger.logSensitiveOperation(null, "offline player data load error",
+                                             "UUID: " + uuid +
+                                             ", Error: " + e.getMessage());
             return null;
         }
     }

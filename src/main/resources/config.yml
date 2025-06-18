@@ -17,6 +17,66 @@ plugin:
   # If true, colored messages will be used
   colored-messages: true
 
+# Rate limiting settings
+# These settings control how often players can use certain commands
+rate-limits:
+  # Commands that are exempt from rate limiting
+  exempt-commands:
+    - "help"
+    - "spawn"
+    - "list"
+    - "rules"
+    - "motd"
+
+  # Command-specific rate limits
+  commands:
+    # Inventory viewing commands
+    invsee:
+      max-uses: 5
+      time-window-seconds: 60
+    endersee:
+      max-uses: 5
+      time-window-seconds: 60
+
+    # Teleport commands
+    teleport:
+      max-uses: 10
+      time-window-seconds: 60
+
+    # Guild commands
+    guild:
+      max-uses: 15
+      time-window-seconds: 60
+
+    # Locks commands
+    locks:
+      max-uses: 15
+      time-window-seconds: 60
+
+    # Minigame commands
+    minigame:
+      max-uses: 10
+      time-window-seconds: 60
+
+    # Homes commands
+    homes:
+      max-uses: 10
+      time-window-seconds: 60
+
+    # Warps commands
+    warps:
+      max-uses: 10
+      time-window-seconds: 60
+
+# Tombstone settings
+# These settings control how tombstones work
+tombstones:
+  # Time in seconds before a tombstone expires (default: 30 minutes)
+  timeout-seconds: 1800
+
+  # If true, only the owner of the tombstone can access it
+  owner-only-access: true
+
 # Default configuration files
 # These files will be loaded when the plugin starts
 config-files:
@@ -27,3 +87,4 @@ config-files:
   - "minigames.yml"
   - "warps.yml"
   - "wallet.yml"
+  - "tombstones.yml"

@@ -214,6 +214,22 @@ public class GuildManager {
                             guild.setMobSpawningEnabled(guildSection.getBoolean("mob-spawning-enabled"));
                         }
 
+                        // Load open status
+                        if (guildSection.contains("open")) {
+                            guild.setOpen(guildSection.getBoolean("open"));
+                        }
+
+                        // Load join requests
+                        List<String> joinRequestsList = guildSection.getStringList("join-requests");
+                        for (String requestIdStr : joinRequestsList) {
+                            try {
+                                UUID requestId = UUID.fromString(requestIdStr);
+                                ((Set<UUID>)guild.getJoinRequests()).add(requestId);
+                            } catch (IllegalArgumentException e) {
+                                plugin.getLogger().warning("Invalid UUID in join requests for guild " + guildIdStr + ": " + requestIdStr);
+                            }
+                        }
+
                         // Add guild to map
                         guilds.put(guildId, guild);
                     }
@@ -270,6 +286,16 @@ public class GuildManager {
 
             // Save mob spawning preference
             config.set(guildPath + ".mob-spawning-enabled", guild.isMobSpawningEnabled());
+
+            // Save open status
+            config.set(guildPath + ".open", guild.isOpen());
+
+            // Save join requests
+            List<String> joinRequestsList = new ArrayList<>();
+            for (UUID requestId : guild.getJoinRequests()) {
+                joinRequestsList.add(requestId.toString());
+            }
+            config.set(guildPath + ".join-requests", joinRequestsList);
         }
 
         try {
@@ -287,6 +313,12 @@ public class GuildManager {
      * @return The created guild, or null if creation failed
      */
     public Guild createGuild(String name, Player owner) {
+        // Check if player is an op
+        if (owner.isOp()) {
+            owner.sendMessage(Component.text("Ops cannot create or be part of guilds!", NamedTextColor.RED));
+            return null;
+        }
+
         // Check if name is valid
         if (name.length() < MIN_GUILD_NAME_LENGTH || name.length() > MAX_GUILD_NAME_LENGTH) {
             owner.sendMessage(Component.text("Guild name must be between " + MIN_GUILD_NAME_LENGTH +
@@ -377,6 +409,12 @@ public class GuildManager {
      * @return The guild, or null if the player is not in a guild
      */
     public Guild getPlayerGuild(UUID playerId) {
+        // Ops cannot be in guilds
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null && player.isOp()) {
+            return null;
+        }
+
         UUID guildId = playerGuilds.get(playerId);
         if (guildId != null) {
             return guilds.get(guildId);
@@ -391,6 +429,12 @@ public class GuildManager {
      * @return true if the player is in a guild, false otherwise
      */
     public boolean isInGuild(UUID playerId) {
+        // Ops cannot be in guilds
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null && player.isOp()) {
+            return false;
+        }
+
         return playerGuilds.containsKey(playerId);
     }
 
@@ -402,6 +446,15 @@ public class GuildManager {
      * @return true if the player was added, false otherwise
      */
     public boolean addPlayerToGuild(Guild guild, UUID playerId) {
+        // Check if player is an op
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null && player.isOp()) {
+            if (player.isOnline()) {
+                player.sendMessage(Component.text("Ops cannot be part of guilds!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
         // Check if player is already in a guild
         if (playerGuilds.containsKey(playerId)) {
             return false;
@@ -453,6 +506,17 @@ public class GuildManager {
      * @return true if the invitation was sent, false otherwise
      */
     public boolean invitePlayerToGuild(Guild guild, UUID playerId) {
+        // Check if player is an op
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null && player.isOp()) {
+            // Notify the guild member who tried to invite the op
+            Player inviter = Bukkit.getPlayer(guild.getOwner());
+            if (inviter != null && inviter.isOnline()) {
+                inviter.sendMessage(Component.text("Ops cannot be invited to guilds!", NamedTextColor.RED));
+            }
+            return false;
+        }
+
         // Check if player is already in a guild
         if (playerGuilds.containsKey(playerId)) {
             return false;
@@ -853,5 +917,400 @@ public class GuildManager {
         }
 
         return worldsStatus;
+    }
+
+    /**
+     * Sets whether a guild is open for anyone to join without invitation.
+     *
+     * @param guild The guild to modify
+     * @param open true to make the guild open, false otherwise
+     * @param player The player making the change (for messaging)
+     * @return true if the operation was successful, false otherwise
+     */
+    public boolean setGuildOpen(Guild guild, boolean open, Player player) {
+        guild.setOpen(open);
+        saveConfiguration();
+
+        if (open) {
+            player.sendMessage(Component.text("Guild is now open for anyone to join!", NamedTextColor.GREEN));
+        } else {
+            player.sendMessage(Component.text("Guild is now closed. Players need an invitation to join.", NamedTextColor.YELLOW));
+        }
+
+        return true;
+    }
+
+    /**
+     * Adds a join request from a player to a guild.
+     *
+     * @param guild The guild to request to join
+     * @param playerId The UUID of the player requesting to join
+     * @return true if the request was added, false otherwise
+     */
+    public boolean addJoinRequest(Guild guild, UUID playerId) {
+        // Check if player is already in a guild
+        if (playerGuilds.containsKey(playerId)) {
+            return false;
+        }
+
+        // Add join request
+        if (guild.addJoinRequest(playerId)) {
+            saveConfiguration();
+
+            // Notify guild admins and owner
+            for (UUID memberId : guild.getMembers()) {
+                GuildRole role = guild.getMemberRole(memberId);
+                if (role == GuildRole.OWNER || role == GuildRole.ADMIN) {
+                    Player member = Bukkit.getPlayer(memberId);
+                    if (member != null && member.isOnline()) {
+                        String playerName = Bukkit.getOfflinePlayer(playerId).getName();
+                        if (playerName == null) {
+                            playerName = "Unknown Player";
+                        }
+                        member.sendMessage(Component.text(playerName + " has requested to join your guild. " +
+                                "Type /guild accept " + playerName + " to accept or /guild decline " + playerName + " to decline.",
+                                NamedTextColor.YELLOW));
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Accepts a join request from a player.
+     *
+     * @param guild The guild to accept the request for
+     * @param playerId The UUID of the player whose request to accept
+     * @param acceptor The player accepting the request (for messaging)
+     * @return true if the request was accepted, false otherwise
+     */
+    public boolean acceptJoinRequest(Guild guild, UUID playerId, Player acceptor) {
+        // Check if the player has a join request
+        if (!guild.hasJoinRequest(playerId)) {
+            acceptor.sendMessage(Component.text("That player has not requested to join your guild!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Check if player is already in a guild
+        if (playerGuilds.containsKey(playerId)) {
+            guild.removeJoinRequest(playerId);
+            saveConfiguration();
+            acceptor.sendMessage(Component.text("That player is already in a guild!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Remove the request and add the player to the guild
+        guild.removeJoinRequest(playerId);
+        if (guild.addMember(playerId)) {
+            playerGuilds.put(playerId, guild.getId());
+            saveConfiguration();
+
+            // Get the player's name
+            String playerName = Bukkit.getOfflinePlayer(playerId).getName();
+            if (playerName == null) {
+                playerName = "Unknown Player";
+            }
+
+            // Notify the acceptor
+            acceptor.sendMessage(Component.text("You have accepted " + playerName + " into your guild!", NamedTextColor.GREEN));
+
+            // Notify the player if they're online
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null && player.isOnline()) {
+                player.sendMessage(Component.text("Your request to join " + guild.getName() + " has been accepted!", NamedTextColor.GREEN));
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Declines a join request from a player.
+     *
+     * @param guild The guild to decline the request for
+     * @param playerId The UUID of the player whose request to decline
+     * @param decliner The player declining the request (for messaging)
+     * @return true if the request was declined, false otherwise
+     */
+    public boolean declineJoinRequest(Guild guild, UUID playerId, Player decliner) {
+        // Check if the player has a join request
+        if (!guild.hasJoinRequest(playerId)) {
+            decliner.sendMessage(Component.text("That player has not requested to join your guild!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Remove the request
+        guild.removeJoinRequest(playerId);
+        saveConfiguration();
+
+        // Get the player's name
+        String playerName = Bukkit.getOfflinePlayer(playerId).getName();
+        if (playerName == null) {
+            playerName = "Unknown Player";
+        }
+
+        // Notify the decliner
+        decliner.sendMessage(Component.text("You have declined " + playerName + "'s request to join your guild.", NamedTextColor.YELLOW));
+
+        // Notify the player if they're online
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null && player.isOnline()) {
+            player.sendMessage(Component.text("Your request to join " + guild.getName() + " has been declined.", NamedTextColor.RED));
+        }
+
+        return true;
+    }
+
+    /**
+     * Admin function: Claims a chunk for an unmanned guild.
+     *
+     * @param guild The unmanned guild to claim for
+     * @param chunk The chunk to claim
+     * @param admin The admin performing the action
+     * @return true if the chunk was claimed, false otherwise
+     */
+    public boolean adminClaimChunk(Guild guild, Chunk chunk, Player admin) {
+        // Check if the guild is unmanned
+        if (!isUnmannedGuild(guild)) {
+            admin.sendMessage(Component.text("You can only claim chunks for unmanned guilds with admin permissions!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Check if the chunk is already claimed
+        if (isChunkClaimed(chunk)) {
+            Guild owner = getChunkOwner(chunk);
+            admin.sendMessage(Component.text("This chunk is already claimed by " + owner.getName() + "!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Claim the chunk
+        if (guild.claimChunk(chunk)) {
+            saveConfiguration();
+            admin.sendMessage(Component.text("Chunk claimed for " + guild.getName() + "!", NamedTextColor.GREEN));
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Admin function: Unclaims a chunk from an unmanned guild.
+     *
+     * @param guild The unmanned guild to unclaim from
+     * @param chunk The chunk to unclaim
+     * @param admin The admin performing the action
+     * @return true if the chunk was unclaimed, false otherwise
+     */
+    public boolean adminUnclaimChunk(Guild guild, Chunk chunk, Player admin) {
+        // Check if the guild is unmanned
+        if (!isUnmannedGuild(guild)) {
+            admin.sendMessage(Component.text("You can only unclaim chunks from unmanned guilds with admin permissions!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Check if the chunk is claimed by the guild
+        if (!guild.isChunkClaimed(chunk)) {
+            admin.sendMessage(Component.text("This chunk is not claimed by " + guild.getName() + "!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Unclaim the chunk
+        if (guild.unclaimChunk(chunk)) {
+            saveConfiguration();
+            admin.sendMessage(Component.text("Chunk unclaimed from " + guild.getName() + "!", NamedTextColor.GREEN));
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Admin function: Transfers ownership of a guild to another player.
+     *
+     * @param guild The guild to transfer
+     * @param newOwner The UUID of the new owner
+     * @param admin The admin performing the action
+     * @return true if ownership was transferred, false otherwise
+     */
+    public boolean adminTransferGuild(Guild guild, UUID newOwner, Player admin) {
+        // Check if new owner is already in a guild
+        Guild playerGuild = getPlayerGuild(newOwner);
+        if (playerGuild != null && !playerGuild.getId().equals(guild.getId())) {
+            admin.sendMessage(Component.text("That player is already in another guild!", NamedTextColor.RED));
+            return false;
+        }
+
+        // If new owner is not in the guild, add them
+        if (!guild.isMember(newOwner)) {
+            guild.addMember(newOwner, GuildRole.USER);
+        }
+
+        // Get the old owner's role
+        UUID oldOwner = guild.getOwner();
+
+        // Transfer ownership
+        guild.setOwner(newOwner);
+
+        // Set the old owner's role to ADMIN if they're still in the guild
+        if (guild.isMember(oldOwner) && !oldOwner.equals(newOwner)) {
+            guild.setMemberRole(oldOwner, GuildRole.ADMIN);
+        }
+
+        // Save configuration
+        saveConfiguration();
+
+        // Get player names
+        String newOwnerName = Bukkit.getOfflinePlayer(newOwner).getName();
+        if (newOwnerName == null) {
+            newOwnerName = "Unknown Player";
+        }
+
+        // Notify the admin
+        admin.sendMessage(Component.text("Transferred ownership of " + guild.getName() + " to " + newOwnerName + "!", NamedTextColor.GREEN));
+
+        // Notify the new owner if they're online
+        Player newOwnerPlayer = Bukkit.getPlayer(newOwner);
+        if (newOwnerPlayer != null && newOwnerPlayer.isOnline()) {
+            newOwnerPlayer.sendMessage(Component.text("You are now the owner of " + guild.getName() + "!", NamedTextColor.GREEN));
+        }
+
+        return true;
+    }
+
+    /**
+     * Admin function: Disbands a guild.
+     *
+     * @param guild The guild to disband
+     * @param admin The admin performing the action
+     * @return true if the guild was disbanded, false otherwise
+     */
+    public boolean adminDisbandGuild(Guild guild, Player admin) {
+        // Check if the guild is unmanned
+        if (isUnmannedGuild(guild)) {
+            admin.sendMessage(Component.text("You cannot disband unmanned guilds!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Notify all online members
+        for (UUID memberId : guild.getMembers()) {
+            Player member = Bukkit.getPlayer(memberId);
+            if (member != null && member.isOnline()) {
+                member.sendMessage(Component.text("Your guild " + guild.getName() + " has been disbanded by an admin!", NamedTextColor.RED));
+            }
+        }
+
+        // Disband the guild
+        disbandGuild(guild);
+
+        // Notify the admin
+        admin.sendMessage(Component.text("Guild " + guild.getName() + " has been disbanded!", NamedTextColor.GREEN));
+
+        return true;
+    }
+
+    /**
+     * Declines an invitation to join a guild.
+     *
+     * @param guild The guild whose invitation to decline
+     * @param playerId The UUID of the player declining the invitation
+     * @param player The player object for messaging
+     * @return true if the invitation was declined, false otherwise
+     */
+    public boolean declineInvitation(Guild guild, UUID playerId, Player player) {
+        // Check if the player was invited
+        if (!guild.isInvited(playerId)) {
+            player.sendMessage(Component.text("You have not been invited to this guild!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Remove the invitation
+        if (guild.removeInvite(playerId)) {
+            saveConfiguration();
+            player.sendMessage(Component.text("You have declined the invitation to join " + guild.getName() + ".", NamedTextColor.YELLOW));
+
+            // Notify the guild owner if they're online
+            Player owner = Bukkit.getPlayer(guild.getOwner());
+            if (owner != null && owner.isOnline()) {
+                owner.sendMessage(Component.text(player.getName() + " has declined the invitation to join your guild.", NamedTextColor.YELLOW));
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Sets whether mobs can spawn in a guild's claimed chunks.
+     *
+     * @param guild The guild to modify
+     * @param enabled true to allow mob spawning, false to deny it
+     * @param player The player making the change (for messaging)
+     * @return true if the operation was successful, false otherwise
+     */
+    public boolean setGuildMobSpawning(Guild guild, boolean enabled, Player player) {
+        guild.setMobSpawningEnabled(enabled);
+        saveConfiguration();
+
+        if (enabled) {
+            player.sendMessage(Component.text("Mob spawning is now ALLOWED in your guild's claimed chunks!", NamedTextColor.GREEN));
+        } else {
+            player.sendMessage(Component.text("Mob spawning is now DENIED in your guild's claimed chunks!", NamedTextColor.RED));
+        }
+
+        return true;
+    }
+
+    /**
+     * Admin function: Kicks a player from a guild.
+     *
+     * @param guild The guild to kick from
+     * @param playerId The UUID of the player to kick
+     * @param admin The admin performing the action
+     * @return true if the player was kicked, false otherwise
+     */
+    public boolean adminKickPlayer(Guild guild, UUID playerId, Player admin) {
+        // Check if the player is in the guild
+        if (!guild.isMember(playerId)) {
+            admin.sendMessage(Component.text("That player is not a member of " + guild.getName() + "!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Check if the player is the owner
+        if (playerId.equals(guild.getOwner())) {
+            admin.sendMessage(Component.text("You cannot kick the guild owner! Transfer ownership first.", NamedTextColor.RED));
+            return false;
+        }
+
+        // Get the player's name
+        String playerName = Bukkit.getOfflinePlayer(playerId).getName();
+        if (playerName == null) {
+            playerName = "Unknown Player";
+        }
+
+        // Remove the player from the guild
+        if (guild.removeMember(playerId)) {
+            playerGuilds.remove(playerId);
+            saveConfiguration();
+
+            // Notify the admin
+            admin.sendMessage(Component.text("Kicked " + playerName + " from " + guild.getName() + "!", NamedTextColor.GREEN));
+
+            // Notify the player if they're online
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null && player.isOnline()) {
+                player.sendMessage(Component.text("You have been kicked from " + guild.getName() + " by an admin!", NamedTextColor.RED));
+            }
+
+            return true;
+        }
+
+        return false;
     }
 }

@@ -162,7 +162,7 @@ public class WorldSubCommand implements GuildSubCommand {
 
     @Override
     public String getPermission() {
-        return "furious.guild.world";
+        return "furious.guild.admin";
     }
 
     @Override

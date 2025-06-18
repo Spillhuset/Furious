@@ -7,6 +7,15 @@ commands:
     description: Teleport command for requesting and managing teleports
     aliases: [tp]
     usage: /<command> [request|accept|decline|list|abort|deny|world]
+  tpa:
+    description: Alias for /teleport request
+    usage: /<command> <player>
+  tpaccept:
+    description: Alias for /teleport accept
+    usage: /<command> [player]
+  tpdecline:
+    description: Alias for /teleport decline
+    usage: /<command> [player]
   invsee:
     description: View other player's inventory
     usage: /<command> <player>
@@ -39,6 +48,16 @@ commands:
     description: Manage and use warps
     usage: /<command> [create|relocate|cost|passwd|rename|delete|link|warp|list]
     aliases: [warp]
+  tombstones:
+    description: Manage tombstones
+    usage: /<command> [purge]
+  security:
+    description: Manage security reviews and other security-related tasks
+    usage: /<command> [status|review|help]
+  bank:
+    description: Manage your bank account
+    usage: /<command> [balance|deposit|withdraw|transfer|claim|unclaim|info|create|rename|delete|deleteaccount|createaccount|editbalance|editinterest|help]
+    aliases: [b]
 
 permissions:
   furious.invsee:
@@ -90,13 +109,27 @@ permissions:
   furious.teleport.force:
     description: Allows using force teleport commands
     default: op
-  heal.others:
+  furious.heal.*:
+    description: Gives access to all heal commands
+    children:
+      furious.heal.others: true
+      furious.heal.self: true
+  furious.heal.others:
+    description: Allows healing other players
     default: op
-  heal.self:
+  furious.heal.self:
+    description: Allows healing yourself
     default: op
-  feed.others:
+  furious.feed.*:
+    description: Gives access to all feed commands
+    children:
+      furious.feed.others: true
+      furious.feed.self: true
+  furious.feed.others:
+    description: Allows feeding other players
     default: op
-  feed.self:
+  furious.feed.self:
+    description: Allows feeding yourself
     default: op
 
   furious.guild.*:
@@ -343,3 +376,104 @@ permissions:
   furious.warps.list:
     description: Allows listing warps
     default: true
+
+  furious.tombstones.*:
+    description: Gives access to all tombstone commands
+    children:
+      furious.tombstones.admin: true
+  furious.tombstones.admin:
+    description: Allows managing tombstones (purge, etc.)
+    default: op
+
+  furious.security.*:
+    description: Gives access to all security commands
+    children:
+      furious.security.admin: true
+  furious.security.admin:
+    description: Allows managing security reviews and other security-related tasks
+    default: op
+
+  furious.bank.*:
+    description: Gives access to all bank commands
+    children:
+      furious.bank.balance: true
+      furious.bank.deposit: true
+      furious.bank.withdraw: true
+      furious.bank.transfer: true
+      furious.bank.claim: true
+      furious.bank.unclaim: true
+      furious.bank.info: true
+      furious.bank.create: true
+      furious.bank.rename: true
+      furious.bank.delete: true
+      furious.bank.deleteaccount: true
+      furious.bank.createaccount: true
+      furious.bank.editbalance: true
+      furious.bank.editinterest: true
+      furious.bank.admin: true
+  furious.bank.balance:
+    description: Allows checking bank balance
+    default: true
+  furious.bank.deposit:
+    description: Allows depositing to bank
+    default: true
+  furious.bank.withdraw:
+    description: Allows withdrawing from bank
+    default: true
+  furious.bank.transfer:
+    description: Allows transferring funds between bank accounts
+    default: true
+  furious.bank.claim:
+    description: Allows claiming chunks for banks
+    default: op
+  furious.bank.unclaim:
+    description: Allows unclaiming chunks from banks
+    default: op
+  furious.bank.info:
+    description: Allows viewing bank information at current location
+    default: true
+  furious.bank.create:
+    description: Allows creating banks
+    default: op
+  furious.bank.rename:
+    description: Allows renaming banks
+    default: op
+  furious.bank.delete:
+    description: Allows deleting banks
+    default: op
+  furious.bank.deleteaccount:
+    description: Allows deleting accounts from banks
+    default: op
+  furious.bank.createaccount:
+    description: Allows creating accounts in banks
+    default: op
+  furious.bank.editbalance:
+    description: Allows editing player balances in banks
+    default: op
+  furious.bank.editinterest:
+    description: Allows editing bank interest rates
+    default: op
+  furious.bank.admin:
+    description: Allows administrative bank operations
+    default: op
+  furious.*:
+    description: Gives access to all furious plugin permissions
+    children:
+      furious.invsee: true
+      furious.endersee: true
+      furious.endersee.offline: true
+      furious.teleport.*: true
+      furious.heal.*: true
+      furious.feed.*: true
+      furious.guild.*: true
+      furious.locks.*: true
+      furious.minigame.*: true
+      furious.homes.*: true
+      furious.warps.*: true
+      furious.tombstones.*: true
+      furious.security.*: true
+      furious.bank.*: true
+      furious.ratelimit.exempt: true
+  furious.ratelimit.exempt:
+    description: Exempts a player from all rate limits
+    default: op

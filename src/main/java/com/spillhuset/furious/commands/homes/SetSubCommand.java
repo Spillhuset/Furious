@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.homes;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ import java.util.List;
  */
 public class SetSubCommand implements SubCommand {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     /**
      * Creates a new SetSubCommand.
@@ -25,6 +27,7 @@ public class SetSubCommand implements SubCommand {
      */
     public SetSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -66,8 +69,10 @@ public class SetSubCommand implements SubCommand {
             if (plugin.getHomesManager().setPlayerHome(target, homeName, player.getLocation())) {
                 sender.sendMessage(Component.text("Home '" + homeName + "' set for " + target.getName() + "!", NamedTextColor.GREEN));
                 target.sendMessage(Component.text(player.getName() + " set a home '" + homeName + "' for you!", NamedTextColor.GREEN));
+                auditLogger.logSensitiveOperation(sender, "set home", "Set home '" + homeName + "' for player " + target.getName());
             } else {
                 sender.sendMessage(Component.text("Failed to set home for " + target.getName() + "!", NamedTextColor.RED));
+                auditLogger.logFailedAccess(sender, target.getName(), "set home", "Failed to set home '" + homeName + "'");
             }
             return true;
         }

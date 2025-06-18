@@ -18,10 +18,12 @@ public class Guild {
     private UUID owner;
     private final Map<UUID, GuildRole> members; // Player UUID -> Role
     private final Set<UUID> invites;
+    private final Set<UUID> joinRequests; // Players who have requested to join
     private String description;
     private final Date creationDate;
     private final Set<String> claimedChunks; // Format: "worldUUID:chunkX:chunkZ"
     private boolean mobSpawningEnabled; // Whether mobs can spawn in claimed chunks
+    private boolean open; // Whether anyone can join without invitation
     private GuildType type; // The type of guild (SAFE, WAR, WILD, GUILD)
 
     /**
@@ -47,10 +49,12 @@ public class Guild {
         this.owner = owner;
         this.members = new HashMap<>();
         this.invites = new HashSet<>();
+        this.joinRequests = new HashSet<>();
         this.description = "";
         this.creationDate = new Date();
         this.claimedChunks = new HashSet<>();
         this.mobSpawningEnabled = false; // Default: mobs cannot spawn in claimed chunks
+        this.open = false; // Default: guild is not open for anyone to join
         this.type = type;
 
         // Add the owner as a member with OWNER role
@@ -439,5 +443,70 @@ public class Guild {
      */
     public boolean isSafe() {
         return type.isSafe();
+    }
+
+    /**
+     * Checks if this guild is open for anyone to join without invitation.
+     *
+     * @return true if the guild is open, false otherwise
+     */
+    public boolean isOpen() {
+        return open;
+    }
+
+    /**
+     * Sets whether this guild is open for anyone to join without invitation.
+     *
+     * @param open true to make the guild open, false otherwise
+     */
+    public void setOpen(boolean open) {
+        this.open = open;
+    }
+
+    /**
+     * Gets the set of player UUIDs who have requested to join the guild.
+     *
+     * @return A set of player UUIDs who have requested to join
+     */
+    public Set<UUID> getJoinRequests() {
+        return Collections.unmodifiableSet(joinRequests);
+    }
+
+    /**
+     * Adds a join request from a player.
+     *
+     * @param playerId The UUID of the player requesting to join
+     * @return true if the request was added, false if they already requested or are a member
+     */
+    public boolean addJoinRequest(UUID playerId) {
+        // Don't add request if they're already a member
+        if (members.containsKey(playerId)) {
+            return false;
+        }
+        // Don't add request if they're already invited
+        if (invites.contains(playerId)) {
+            return false;
+        }
+        return joinRequests.add(playerId);
+    }
+
+    /**
+     * Removes a join request from a player.
+     *
+     * @param playerId The UUID of the player whose request to remove
+     * @return true if the request was removed, false if they hadn't requested
+     */
+    public boolean removeJoinRequest(UUID playerId) {
+        return joinRequests.remove(playerId);
+    }
+
+    /**
+     * Checks if a player has requested to join the guild.
+     *
+     * @param playerId The UUID of the player to check
+     * @return true if the player has requested to join, false otherwise
+     */
+    public boolean hasJoinRequest(UUID playerId) {
+        return joinRequests.contains(playerId);
     }
 }

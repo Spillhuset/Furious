@@ -64,7 +64,20 @@ public class CreateSubCommand implements GuildSubCommand {
             return true;
         }
 
-        String guildName = args[1];
+        // Sanitize the guild name
+        String guildName = com.spillhuset.furious.utils.InputSanitizer.sanitizeGuildName(args[1]);
+
+        // Check if the guild name is valid
+        if (guildName == null) {
+            sender.sendMessage(Component.text("Invalid guild name! Please use a valid name (3-32 characters, alphanumeric, underscore, and spaces).", NamedTextColor.RED));
+            return true;
+        }
+
+        // Check if the input is safe
+        if (!com.spillhuset.furious.utils.InputSanitizer.isSafeInput(args[1])) {
+            sender.sendMessage(Component.text("Invalid input detected! Please use only alphanumeric characters, underscores, and spaces.", NamedTextColor.RED));
+            return true;
+        }
 
         // Create the guild
         Guild guild = plugin.getGuildManager().createGuild(guildName, player);

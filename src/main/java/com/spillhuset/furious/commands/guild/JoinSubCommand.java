@@ -35,14 +35,15 @@ public class JoinSubCommand implements GuildSubCommand {
 
     @Override
     public String getDescription() {
-        return "Joins a guild you've been invited to.";
+        return "Joins a guild or requests to join.";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
         sender.sendMessage(Component.text("/guild join <guild>", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("Joins the specified guild if you have been invited.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Joins the specified guild if it's open or you've been invited.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If the guild is not open and you haven't been invited, sends a join request.", NamedTextColor.YELLOW));
     }
 
     @Override
@@ -67,24 +68,47 @@ public class JoinSubCommand implements GuildSubCommand {
             return true;
         }
 
-        // Check if player is invited
-        if (!guild.isInvited(player.getUniqueId())) {
-            player.sendMessage(Component.text("You have not been invited to join " + guild.getName() + "!", NamedTextColor.RED));
-            return true;
-        }
+        // Check if player is invited or guild is open
+        if (guild.isInvited(player.getUniqueId())) {
+            // Player is invited, join the guild
+            if (plugin.getGuildManager().addPlayerToGuild(guild, player.getUniqueId())) {
+                player.sendMessage(Component.text("You have joined " + guild.getName() + "!", NamedTextColor.GREEN));
 
-        // Join the guild
-        if (plugin.getGuildManager().addPlayerToGuild(guild, player.getUniqueId())) {
-            player.sendMessage(Component.text("You have joined " + guild.getName() + "!", NamedTextColor.GREEN));
-
-            // Notify online guild members
-            for (Player member : guild.getOnlineMembers()) {
-                if (!member.equals(player)) {
-                    member.sendMessage(Component.text(player.getName() + " has joined the guild!", NamedTextColor.GREEN));
+                // Notify online guild members
+                for (Player member : guild.getOnlineMembers()) {
+                    if (!member.equals(player)) {
+                        member.sendMessage(Component.text(player.getName() + " has joined the guild!", NamedTextColor.GREEN));
+                    }
                 }
+            } else {
+                player.sendMessage(Component.text("Failed to join " + guild.getName() + "!", NamedTextColor.RED));
             }
+        } else if (guild.isOpen()) {
+            // Guild is open, join without invitation
+            if (plugin.getGuildManager().addPlayerToGuild(guild, player.getUniqueId())) {
+                player.sendMessage(Component.text("You have joined " + guild.getName() + "!", NamedTextColor.GREEN));
+
+                // Notify online guild members
+                for (Player member : guild.getOnlineMembers()) {
+                    if (!member.equals(player)) {
+                        member.sendMessage(Component.text(player.getName() + " has joined the guild!", NamedTextColor.GREEN));
+                    }
+                }
+            } else {
+                player.sendMessage(Component.text("Failed to join " + guild.getName() + "!", NamedTextColor.RED));
+            }
+        } else if (guild.hasJoinRequest(player.getUniqueId())) {
+            // Player already has a pending request
+            player.sendMessage(Component.text("You already have a pending request to join " + guild.getName() + "!", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Please wait for a guild admin or owner to accept your request.", NamedTextColor.YELLOW));
         } else {
-            player.sendMessage(Component.text("Failed to join " + guild.getName() + "!", NamedTextColor.RED));
+            // Guild is not open and player is not invited, send a join request
+            if (plugin.getGuildManager().addJoinRequest(guild, player.getUniqueId())) {
+                player.sendMessage(Component.text("You have requested to join " + guild.getName() + "!", NamedTextColor.YELLOW));
+                player.sendMessage(Component.text("Your request will be reviewed by the guild admins and owner.", NamedTextColor.YELLOW));
+            } else {
+                player.sendMessage(Component.text("Failed to send join request to " + guild.getName() + "!", NamedTextColor.RED));
+            }
         }
 
         return true;
@@ -97,13 +121,24 @@ public class JoinSubCommand implements GuildSubCommand {
         if (sender instanceof Player player && args.length == 2) {
             String partial = args[1].toLowerCase();
 
-            // Only show guilds the player has been invited to
+            // Show all guilds, but prioritize guilds the player has been invited to or that are open
+            List<String> invitedOrOpen = new ArrayList<>();
+            List<String> others = new ArrayList<>();
+
             for (Guild guild : plugin.getGuildManager().getAllGuilds()) {
-                if (guild.isInvited(player.getUniqueId()) &&
-                        guild.getName().toLowerCase().startsWith(partial)) {
-                    completions.add(guild.getName());
+                String guildName = guild.getName();
+                if (guildName.toLowerCase().startsWith(partial)) {
+                    if (guild.isInvited(player.getUniqueId()) || guild.isOpen()) {
+                        invitedOrOpen.add(guildName);
+                    } else {
+                        others.add(guildName);
+                    }
                 }
             }
+
+            // Add invited or open guilds first, then others
+            completions.addAll(invitedOrOpen);
+            completions.addAll(others);
         }
 
         return completions;

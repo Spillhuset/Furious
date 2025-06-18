@@ -63,6 +63,16 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
 
         // Guild world commands
         subCommands.put("world", new WorldSubCommand(plugin));
+
+        // Guild settings commands
+        subCommands.put("set", new SetSubCommand(plugin));
+
+        // Guild join request/invitation commands
+        subCommands.put("accept", new AcceptSubCommand(plugin));
+        subCommands.put("decline", new DeclineSubCommand(plugin));
+
+        // Admin commands
+        subCommands.put("home", new HomesAdminSubCommand(plugin));
     }
 
     @Override

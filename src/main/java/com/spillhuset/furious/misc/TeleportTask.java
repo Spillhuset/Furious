@@ -1,10 +1,12 @@
-package com.spillhuset.furious.managers;
+package com.spillhuset.furious.misc;
 
 import com.spillhuset.furious.Furious;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -15,6 +17,7 @@ public class TeleportTask {
     private final Furious plugin;
     private BukkitTask countdownTask;
     private final Location startLocation;
+    private PotionEffect nauseaEffect;
 
     public TeleportTask(Player player, Location destination, int delay, Furious plugin) {
         this.player = player;
@@ -22,11 +25,16 @@ public class TeleportTask {
         this.delay = delay;
         this.plugin = plugin;
         this.startLocation = player.getLocation();
+        // Create a nausea effect that lasts for the duration of the countdown plus 1 second
+        this.nauseaEffect = new PotionEffect(PotionEffectType.NAUSEA, (delay + 1) * 20, 0);
     }
 
     public void start() {
         player.sendMessage(Component.text("Don't move! Teleporting in " + delay + " seconds...",
                 NamedTextColor.YELLOW));
+
+        // Apply nausea effect
+        player.addPotionEffect(nauseaEffect);
 
         countdownTask = new BukkitRunnable() {
             private int secondsLeft = delay;
@@ -45,10 +53,9 @@ public class TeleportTask {
                     return;
                 }
 
-                if (secondsLeft <= 3 || secondsLeft == 5) {
-                    player.sendMessage(Component.text("Teleporting in " + secondsLeft + "...",
-                            NamedTextColor.YELLOW));
-                }
+                // Display countdown message for every second
+                player.sendMessage(Component.text("Teleporting in " + secondsLeft + "...",
+                        NamedTextColor.YELLOW));
 
                 secondsLeft--;
             }
@@ -68,6 +75,9 @@ public class TeleportTask {
             countdownTask.cancel();
         }
 
+        // Remove nausea effect
+        player.removePotionEffect(PotionEffectType.NAUSEA);
+
         player.sendMessage(Component.text("Teleporting...", NamedTextColor.GREEN));
         player.teleport(destination);
     }
@@ -76,5 +86,8 @@ public class TeleportTask {
         if (countdownTask != null) {
             countdownTask.cancel();
         }
+
+        // Remove nausea effect
+        player.removePotionEffect(PotionEffectType.NAUSEA);
     }
 }

@@ -254,6 +254,12 @@ public class MinigameManager {
     }
 
     public void joinQueue(Player player, String gameName) {
+        // Check if player is an op
+        if (player.isOp()) {
+            player.sendMessage(Component.text("Ops cannot participate in minigames!", NamedTextColor.RED));
+            return;
+        }
+
         if (!games.containsKey(gameName)) {
             player.sendMessage(Component.text("That minigame doesn't exist!", NamedTextColor.RED));
             return;

@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.homes;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ import java.util.List;
  */
 public class MoveSubCommand implements SubCommand {
     private final Furious plugin;
+    private final AuditLogger auditLogger;
 
     /**
      * Creates a new MoveSubCommand.
@@ -25,6 +27,7 @@ public class MoveSubCommand implements SubCommand {
      */
     public MoveSubCommand(Furious plugin) {
         this.plugin = plugin;
+        this.auditLogger = plugin.getAuditLogger();
     }
 
     @Override
@@ -66,8 +69,10 @@ public class MoveSubCommand implements SubCommand {
             if (plugin.getHomesManager().setPlayerHome(target, homeName, player.getLocation())) {
                 sender.sendMessage(Component.text("Home '" + homeName + "' moved for " + target.getName() + "!", NamedTextColor.GREEN));
                 target.sendMessage(Component.text(player.getName() + " moved your home '" + homeName + "'!", NamedTextColor.GREEN));
+                auditLogger.logSensitiveOperation(sender, "move home", "Moved home '" + homeName + "' for player " + target.getName());
             } else {
                 sender.sendMessage(Component.text("Failed to move home for " + target.getName() + "! The home may not exist or this world is disabled for homes.", NamedTextColor.RED));
+                auditLogger.logFailedAccess(sender, target.getName(), "move home", "Failed to move home '" + homeName + "', home may not exist or world is disabled");
             }
             return true;
         }
