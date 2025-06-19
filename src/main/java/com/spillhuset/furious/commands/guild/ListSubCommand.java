@@ -65,7 +65,7 @@ public class ListSubCommand implements GuildSubCommand {
             return true;
         }
 
-        sender.sendMessage(Component.text("=== Guilds (" + guilds.size() + ") ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("=== Guilds (" + plugin.getGuildManager().getGuildCount() + ") ===", NamedTextColor.GOLD));
 
         for (Guild guild : guilds) {
             Component guildInfo = Component.text("- ", NamedTextColor.YELLOW)

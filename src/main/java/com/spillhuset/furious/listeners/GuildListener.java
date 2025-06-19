@@ -26,6 +26,7 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -628,5 +629,22 @@ public class GuildListener implements Listener {
             player.sendMessage(Component.text("You don't have permission to place blocks in this guild territory.",
                     NamedTextColor.RED));
         }
+    }
+
+    /**
+     * Handles player quit events to clean up guild data.
+     * Removes all guild-related data for the player when they leave the server.
+     *
+     * @param event The player quit event
+     */
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+
+        // Clean up the player's guild data
+        plugin.getGuildManager().removePlayerData(player.getUniqueId());
+
+        // Remove from lastPlayerGuild map
+        lastPlayerGuild.remove(player.getUniqueId());
     }
 }

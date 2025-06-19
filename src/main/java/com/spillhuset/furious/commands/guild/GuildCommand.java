@@ -47,9 +47,9 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         subCommands.put("info", new InfoSubCommand(plugin));
         subCommands.put("list", new ListSubCommand(plugin));
         // These commands are not implemented yet
-        // subCommands.put("kick", new KickSubCommand(plugin));
-        // subCommands.put("disband", new DisbandSubCommand(plugin));
-        // subCommands.put("transfer", new TransferSubCommand(plugin));
+        subCommands.put("kick", new KickSubCommand(plugin));
+        subCommands.put("disband", new DisbandSubCommand(plugin));
+        subCommands.put("transfer", new TransferSubCommand(plugin));
         // subCommands.put("description", new DescriptionSubCommand(plugin));
 
         // Plot management commands
@@ -66,13 +66,17 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
 
         // Guild settings commands
         subCommands.put("set", new SetSubCommand(plugin));
+        subCommands.put("role", new RoleSubCommand(plugin));
 
         // Guild join request/invitation commands
         subCommands.put("accept", new AcceptSubCommand(plugin));
         subCommands.put("decline", new DeclineSubCommand(plugin));
+        subCommands.put("cancelinvite", new CancelInviteSubCommand(plugin));
 
         // Admin commands
         subCommands.put("home", new HomesAdminSubCommand(plugin));
+        subCommands.put("admintransfer", new AdminTransferSubCommand(plugin));
+        subCommands.put("adminunclaim", new AdminUnclaimSubCommand(plugin));
     }
 
     @Override
@@ -136,17 +140,18 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             // Show owner-only commands if the player is in a guild and is the owner
             if (isInGuild && isGuildOwner) {
                 // These commands are not implemented yet
-                // sender.sendMessage(Component.text("/guild kick <player> - Kick a player from your guild", NamedTextColor.YELLOW));
-                // sender.sendMessage(Component.text("/guild disband - Disband your guild", NamedTextColor.YELLOW));
-                // sender.sendMessage(Component.text("/guild transfer <player> - Transfer ownership of your guild", NamedTextColor.YELLOW));
+                sender.sendMessage(Component.text("/guild kick <player> - Kick a player from your guild", NamedTextColor.YELLOW));
+                sender.sendMessage(Component.text("/guild disband - Disband your guild", NamedTextColor.YELLOW));
+                sender.sendMessage(Component.text("/guild transfer <player> - Transfer ownership of your guild", NamedTextColor.YELLOW));
                 // sender.sendMessage(Component.text("/guild description <text> - Set your guild's description", NamedTextColor.YELLOW));
             }
         } else {
             // Console commands
             sender.sendMessage(Component.text("/guild list - List all guilds", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/guild info <guild> - Show information about a guild", NamedTextColor.YELLOW));
-            // This command is not implemented yet
-            // sender.sendMessage(Component.text("/guild disband <guild> - Disband a guild", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/guild disband <guild> - Disband a guild", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/guild admintransfer <guild> <player> - Transfer ownership of a guild to a player", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/guild adminunclaim <guild> - Unclaim a chunk from an unmanned guild", NamedTextColor.YELLOW));
         }
     }
 

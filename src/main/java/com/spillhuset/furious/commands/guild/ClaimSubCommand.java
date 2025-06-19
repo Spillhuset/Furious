@@ -70,23 +70,18 @@ public class ClaimSubCommand implements GuildSubCommand {
             }
 
             String guildName = args[1].toUpperCase();
-            Guild unmannedGuild = null;
+            Guild unmannedGuild;
 
             // Get the appropriate unmanned guild
             switch (guildName) {
-                case "SAFE":
-                    unmannedGuild = plugin.getGuildManager().getSafeGuild();
-                    break;
-                case "WAR":
-                    unmannedGuild = plugin.getGuildManager().getWarGuild();
-                    break;
-                case "WILD":
-                    unmannedGuild = plugin.getGuildManager().getWildGuild();
-                    break;
-                default:
+                case "SAFE" -> unmannedGuild = plugin.getGuildManager().getSafeGuild();
+                case "WAR" -> unmannedGuild = plugin.getGuildManager().getWarGuild();
+                case "WILD" -> unmannedGuild = plugin.getGuildManager().getWildGuild();
+                default -> {
                     player.sendMessage(Component.text("Unknown unmanned guild: " + guildName, NamedTextColor.RED));
                     player.sendMessage(Component.text("Valid unmanned guilds are: SAFE, WAR, WILD", NamedTextColor.RED));
                     return true;
+                }
             }
 
             // Claim the chunk for the unmanned guild using admin claim method

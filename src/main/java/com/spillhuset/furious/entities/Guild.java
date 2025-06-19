@@ -135,17 +135,15 @@ public class Guild {
      * Adds a player to the guild with the specified role.
      *
      * @param playerId The UUID of the player to add
-     * @param role The role to assign to the player
-     * @return true if the player was added, false if they were already a member
+     * @param role     The role to assign to the player
      */
-    public boolean addMember(UUID playerId, GuildRole role) {
+    public void addMember(UUID playerId, GuildRole role) {
         // Remove from invites if they were invited
         invites.remove(playerId);
         if (members.containsKey(playerId)) {
-            return false;
+            return;
         }
         members.put(playerId, role);
-        return true;
     }
 
     /**
@@ -330,7 +328,7 @@ public class Guild {
      * @return A string representation of the chunk
      */
     private String formatChunk(Chunk chunk) {
-        return chunk.getWorld().getUID().toString() + ":" + chunk.getX() + ":" + chunk.getZ();
+        return chunk.getWorld().getUID() + ":" + chunk.getX() + ":" + chunk.getZ();
     }
 
     /**
@@ -359,8 +357,8 @@ public class Guild {
      * @param chunk The chunk to check
      * @return true if the chunk is claimed by this guild, false otherwise
      */
-    public boolean isChunkClaimed(Chunk chunk) {
-        return claimedChunks.contains(formatChunk(chunk));
+    public boolean isChunkUnClaimed(Chunk chunk) {
+        return !claimedChunks.contains(formatChunk(chunk));
     }
 
     /**
@@ -376,10 +374,9 @@ public class Guild {
      * Claims a chunk using its string representation.
      *
      * @param chunkStr The string representation of the chunk (format: "worldUUID:chunkX:chunkZ")
-     * @return true if the chunk was claimed, false if it was already claimed by this guild
      */
-    public boolean claimChunkFromString(String chunkStr) {
-        return claimedChunks.add(chunkStr);
+    public void claimChunkFromString(String chunkStr) {
+        claimedChunks.add(chunkStr);
     }
 
     /**
@@ -504,10 +501,9 @@ public class Guild {
      * Removes a join request from a player.
      *
      * @param playerId The UUID of the player whose request to remove
-     * @return true if the request was removed, false if they hadn't requested
      */
-    public boolean removeJoinRequest(UUID playerId) {
-        return joinRequests.remove(playerId);
+    public void removeJoinRequest(UUID playerId) {
+        joinRequests.remove(playerId);
     }
 
     /**

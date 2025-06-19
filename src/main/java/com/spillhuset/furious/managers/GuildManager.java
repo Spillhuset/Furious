@@ -37,7 +37,7 @@ public class GuildManager {
     private Guild wildGuild;
 
     // Store UUIDs of worlds where guilds are disabled
-    private Set<UUID> disabledWorlds;
+    private final Set<UUID> disabledWorlds;
 
     /**
      * Creates a new GuildManager.
@@ -141,7 +141,12 @@ public class GuildManager {
 
                     if (guildSection != null) {
                         String name = guildSection.getString("name");
-                        UUID owner = UUID.fromString(guildSection.getString("owner"));
+                        String ownerStr = guildSection.getString("owner");
+                        if (ownerStr == null) {
+                            plugin.getLogger().warning("Owner is null for guild " + guildIdStr);
+                            continue;
+                        }
+                        UUID owner = UUID.fromString(ownerStr);
 
                         // Get guild type if exists, default to GUILD
                         GuildType type = GuildType.GUILD;
@@ -567,6 +572,7 @@ public class GuildManager {
 
     /**
      * Transfers ownership of a guild to another player.
+     * The previous owner will be set to ADMIN role.
      *
      * @param guild    The guild to transfer ownership of
      * @param newOwner The ID of the new owner
@@ -578,8 +584,15 @@ public class GuildManager {
             return false;
         }
 
+        // Get current owner before transfer
+        UUID previousOwner = guild.getOwner();
+
         // Transfer ownership
         guild.setOwner(newOwner);
+
+        // Set previous owner to ADMIN role
+        guild.setMemberRole(previousOwner, GuildRole.ADMIN);
+
         saveConfiguration();
         return true;
     }
@@ -627,7 +640,7 @@ public class GuildManager {
      * @return A string representation of the chunk
      */
     private String formatChunk(Chunk chunk) {
-        return chunk.getWorld().getUID().toString() + ":" + chunk.getX() + ":" + chunk.getZ();
+        return chunk.getWorld().getUID() + ":" + chunk.getX() + ":" + chunk.getZ();
     }
 
     /**
@@ -665,12 +678,11 @@ public class GuildManager {
     /**
      * Claims a chunk for a guild.
      *
-     * @param guild The guild claiming the chunk
-     * @param chunk The chunk to claim
+     * @param guild  The guild claiming the chunk
+     * @param chunk  The chunk to claim
      * @param player The player attempting to claim the chunk (for messaging)
-     * @return true if the chunk was claimed, false otherwise
      */
-    public boolean claimChunk(Guild guild, Chunk chunk, Player player) {
+    public void claimChunk(Guild guild, Chunk chunk, Player player) {
         // Check if the chunk is already claimed
         if (isChunkClaimed(chunk)) {
             Guild owner = getChunkOwner(chunk);
@@ -679,58 +691,52 @@ public class GuildManager {
             } else {
                 player.sendMessage(Component.text("This chunk is already claimed by " + owner.getName() + "!", NamedTextColor.RED));
             }
-            return false;
+            return;
         }
 
         // Check if the guild has reached the maximum number of plots
         if (guild.getClaimedChunkCount() >= MAX_PLOTS_PER_GUILD) {
             player.sendMessage(Component.text("Your guild has reached the maximum number of plots (" + MAX_PLOTS_PER_GUILD + ")!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Claim the chunk
         if (guild.claimChunk(chunk)) {
             saveConfiguration();
             player.sendMessage(Component.text("Chunk claimed for " + guild.getName() + "!", NamedTextColor.GREEN));
-            return true;
         }
 
-        return false;
     }
 
     /**
      * Unclaims a chunk from a guild.
      *
-     * @param guild The guild unclaiming the chunk
-     * @param chunk The chunk to unclaim
+     * @param guild  The guild unclaiming the chunk
+     * @param chunk  The chunk to unclaim
      * @param player The player attempting to unclaim the chunk (for messaging)
-     * @return true if the chunk was unclaimed, false otherwise
      */
-    public boolean unclaimChunk(Guild guild, Chunk chunk, Player player) {
+    public void unclaimChunk(Guild guild, Chunk chunk, Player player) {
         // Check if the chunk is claimed by the guild
-        if (!guild.isChunkClaimed(chunk)) {
+        if (guild.isChunkUnClaimed(chunk)) {
             player.sendMessage(Component.text("This chunk is not claimed by your guild!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Unclaim the chunk
         if (guild.unclaimChunk(chunk)) {
             saveConfiguration();
             player.sendMessage(Component.text("Chunk unclaimed from " + guild.getName() + "!", NamedTextColor.GREEN));
-            return true;
         }
 
-        return false;
     }
 
     /**
      * Toggles mob spawning for a guild.
      *
-     * @param guild The guild to toggle mob spawning for
+     * @param guild  The guild to toggle mob spawning for
      * @param player The player toggling mob spawning (for messaging)
-     * @return true if mob spawning is now enabled, false if it's now disabled
      */
-    public boolean toggleMobSpawning(Guild guild, Player player) {
+    public void toggleMobSpawning(Guild guild, Player player) {
         boolean newState = guild.toggleMobSpawning();
         saveConfiguration();
 
@@ -740,7 +746,6 @@ public class GuildManager {
             player.sendMessage(Component.text("Mob spawning is now DISABLED in " + guild.getName() + "'s claimed chunks!", NamedTextColor.RED));
         }
 
-        return newState;
     }
 
     /**
@@ -926,12 +931,11 @@ public class GuildManager {
     /**
      * Sets whether a guild is open for anyone to join without invitation.
      *
-     * @param guild The guild to modify
-     * @param open true to make the guild open, false otherwise
+     * @param guild  The guild to modify
+     * @param open   true to make the guild open, false otherwise
      * @param player The player making the change (for messaging)
-     * @return true if the operation was successful, false otherwise
      */
-    public boolean setGuildOpen(Guild guild, boolean open, Player player) {
+    public void setGuildOpen(Guild guild, boolean open, Player player) {
         guild.setOpen(open);
         saveConfiguration();
 
@@ -941,7 +945,6 @@ public class GuildManager {
             player.sendMessage(Component.text("Guild is now closed. Players need an invitation to join.", NamedTextColor.YELLOW));
         }
 
-        return true;
     }
 
     /**
@@ -1089,30 +1092,27 @@ public class GuildManager {
      * @param guild The unmanned guild to claim for
      * @param chunk The chunk to claim
      * @param admin The admin performing the action
-     * @return true if the chunk was claimed, false otherwise
      */
-    public boolean adminClaimChunk(Guild guild, Chunk chunk, Player admin) {
+    public void adminClaimChunk(Guild guild, Chunk chunk, Player admin) {
         // Check if the guild is unmanned
         if (!isUnmannedGuild(guild)) {
             admin.sendMessage(Component.text("You can only claim chunks for unmanned guilds with admin permissions!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Check if the chunk is already claimed
         if (isChunkClaimed(chunk)) {
             Guild owner = getChunkOwner(chunk);
             admin.sendMessage(Component.text("This chunk is already claimed by " + owner.getName() + "!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Claim the chunk
         if (guild.claimChunk(chunk)) {
             saveConfiguration();
             admin.sendMessage(Component.text("Chunk claimed for " + guild.getName() + "!", NamedTextColor.GREEN));
-            return true;
         }
 
-        return false;
     }
 
     /**
@@ -1131,7 +1131,7 @@ public class GuildManager {
         }
 
         // Check if the chunk is claimed by the guild
-        if (!guild.isChunkClaimed(chunk)) {
+        if (guild.isChunkUnClaimed(chunk)) {
             admin.sendMessage(Component.text("This chunk is not claimed by " + guild.getName() + "!", NamedTextColor.RED));
             return false;
         }
@@ -1268,12 +1268,11 @@ public class GuildManager {
     /**
      * Sets whether mobs can spawn in a guild's claimed chunks.
      *
-     * @param guild The guild to modify
+     * @param guild   The guild to modify
      * @param enabled true to allow mob spawning, false to deny it
-     * @param player The player making the change (for messaging)
-     * @return true if the operation was successful, false otherwise
+     * @param player  The player making the change (for messaging)
      */
-    public boolean setGuildMobSpawning(Guild guild, boolean enabled, Player player) {
+    public void setGuildMobSpawning(Guild guild, boolean enabled, Player player) {
         guild.setMobSpawningEnabled(enabled);
         saveConfiguration();
 
@@ -1283,7 +1282,6 @@ public class GuildManager {
             player.sendMessage(Component.text("Mob spawning is now DENIED in your guild's claimed chunks!", NamedTextColor.RED));
         }
 
-        return true;
     }
 
     /**

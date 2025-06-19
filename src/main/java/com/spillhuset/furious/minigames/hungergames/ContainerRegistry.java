@@ -93,6 +93,10 @@ public class ContainerRegistry {
                             ConfigurationSection containerSection = containersSection.getConfigurationSection(key);
                             if (containerSection != null) {
                                 String worldName = containerSection.getString("world");
+                                if (worldName == null) {
+                                    plugin.getLogger().warning("World name is null for container at key: " + key);
+                                    continue;
+                                }
                                 World world = plugin.getServer().getWorld(worldName);
                                 if (world != null) {
                                     Location location = new Location(

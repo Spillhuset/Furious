@@ -67,7 +67,7 @@ public class HomesSetSubCommand implements SubCommand {
 
         // Check if the player is in a claimed chunk
         Chunk chunk = player.getLocation().getChunk();
-        if (!guild.isChunkClaimed(chunk)) {
+        if (guild.isChunkUnClaimed(chunk)) {
             player.sendMessage(Component.text("You can only set guild homes within your guild's claimed chunks!", NamedTextColor.RED));
             return true;
         }

@@ -633,7 +633,7 @@ public class WarpsManager {
                     Block block = world.getBlockAt(x, y, z);
 
                     // Check if this is a frame edge block (only the edges of the box)
-                    boolean isFrameEdge = false;
+                    boolean isFrameEdge;
 
                     // Check if it's on an edge (intersection of two faces)
                     int onFaceCount = 0;
