@@ -7,18 +7,17 @@ import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.NamespacedKey;
+import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Subcommand for creating a key item.
@@ -193,7 +192,7 @@ public class KeySubCommand implements SubCommand {
         StringBuilder formatted = new StringBuilder();
 
         for (String part : parts) {
-            if (part.length() > 0) {
+            if (!part.isEmpty()) {
                 formatted.append(part.charAt(0)).append(part.substring(1).toLowerCase());
                 formatted.append(" ");
             }

@@ -6,6 +6,8 @@ import com.spillhuset.furious.enums.GuildRole;
 import com.spillhuset.furious.enums.GuildType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.Title;
+import java.time.Duration;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -88,11 +90,12 @@ public class GuildListener implements Listener {
         // Check if the player has moved to a different guild's territory
         if (toGuildUUID != null && (lastGuildUUID == null || !lastGuildUUID.equals(toGuildUUID))) {
             // Player has moved to a different guild's territory, show title-screen
-            player.sendTitle(
-                toGuild.getName(),
-                "You have entered this guild's territory",
-                10, 70, 20
+            Title title = Title.title(
+                Component.text(toGuild.getName()),
+                Component.text("You have entered this guild's territory"),
+                Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000))
             );
+            player.showTitle(title);
 
             // Update the last guild the player was in
             lastPlayerGuild.put(playerUUID, toGuildUUID);

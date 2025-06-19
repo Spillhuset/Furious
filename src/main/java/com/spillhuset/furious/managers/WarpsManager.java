@@ -6,13 +6,11 @@ import com.spillhuset.furious.entities.Warp;
 import com.spillhuset.furious.utils.EncryptionUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -31,7 +29,7 @@ public class WarpsManager {
     private final Map<Location, Warp> portalLocations; // Portal Location -> Warp
     private final File configFile;
     private FileConfiguration config;
-    private EncryptionUtil encryptionUtil;
+    private final EncryptionUtil encryptionUtil;
 
     // Configuration values
     private final double DEFAULT_WARP_COST;
@@ -215,9 +213,9 @@ public class WarpsManager {
     /**
      * Creates a new warp.
      *
-     * @param player The player creating the warp (must be op)
+     * @param player   The player creating the warp (must be op)
      * @param warpName The name of the warp
-     * @param cost The cost to use this warp
+     * @param cost     The cost to use this warp
      * @param password The password (can be null)
      * @return true if the warp was created, false otherwise
      */
@@ -255,7 +253,7 @@ public class WarpsManager {
     /**
      * Relocates an existing warp.
      *
-     * @param player The player relocating the warp (must be op)
+     * @param player   The player relocating the warp (must be op)
      * @param warpName The name of the warp
      * @return true if the warp was relocated, false otherwise
      */
@@ -293,9 +291,9 @@ public class WarpsManager {
     /**
      * Updates the cost of an existing warp.
      *
-     * @param player The player updating the cost (must be op)
+     * @param player   The player updating the cost (must be op)
      * @param warpName The name of the warp
-     * @param cost The new cost
+     * @param cost     The new cost
      * @return true if the cost was updated, false otherwise
      */
     public boolean setCost(Player player, String warpName, double cost) {
@@ -326,7 +324,7 @@ public class WarpsManager {
     /**
      * Updates the password of an existing warp.
      *
-     * @param player The player updating the password (must be op)
+     * @param player   The player updating the password (must be op)
      * @param warpName The name of the warp
      * @param password The new password (null to remove)
      * @return true if the password was updated, false otherwise
@@ -367,7 +365,7 @@ public class WarpsManager {
     /**
      * Renames an existing warp.
      *
-     * @param player The player renaming the warp (must be op)
+     * @param player  The player renaming the warp (must be op)
      * @param oldName The current name of the warp
      * @param newName The new name for the warp
      * @return true if the warp was renamed, false otherwise
@@ -414,7 +412,7 @@ public class WarpsManager {
     /**
      * Deletes an existing warp.
      *
-     * @param player The player deleting the warp (must be op)
+     * @param player   The player deleting the warp (must be op)
      * @param warpName The name of the warp
      * @return true if the warp was deleted, false otherwise
      */
@@ -450,9 +448,9 @@ public class WarpsManager {
     /**
      * Links a warp to a portal.
      *
-     * @param player The player linking the warp (must be op)
+     * @param player   The player linking the warp (must be op)
      * @param warpName The name of the warp
-     * @param filling The material to fill the portal with (water, lava, or air)
+     * @param filling  The material to fill the portal with (water, lava, or air)
      * @return true if the warp was linked, false otherwise
      */
     public boolean linkWarp(Player player, String warpName, String filling) {
@@ -560,8 +558,8 @@ public class WarpsManager {
     /**
      * Creates a portal between two gold blocks.
      *
-     * @param block1 The first gold block
-     * @param block2 The second gold block
+     * @param block1  The first gold block
+     * @param block2  The second gold block
      * @param filling The material to fill the portal with
      * @return The center location of the portal, or null if creation failed
      */
@@ -696,8 +694,8 @@ public class WarpsManager {
                 for (int z = minZ; z <= maxZ; z++) {
                     Block block = world.getBlockAt(x, y, z);
                     if (block.getType() == Material.CHISELED_STONE_BRICKS ||
-                        block.getType() == Material.WATER ||
-                        block.getType() == Material.LAVA) {
+                            block.getType() == Material.WATER ||
+                            block.getType() == Material.LAVA) {
                         block.setType(Material.AIR);
                     }
                 }
@@ -708,7 +706,7 @@ public class WarpsManager {
     /**
      * Teleports a player to a warp.
      *
-     * @param player The player to teleport
+     * @param player   The player to teleport
      * @param warpName The name of the warp
      * @param password The password (if required)
      * @return true if the player was teleported, false otherwise
@@ -819,7 +817,7 @@ public class WarpsManager {
      * Removes a portal when an op punches the frame.
      *
      * @param player The player punching the frame (must be op)
-     * @param block The block that was punched
+     * @param block  The block that was punched
      * @return true if a portal was removed, false otherwise
      */
     public boolean removePortalByPunch(Player player, Block block) {

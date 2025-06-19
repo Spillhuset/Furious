@@ -6,7 +6,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -123,10 +122,10 @@ public class LocksListener implements Listener {
 
         // Don't allow locks in game worlds
         if (worldName.equals(plugin.getWorldManager().getGameWorldName()) ||
-            worldName.equals(plugin.getWorldManager().getGameBackupName()) ||
-            worldName.contains("_playground") ||
-            worldName.contains("Map") ||
-            worldName.contains("Backup")) {
+                worldName.equals(plugin.getWorldManager().getGameBackupName()) ||
+                worldName.contains("_playground") ||
+                worldName.contains("Map") ||
+                worldName.contains("Backup")) {
             player.sendMessage(Component.text("Locks cannot be used in game worlds!", NamedTextColor.RED));
             event.setCancelled(true);
             return;
@@ -307,9 +306,9 @@ public class LocksListener implements Listener {
 
         // Check if the item is a lock-related item
         if (container.has(lockKey, PersistentDataType.STRING) ||
-            container.has(unlockKey, PersistentDataType.STRING) ||
-            container.has(infoKey, PersistentDataType.STRING) ||
-            container.has(keyKey, PersistentDataType.STRING)) {
+                container.has(unlockKey, PersistentDataType.STRING) ||
+                container.has(infoKey, PersistentDataType.STRING) ||
+                container.has(keyKey, PersistentDataType.STRING)) {
 
             // Prevent placing the item
             event.setCancelled(true);
@@ -341,9 +340,9 @@ public class LocksListener implements Listener {
     /**
      * Checks if an item is a key for a specific lock.
      *
-     * @param item The item to check
+     * @param item      The item to check
      * @param lockOwner The UUID of the lock owner
-     * @param block The locked block
+     * @param block     The locked block
      * @return true if the item is a key for the lock, false otherwise
      */
     private boolean checkKeyForLock(ItemStack item, UUID lockOwner, Block block) {
@@ -380,9 +379,7 @@ public class LocksListener implements Listener {
                 if (lockGuild == null) {
                     // Get the key's guild
                     Guild keyGuild = plugin.getGuildManager().getGuild(guildId);
-                    if (keyGuild != null && keyGuild.isMember(lockOwner)) {
-                        return true; // The lock owner is a member of the key's guild
-                    }
+                    return keyGuild != null && keyGuild.isMember(lockOwner); // The lock owner is a member of the key's guild
                 } else {
                     // Check if the key's guild matches the lock owner's guild
                     return lockGuild.getId().equals(guildId);

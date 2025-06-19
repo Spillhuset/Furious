@@ -10,8 +10,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-import java.util.UUID;
-
 public class WalletListener implements Listener {
     private final Furious plugin;
     private final WalletManager walletManager;
