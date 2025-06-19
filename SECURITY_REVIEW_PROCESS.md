@@ -1,145 +1,150 @@
 # Security Review Process for Furious Plugin
 
-This document outlines the process for conducting regular security reviews of the Furious plugin. Regular security reviews are essential to ensure that the plugin remains secure as it evolves and new features are added.
+This document outlines the process for conducting regular security reviews of the Furious plugin. These reviews are essential for maintaining the security and integrity of the plugin and the servers it runs on.
 
-## Schedule
+## Review Schedule
 
-Security reviews should be conducted at least once every 90 days (quarterly). The SecurityReviewManager automatically tracks when the last review was conducted and when the next one is due. Server administrators with the `furious.security.admin` permission will be notified when a security review is due.
+- Security reviews should be conducted every 90 days (configurable in `security_reviews.yml`)
+- Administrators will be notified in-game when a review is due
+- Reviews should be conducted by server administrators with the `furious.security.admin` permission
 
 ## Review Process
 
 ### 1. Preparation
 
-Before conducting a security review, gather the following information:
+- [ ] Schedule the review with all relevant administrators
+- [ ] Gather the following resources:
+  - [ ] Server logs since the last review
+  - [ ] Audit logs from the plugin
+  - [ ] List of plugin updates since the last review
+  - [ ] Previous security review documentation
 
-- List of changes made to the plugin since the last review
-- Any security incidents or reports
-- Current version of the plugin and Minecraft server
-- List of dependencies and their versions
+### 2. Configuration Review
 
-### 2. Code Review
+- [ ] Review `config.yml` for security-related settings
+- [ ] Verify permission configurations are appropriate
+- [ ] Check rate limiting settings
+- [ ] Review audit logging configuration
+- [ ] Verify encryption settings for sensitive data
 
-Review the codebase for security vulnerabilities, focusing on:
+### 3. Permission Audit
 
-- **Permission Checks**: Ensure all commands and sensitive operations have proper permission checks
-- **Input Validation**: Verify that all user input is properly validated and sanitized
-- **Error Handling**: Check for proper error handling and logging
-- **Resource Management**: Look for potential resource leaks or denial-of-service vulnerabilities
-- **Data Storage**: Ensure sensitive data is stored securely
-- **Authentication and Authorization**: Verify that authentication and authorization mechanisms are secure
-- **Dependency Security**: Check for security vulnerabilities in dependencies
+- [ ] Review all permission assignments on the server
+- [ ] Verify administrators have appropriate permissions
+- [ ] Check for any over-privileged users
+- [ ] Ensure permission inheritance is correctly configured
+- [ ] Verify permission nodes match current plugin version
 
-### 3. Testing
+### 4. Log Analysis
 
-Perform security testing to identify vulnerabilities:
+- [ ] Review audit logs for suspicious activities
+- [ ] Check for failed access attempts
+- [ ] Look for unusual patterns in administrative commands
+- [ ] Verify sensitive operations were properly authorized
+- [ ] Ensure logging is working correctly for all operations
 
-- **Permission Testing**: Test that permission checks are working correctly
-- **Input Validation Testing**: Test with malicious input to ensure proper validation
-- **Error Handling Testing**: Test error conditions to ensure proper handling
-- **Resource Management Testing**: Test resource-intensive operations to ensure proper management
-- **Authentication and Authorization Testing**: Test authentication and authorization mechanisms
+### 5. Code and Update Review
 
-### 4. Documentation
+- [ ] Review any plugin updates since the last security review
+- [ ] Check for security-related changes or fixes
+- [ ] Verify that all security features are functioning correctly
+- [ ] Test security-critical functionality
 
-Document the findings of the security review:
+### 6. Vulnerability Assessment
 
-- **Vulnerabilities**: Document any vulnerabilities found, including severity, impact, and recommended fixes
-- **Recommendations**: Document recommendations for improving security
-- **Changes**: Document any changes made to address security issues
+- [ ] Test for command injection vulnerabilities
+- [ ] Check for permission escalation possibilities
+- [ ] Verify rate limiting effectiveness
+- [ ] Test lock security and key management
+- [ ] Review data storage security
 
-### 5. Implementation
+### 7. Documentation
 
-Implement fixes for any vulnerabilities found:
+- [ ] Document all findings from the review
+- [ ] Note any vulnerabilities discovered
+- [ ] Document recommended actions
+- [ ] Update security documentation if needed
 
-- **Critical Vulnerabilities**: Fix immediately
-- **High Severity Vulnerabilities**: Fix as soon as possible
-- **Medium Severity Vulnerabilities**: Schedule for the next release
-- **Low Severity Vulnerabilities**: Consider fixing in a future release
+### 8. Remediation
 
-### 6. Verification
+- [ ] Address any vulnerabilities discovered
+- [ ] Implement recommended security improvements
+- [ ] Update configurations as needed
+- [ ] Apply any security patches
 
-Verify that the fixes address the vulnerabilities:
+### 9. Completion
 
-- **Testing**: Test the fixes to ensure they address the vulnerabilities
-- **Code Review**: Review the code changes to ensure they are correct and don't introduce new vulnerabilities
-
-### 7. Completion
-
-Mark the security review as completed:
-
-1. Use the `/security review complete [notes]` command to mark the review as completed
-2. The SecurityReviewManager will automatically schedule the next review
-
-## Commands
-
-The following commands are available for managing security reviews:
-
-- `/security status`: Show the status of security reviews (last review date, next review date, etc.)
-- `/security review complete [notes]`: Mark a security review as completed with optional notes
-- `/security review interval <days>`: Set the interval between security reviews in days
-- `/security help`: Show help for security commands
-
-## Permissions
-
-The following permissions are available for security commands:
-
-- `furious.security.admin`: Allows managing security reviews and other security-related tasks
-
-## Automated Notifications
-
-The SecurityReviewManager automatically notifies administrators when a security review is due:
-
-- **Server Log**: A warning message is logged to the server log
-- **In-Game Notification**: Administrators with the `furious.security.admin` permission are notified in-game when they join the server
-- **Daily Check**: The SecurityReviewManager checks daily if a security review is due
+- [ ] Mark the security review as completed using `/security review complete [notes]`
+- [ ] Schedule the next review based on the configured interval
+- [ ] Distribute review findings to relevant administrators
 
 ## Security Review Checklist
 
-Use the following checklist when conducting a security review:
+### Critical Security Features to Verify
 
-### Permission Checks
+#### Audit Logging
+- [ ] Verify all sensitive operations are being logged
+- [ ] Check log retention and storage
+- [ ] Ensure logs contain all necessary information
 
-- [ ] All commands have proper permission checks
-- [ ] All sensitive operations have proper permission checks
-- [ ] Permission hierarchy is properly structured
-- [ ] Default permission levels are appropriate
+#### Permission System
+- [ ] Test permission boundaries
+- [ ] Verify permission inheritance
+- [ ] Check for permission conflicts
 
-### Input Validation
+#### Locks System
+- [ ] Test lock security on various container types
+- [ ] Verify key management security
+- [ ] Check for lock bypass vulnerabilities
 
-- [ ] All user input is properly validated and sanitized
-- [ ] Input validation is consistent across the plugin
-- [ ] Input validation handles edge cases properly
+#### Encryption
+- [ ] Verify encryption of sensitive data
+- [ ] Check key management practices
+- [ ] Test encryption effectiveness
 
-### Error Handling
+#### Rate Limiting
+- [ ] Test command rate limiting
+- [ ] Verify protection against spam attacks
+- [ ] Check for rate limit bypass vulnerabilities
 
-- [ ] All errors are properly caught and handled
-- [ ] Error messages are informative but don't reveal sensitive information
-- [ ] Errors are properly logged
+## Documentation Template
 
-### Resource Management
+### Security Review Report
 
-- [ ] Resources are properly acquired and released
-- [ ] Resource limits are enforced where appropriate
-- [ ] Rate limiting is applied to prevent abuse
+**Date:** [Review Date]  
+**Reviewer:** [Reviewer Name]  
+**Plugin Version:** [Plugin Version]  
 
-### Data Storage
+#### Summary of Findings
+[Brief summary of the security review findings]
 
-- [ ] Sensitive data is stored securely
-- [ ] Data is properly validated before storage
-- [ ] Data is properly validated after retrieval
+#### Vulnerabilities Discovered
+- [List of vulnerabilities with severity ratings]
 
-### Authentication and Authorization
+#### Recommendations
+- [List of recommended actions]
 
-- [ ] Authentication mechanisms are secure
-- [ ] Authorization checks are properly implemented
-- [ ] Privilege escalation is not possible
+#### Changes Since Last Review
+- [List of significant changes since the last review]
 
-### Dependency Security
+#### Next Review
+**Scheduled Date:** [Next Review Date]  
+**Special Focus Areas:** [Areas to focus on in the next review]
 
-- [ ] Dependencies are up to date
-- [ ] Dependencies don't have known security vulnerabilities
-- [ ] Dependency usage is secure
+## Completing the Review
 
-## Conclusion
+To mark a security review as completed, use the following command:
 
-Regular security reviews are essential to ensure that the Furious plugin remains secure as it evolves. By following this process, you can identify and address security vulnerabilities before they can be exploited.
+```
+/security review complete [notes]
+```
+
+This will:
+1. Update the last review date
+2. Calculate the next review date
+3. Store the review information
+4. Notify administrators that the review is complete
+
+---
+
+*This process should be reviewed and updated regularly to ensure it remains effective and comprehensive.*
