@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -112,8 +113,15 @@ public class CreateSubCommand implements SubCommand {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 2) {
-            // No specific suggestions for warp names
-            return completions;
+            // Suggest some common warp names
+            String partial = args[1].toLowerCase();
+            List<String> suggestions = Arrays.asList("spawn", "shop", "mine", "farm", "nether", "end", "pvp", "arena");
+
+            for (String suggestion : suggestions) {
+                if (suggestion.startsWith(partial)) {
+                    completions.add(suggestion);
+                }
+            }
         } else if (args.length >= 3) {
             String partial = args[args.length - 1].toLowerCase();
 
