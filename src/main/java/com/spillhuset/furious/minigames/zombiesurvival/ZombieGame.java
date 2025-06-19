@@ -15,7 +15,6 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.sign.SignSide;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
