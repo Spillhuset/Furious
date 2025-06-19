@@ -5,6 +5,7 @@ import com.spillhuset.furious.commands.EnderseeCommand;
 import com.spillhuset.furious.commands.FeedCommand;
 import com.spillhuset.furious.commands.HealCommand;
 import com.spillhuset.furious.commands.InvseeCommand;
+import com.spillhuset.furious.commands.PermissionCommand;
 import com.spillhuset.furious.commands.SecurityCommand;
 import com.spillhuset.furious.commands.TombstonesCommand;
 import com.spillhuset.furious.commands.guild.GuildCommand;
@@ -19,6 +20,7 @@ import com.spillhuset.furious.commands.warps.WarpsCommand;
 import com.spillhuset.furious.listeners.*;
 import com.spillhuset.furious.managers.*;
 import com.spillhuset.furious.minigames.hungergames.ContainerRegistry;
+import com.spillhuset.furious.managers.PermissionManager;
 import com.spillhuset.furious.utils.AuditLogger;
 import com.spillhuset.furious.utils.EncryptionUtil;
 import com.spillhuset.furious.utils.RateLimiter;
@@ -52,6 +54,7 @@ public final class Furious extends JavaPlugin {
     private EncryptionUtil encryptionUtil;
     private BankManager bankManager;
     private BankInterestListener bankInterestListener;
+    private PermissionManager permissionManager;
     private static Furious instance;
 
     @Override
@@ -79,6 +82,7 @@ public final class Furious extends JavaPlugin {
         combatManager = new CombatManager(this);
         encryptionUtil = new EncryptionUtil(getLogger(), getDataFolder());
         bankManager = new BankManager(this);
+        permissionManager = new PermissionManager(this);
 
         getCommand("invsee").setExecutor(new InvseeCommand(this));
         getCommand("endersee").setExecutor(new EnderseeCommand(this));
@@ -96,6 +100,7 @@ public final class Furious extends JavaPlugin {
         getCommand("tombstones").setExecutor(new TombstonesCommand(this));
         getCommand("security").setExecutor(new SecurityCommand(this, securityReviewManager));
         getCommand("bank").setExecutor(new BankCommand(this));
+        getCommand("perm").setExecutor(new PermissionCommand(this));
 
         getServer().getPluginManager().registerEvents(new TeleportListener(this), this);
         getServer().getPluginManager().registerEvents(new WalletListener(this), this);
@@ -159,6 +164,9 @@ public final class Furious extends JavaPlugin {
         }
         if (bankManager != null) {
             bankManager.shutdown();
+        }
+        if (permissionManager != null) {
+            permissionManager.shutdown();
         }
     }
 
@@ -228,6 +236,10 @@ public final class Furious extends JavaPlugin {
 
     public BankManager getBankManager() {
         return bankManager;
+    }
+
+    public PermissionManager getPermissionManager() {
+        return permissionManager;
     }
 
     public ItemStack createScrapItem(double amount) {

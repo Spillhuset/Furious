@@ -25,7 +25,7 @@ A comprehensive Minecraft plugin for server administrators looking to enhance th
 
 ## Requirements
 
-- Minecraft Server 1.21+
+- Minecraft Server 1.21.5
 - Java 17 or higher
 
 ## Installation
@@ -44,7 +44,7 @@ The plugin has undergone a security audit and implements best practices for perm
 - Added self-checks in inventory commands to prevent confusion
 - Implemented secure file operations and input validation
 
-The security report was recently updated (June 15, 2023) with additional recommendations, most of which have been implemented:
+The security report was recently updated (June 20, 2023) with additional recommendations, most of which have been implemented:
 
 - Enhanced input sanitization for user-provided inputs ✓ (Implemented)
 - Secure configuration handling with encryption for sensitive data
@@ -354,7 +354,74 @@ The security review interval can be configured using the `/security review inter
   - The editInterest command can override the random interest rates
   - Permission: `furious.bank.editinterest` (default: op)
 
-## Permissions
+## Permission Management
+
+The plugin includes a comprehensive permission management system that allows server administrators to create roles, assign permissions to roles, and assign roles to players. The system supports wildcards and negated permissions.
+
+### Permission Commands
+- `/perm` (aliases: none) - Manage permissions, roles, and player permissions
+  - `/perm help` (alias: `/perm h`) - Show help for permission commands
+  - Permission: none (available to all players with any permission command access)
+
+#### Role Management Commands
+- `/perm createrole <name> [description]` (alias: `/perm cr`) - Create a new role
+  - Permission: `furious.permission.createrole` (default: op)
+- `/perm deleterole <name>` (alias: `/perm dr`) - Delete a role
+  - Permission: `furious.permission.deleterole` (default: op)
+- `/perm listroles` (alias: `/perm lr`) - List all available roles
+  - Permission: `furious.permission.listroles` (default: op)
+- `/perm roleinfo <name>` (alias: `/perm ri`) - Display detailed information about a role
+  - Permission: `furious.permission.roleinfo` (default: op)
+- `/perm setroledescription <name> <description>` (alias: `/perm srd`) - Set the description of a role
+  - Permission: `furious.permission.setroledescription` (default: op)
+
+#### Permission Management Commands
+- `/perm addpermission <role> <permission>` (alias: `/perm ap`) - Add a permission to a role
+  - Permission: `furious.permission.addpermission` (default: op)
+- `/perm removepermission <role> <permission>` (alias: `/perm rp`) - Remove a permission from a role
+  - Permission: `furious.permission.removepermission` (default: op)
+
+#### Player-Role Management Commands
+- `/perm addplayerrole <player> <role>` (alias: `/perm apr`) - Add a role to a player
+  - Permission: `furious.permission.addplayerrole` (default: op)
+- `/perm removeplayerrole <player> <role>` (alias: `/perm rpr`) - Remove a role from a player
+  - Permission: `furious.permission.removeplayerrole` (default: op)
+- `/perm listplayerroles <player>` (alias: `/perm lpr`) - List the roles assigned to a player
+  - Permission: `furious.permission.listplayerroles` (default: op)
+
+#### Player-Permission Management Commands
+- `/perm addplayerpermission <player> <permission>` (alias: `/perm app`) - Add a direct permission to a player
+  - Permission: `furious.permission.addplayerpermission` (default: op)
+- `/perm removeplayerpermission <player> <permission>` (alias: `/perm rpp`) - Remove a direct permission from a player
+  - Permission: `furious.permission.removeplayerpermission` (default: op)
+- `/perm listplayerpermissions <player>` (alias: `/perm lpp`) - List the direct permissions assigned to a player
+  - Permission: `furious.permission.listplayerpermissions` (default: op)
+
+### Permission System Features
+- **Wildcards**: Permissions can include wildcards (e.g., `furious.locks.*` grants all lock-related permissions)
+- **Negated Permissions**: Permissions can be negated by prefixing them with a minus sign (e.g., `-furious.locks.world` denies the `furious.locks.world` permission)
+- **Role Hierarchy**: Players can have multiple roles, and permissions are combined from all roles
+- **Direct Permissions**: Players can have permissions assigned directly to them, in addition to role-based permissions
+- **Default Role**: Players with no explicitly assigned roles automatically get the permissions from the "default" role
+
+### Permission Permissions
+
+- `furious.permission.*` - Access to all permission management commands
+- `furious.permission.createrole` - Create roles (default: op)
+- `furious.permission.deleterole` - Delete roles (default: op)
+- `furious.permission.listroles` - List all roles (default: op)
+- `furious.permission.roleinfo` - View detailed information about a role (default: op)
+- `furious.permission.setroledescription` - Set the description of a role (default: op)
+- `furious.permission.addpermission` - Add a permission to a role (default: op)
+- `furious.permission.removepermission` - Remove a permission from a role (default: op)
+- `furious.permission.addplayerrole` - Add a role to a player (default: op)
+- `furious.permission.removeplayerrole` - Remove a role from a player (default: op)
+- `furious.permission.listplayerroles` - List the roles assigned to a player (default: op)
+- `furious.permission.addplayerpermission` - Add a direct permission to a player (default: op)
+- `furious.permission.removeplayerpermission` - Remove a direct permission from a player (default: op)
+- `furious.permission.listplayerpermissions` - List the direct permissions assigned to a player (default: op)
+
+## Other Permissions
 
 ### Teleport Permissions
 - `furious.teleport.*` - Access to all teleport commands
