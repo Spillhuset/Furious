@@ -89,8 +89,8 @@ public class ClaimSubCommand implements GuildSubCommand {
                     return true;
             }
 
-            // Claim the chunk for the unmanned guild
-            plugin.getGuildManager().claimChunk(unmannedGuild, player.getLocation().getChunk(), player);
+            // Claim the chunk for the unmanned guild using admin claim method
+            plugin.getGuildManager().adminClaimChunk(unmannedGuild, player.getLocation().getChunk(), player);
             return true;
         } else if (args.length != 1) {
             getUsage(sender);
@@ -116,8 +116,8 @@ public class ClaimSubCommand implements GuildSubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
-        // Only provide unmanned guild completions for ops
-        if ((sender.isOp() || sender.hasPermission("furious.guild.claim.unmanned")) && args.length == 2) {
+        // Provide unmanned guild completions for ops and admins
+        if ((sender.isOp() || sender.hasPermission("furious.guild.claim.unmanned") || sender.hasPermission("furious.guild.admin")) && args.length == 2) {
             String partial = args[1].toUpperCase();
             List<String> unmannedGuilds = List.of("SAFE", "WAR", "WILD");
 
