@@ -17,7 +17,7 @@ public class TeleportTask {
     private final Furious plugin;
     private BukkitTask countdownTask;
     private final Location startLocation;
-    private PotionEffect nauseaEffect;
+    private final PotionEffect nauseaEffect;
 
     public TeleportTask(Player player, Location destination, int delay, Furious plugin) {
         this.player = player;

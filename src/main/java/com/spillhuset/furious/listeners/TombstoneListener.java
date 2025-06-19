@@ -27,7 +27,6 @@ import org.bukkit.inventory.meta.ItemMeta;
  * Listener for tombstone-related events.
  */
 public class TombstoneListener implements Listener {
-    private final Furious plugin;
     private final TombstoneManager tombstoneManager;
     private final WalletManager walletManager;
 
@@ -37,7 +36,6 @@ public class TombstoneListener implements Listener {
      * @param plugin The plugin instance
      */
     public TombstoneListener(Furious plugin) {
-        this.plugin = plugin;
         this.tombstoneManager = plugin.getTombstoneManager();
         this.walletManager = plugin.getWalletManager();
     }
@@ -140,7 +138,7 @@ public class TombstoneListener implements Listener {
             }
         }
 
-        if (!isTombstoneInventory || clickedTombstone == null) {
+        if (!isTombstoneInventory) {
             return;
         }
 
@@ -156,7 +154,11 @@ public class TombstoneListener implements Listener {
             return;
         }
 
-        String displayName = PlainTextComponentSerializer.plainText().serialize(meta.displayName());
+        Component displayNameComponent = meta.displayName();
+        if (displayNameComponent == null) {
+            return;
+        }
+        String displayName = PlainTextComponentSerializer.plainText().serialize(displayNameComponent);
         String currencySymbol = walletManager.getCurrencySymbol();
 
         // Check if the display name starts with the currency symbol
@@ -209,13 +211,12 @@ public class TombstoneListener implements Listener {
             Tombstone tombstone = tombstoneManager.getTombstoneByArmorStand(armorStand);
             if (tombstone != null) {
                 // If the damager is not a player, cancel the event
-                if (!(event.getDamager() instanceof Player)) {
+                if (!(event.getDamager() instanceof Player player)) {
                     event.setCancelled(true);
                     return;
                 }
 
                 // If the damager is a player, allow the damage and remove the tombstone
-                Player player = (Player) event.getDamager();
 
                 // Notify the player
                 player.sendMessage(Component.text("You have destroyed a tombstone.", NamedTextColor.YELLOW));

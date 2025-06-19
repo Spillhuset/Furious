@@ -6,6 +6,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.RenderType;
@@ -125,7 +126,7 @@ public class CombatManager {
         Objective objective = scoreboard.getObjective("combat");
 
         if (objective == null) {
-            objective = scoreboard.registerNewObjective("combat", "dummy", Component.text("Combat Status", NamedTextColor.RED), RenderType.INTEGER);
+            objective = scoreboard.registerNewObjective("combat", Criteria.DUMMY, Component.text("Combat Status", NamedTextColor.RED), RenderType.INTEGER);
             objective.setDisplaySlot(DisplaySlot.BELOW_NAME);
         }
 

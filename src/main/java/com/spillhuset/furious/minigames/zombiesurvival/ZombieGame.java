@@ -1,7 +1,6 @@
 package com.spillhuset.furious.minigames.zombiesurvival;
 
 import com.spillhuset.furious.Furious;
-import com.spillhuset.furious.enums.MinigameState;
 import com.spillhuset.furious.enums.MinigameType;
 import com.spillhuset.furious.managers.MinigameManager;
 import com.spillhuset.furious.minigames.ConfigurableMinigame;
@@ -20,15 +19,10 @@ import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * ZombieGame implementation of ConfigurableMinigame
@@ -366,10 +360,10 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
      * Enum representing different difficulty levels for the zombie game
      */
     public enum ZombieDifficulty {
-        EASY(Material.DIAMOND_HELMET,Material.DIAMOND_CHESTPLATE,Material.DIAMOND_LEGGINGS,Material.DIAMOND_BOOTS,Material.DIAMOND_SWORD),    // Diamond armor, diamond sword
-        NORMAL(Material.IRON_HELMET,Material.IRON_CHESTPLATE,Material.IRON_LEGGINGS,Material.IRON_BOOTS,Material.IRON_SWORD),  // Iron armor, iron sword
-        HARD(Material.LEATHER_HELMET,Material.LEATHER_CHESTPLATE,Material.LEATHER_LEGGINGS,Material.LEATHER_BOOTS,Material.WOODEN_SWORD),    // Leather armor, wooden sword
-        INSANE(null,null,null,null,null);   // No armor, no weapon
+        EASY(Material.DIAMOND_HELMET, Material.DIAMOND_CHESTPLATE, Material.DIAMOND_LEGGINGS, Material.DIAMOND_BOOTS, Material.DIAMOND_SWORD),    // Diamond armor, diamond sword
+        NORMAL(Material.IRON_HELMET, Material.IRON_CHESTPLATE, Material.IRON_LEGGINGS, Material.IRON_BOOTS, Material.IRON_SWORD),  // Iron armor, iron sword
+        HARD(Material.LEATHER_HELMET, Material.LEATHER_CHESTPLATE, Material.LEATHER_LEGGINGS, Material.LEATHER_BOOTS, Material.WOODEN_SWORD),    // Leather armor, wooden sword
+        INSANE(null, null, null, null, null);   // No armor, no weapon
 
         private final Material helmet;
         private final Material chestplate;

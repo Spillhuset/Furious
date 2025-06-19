@@ -24,14 +24,6 @@ public interface GuildSubCommand extends SubCommand {
      */
     GuildRole getRequiredRole();
 
-    /**
-     * Checks if the player needs to be the owner to execute this command.
-     *
-     * @return true if the player needs to be the owner, false otherwise
-     */
-    default boolean requiresOwner() {
-        return getRequiredRole() == GuildRole.OWNER;
-    }
 
     /**
      * Checks if a player has the required role for this command.
@@ -56,7 +48,6 @@ public interface GuildSubCommand extends SubCommand {
             case ADMIN -> isGuildOwner(player) || hasRole(player, GuildRole.ADMIN);
             case MOD -> isGuildOwner(player) || hasRole(player, GuildRole.ADMIN) || hasRole(player, GuildRole.MOD);
             case USER -> true; // All guild members are at least users
-            default -> false;
         };
     }
 
@@ -76,7 +67,7 @@ public interface GuildSubCommand extends SubCommand {
      * Checks if a player is in a guild.
      *
      * @param player The player to check
-     * @return true if the player is in a guild, false otherwise
+     * @return the Guild the player is in, or null if not in a guild
      */
     default Guild isInGuild(@NotNull Player player) {
         return isInGuild(player.getUniqueId());
@@ -86,7 +77,7 @@ public interface GuildSubCommand extends SubCommand {
      * Checks if a player is in a guild by UUID.
      *
      * @param playerUUID The UUID of the player to check
-     * @return true if the player is in a guild, false otherwise
+     * @return the Guild the player is in, or null if not in a guild
      */
     default Guild isInGuild(@NotNull UUID playerUUID) {
         return Furious.getInstance().getGuildManager().getPlayerGuild(playerUUID);

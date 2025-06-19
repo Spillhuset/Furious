@@ -171,12 +171,12 @@ public class WorldSubCommand implements GuildSubCommand {
     }
 
     @Override
-    public boolean checkGuildPermission(CommandSender sender) {
+    public boolean checkGuildPermission(@NotNull CommandSender sender) {
         return sender.hasPermission(getPermission());
     }
 
     @Override
-    public boolean checkGuildPermission(CommandSender sender, boolean sendMessage) {
+    public boolean checkGuildPermission(@NotNull CommandSender sender, boolean sendMessage) {
         boolean hasPermission = sender.hasPermission(getPermission());
         if (!hasPermission && sendMessage) {
             sender.sendMessage(Component.text("You don't have permission to use this command!", NamedTextColor.RED));

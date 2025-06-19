@@ -80,7 +80,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         if (args.length == 0) {
             showHelp(sender);
             return true;
@@ -124,7 +124,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
 
             // Display commands based on permissions
             for (SubCommand subCommand : subCommands.values()) {
-                boolean canUse = false;
+                boolean canUse;
 
                 if (subCommand instanceof GuildSubCommand guildSubCommand) {
                     canUse = guildSubCommand.checkGuildPermission(sender, false);
@@ -156,13 +156,13 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
             for (SubCommand subCmd : subCommands.values()) {
-                boolean canUse = false;
+                boolean canUse;
 
                 if (subCmd instanceof GuildSubCommand guildSubCmd) {
                     canUse = guildSubCmd.checkGuildPermission(sender, false);
@@ -177,7 +177,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         } else if (args.length > 1) {
             SubCommand subCommand = subCommands.get(args[0].toLowerCase());
             if (subCommand != null) {
-                boolean canUse = false;
+                boolean canUse;
 
                 if (subCommand instanceof GuildSubCommand guildSubCommand) {
                     canUse = guildSubCommand.checkGuildPermission(sender, false);

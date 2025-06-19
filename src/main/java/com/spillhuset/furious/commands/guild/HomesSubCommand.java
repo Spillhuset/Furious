@@ -188,7 +188,7 @@ public class HomesSubCommand implements GuildSubCommand {
     }
 
     @Override
-    public boolean checkGuildPermission(CommandSender sender) {
+    public boolean checkGuildPermission(@NotNull CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
             return false;
