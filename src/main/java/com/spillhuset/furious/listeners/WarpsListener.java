@@ -42,13 +42,34 @@ public class WarpsListener implements Listener {
         }
 
         Player player = event.getPlayer();
+
+        // Skip if the player is already teleporting
+        if (plugin.getTeleportManager().isPlayerTeleporting(player)) {
+            return;
+        }
+
         Location location = player.getLocation();
+
+        // Debug log
+        plugin.getLogger().info("[DEBUG] Player " + player.getName() + " moved to " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
 
         // Check if the player is in a portal
         Warp warp = plugin.getWarpsManager().getWarpByPortal(location);
         if (warp != null) {
+            // Debug log
+            plugin.getLogger().info("[DEBUG] Player " + player.getName() + " is in portal for warp " + warp.getName());
+
             // Teleport the player to the warp
-            plugin.getWarpsManager().teleportToWarp(player, warp.getName(), null);
+            plugin.getLogger().info("[DEBUG] Attempting to teleport player " + player.getName() + " to warp " + warp.getName());
+            boolean success = plugin.getWarpsManager().teleportToWarp(player, warp.getName(), null);
+            plugin.getLogger().info("[DEBUG] Teleport success: " + success);
+        } else {
+            // Debug log
+            plugin.getLogger().info("[DEBUG] Player " + player.getName() + " is not in a portal");
+
+            // Check if the player is standing on a portal block
+            Material blockType = location.getBlock().getType();
+            plugin.getLogger().info("[DEBUG] Player is standing on block type: " + blockType.name());
         }
     }
 

@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -39,9 +40,10 @@ public class LinkSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/warps link <name> [water|lava|air] - Links a warp to a portal", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/warps link <name> [filling] - Links a warp to a portal", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("You must be looking at a gold block when using this command.", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("The gold block must have another gold block placed diagonally from it.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Valid filling materials: water, real_water, lava, air, colored glass panes, iron bars, fences, chain", NamedTextColor.YELLOW));
     }
 
     @Override
@@ -66,11 +68,7 @@ public class LinkSubCommand implements SubCommand {
         String warpName = args[1];
         String filling = args.length >= 3 ? args[2].toLowerCase() : "air";
 
-        // Validate filling
-        if (!filling.equals("water") && !filling.equals("lava") && !filling.equals("air")) {
-            sender.sendMessage(Component.text("Invalid filling material! Use 'water', 'lava', or 'air'.", NamedTextColor.RED));
-            return true;
-        }
+        // Validation is handled by the WarpsManager.linkWarp method
 
         // Link the warp to a portal
         if (plugin.getWarpsManager().linkWarp(player, warpName, filling)) {
@@ -96,7 +94,18 @@ public class LinkSubCommand implements SubCommand {
         } else if (args.length == 3 && sender.isOp()) {
             // Suggest filling materials
             String partial = args[2].toLowerCase();
-            for (String material : new String[]{"water", "lava", "air"}) {
+            List<String> validFillings = Arrays.asList(
+                "water", "real_water", "lava", "air",
+                "white_glass", "orange_glass", "magenta_glass", "light_blue_glass",
+                "yellow_glass", "lime_glass", "pink_glass", "gray_glass",
+                "light_gray_glass", "cyan_glass", "purple_glass", "blue_glass",
+                "brown_glass", "green_glass", "red_glass", "black_glass",
+                "iron_bars", "oak_fence", "spruce_fence", "birch_fence",
+                "jungle_fence", "acacia_fence", "dark_oak_fence", "crimson_fence",
+                "warped_fence", "chain"
+            );
+
+            for (String material : validFillings) {
                 if (material.startsWith(partial)) {
                     completions.add(material);
                 }

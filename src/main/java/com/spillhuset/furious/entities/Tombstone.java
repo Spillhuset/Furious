@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.inventory.Inventory;
+import net.kyori.adventure.text.Component;
 
 import java.util.UUID;
 
@@ -36,7 +37,7 @@ public class Tombstone {
         this.location = location;
         this.armorStand = armorStand;
         this.creationTime = creationTime;
-        this.inventory = Bukkit.createInventory(null, 54, "Tombstone of " + playerName);
+        this.inventory = Bukkit.createInventory(null, 54, Component.text("Tombstone of " + playerName));
     }
 
     /**

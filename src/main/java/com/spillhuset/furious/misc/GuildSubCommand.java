@@ -138,6 +138,11 @@ public interface GuildSubCommand extends SubCommand {
             return false;
         }
 
+        // Allow ops to bypass guild-specific checks
+        if (sender.isOp() || sender.hasPermission("furious.guild.admin")) {
+            return true;
+        }
+
         // If not a player, they can't have guild roles
         if (!(sender instanceof Player player)) {
             if (feedback) {

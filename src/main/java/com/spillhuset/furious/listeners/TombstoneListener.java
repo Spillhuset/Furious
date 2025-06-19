@@ -6,6 +6,7 @@ import com.spillhuset.furious.managers.TombstoneManager;
 import com.spillhuset.furious.managers.WalletManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
@@ -155,7 +156,7 @@ public class TombstoneListener implements Listener {
             return;
         }
 
-        String displayName = meta.getDisplayName();
+        String displayName = PlainTextComponentSerializer.plainText().serialize(meta.displayName());
         String currencySymbol = walletManager.getCurrencySymbol();
 
         // Check if the display name starts with the currency symbol

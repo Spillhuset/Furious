@@ -319,7 +319,8 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
         Player player = event.getPlayer();
 
         // Check if the player is in this game's queue
-        if (!manager.getPlayerGame(player).equalsIgnoreCase(getName())) {
+        String playerGame = manager.getPlayerGame(player);
+        if (playerGame == null || !playerGame.equalsIgnoreCase(getName())) {
             return;
         }
 

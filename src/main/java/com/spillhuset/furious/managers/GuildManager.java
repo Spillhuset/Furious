@@ -205,7 +205,7 @@ public class GuildManager {
                         if (guildSection.contains("claimed-chunks")) {
                             List<String> claimedChunksList = guildSection.getStringList("claimed-chunks");
                             for (String chunkStr : claimedChunksList) {
-                                ((Set<String>)guild.getClaimedChunks()).add(chunkStr);
+                                guild.claimChunkFromString(chunkStr);
                             }
                         }
 
@@ -224,7 +224,7 @@ public class GuildManager {
                         for (String requestIdStr : joinRequestsList) {
                             try {
                                 UUID requestId = UUID.fromString(requestIdStr);
-                                ((Set<UUID>)guild.getJoinRequests()).add(requestId);
+                                guild.addJoinRequest(requestId);
                             } catch (IllegalArgumentException e) {
                                 plugin.getLogger().warning("Invalid UUID in join requests for guild " + guildIdStr + ": " + requestIdStr);
                             }

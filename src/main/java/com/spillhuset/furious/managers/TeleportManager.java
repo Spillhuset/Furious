@@ -11,6 +11,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +25,9 @@ public class TeleportManager {
     private final File configFile;
     private FileConfiguration config;
     private final Map<UUID, TeleportTask> teleportTasks = new HashMap<>();
+    private final Map<UUID, BukkitTask> preTeleportTasks = new HashMap<>(); // players in pre-teleport state
     private final int TELEPORT_DELAY = 10; // seconds
+    private final int PRE_TELEPORT_DELAY = 5; // seconds
 
     public TeleportManager(Furious plugin) {
         this.plugin = plugin;
@@ -53,8 +56,31 @@ public class TeleportManager {
         }
     }
 
+    /**
+     * Cancels a pre-teleport task for a player.
+     *
+     * @param player The player whose pre-teleport task should be cancelled
+     */
+    public void cancelPreTeleportTask(Player player) {
+        BukkitTask task = preTeleportTasks.remove(player.getUniqueId());
+        if (task != null) {
+            task.cancel();
+            player.sendMessage(Component.text("Teleport preparation cancelled!", NamedTextColor.RED));
+        }
+    }
+
     public boolean isPlayerTeleporting(Player player) {
         return teleportTasks.containsKey(player.getUniqueId());
+    }
+
+    /**
+     * Checks if a player is in the pre-teleport state (waiting for the teleport countdown to begin).
+     *
+     * @param player The player to check
+     * @return True if the player is in the pre-teleport state, false otherwise
+     */
+    public boolean isPlayerInPreTeleport(Player player) {
+        return preTeleportTasks.containsKey(player.getUniqueId());
     }
 
 
@@ -267,6 +293,18 @@ public class TeleportManager {
             return false;
         }
 
+        // Check if the requester is in the pre-teleport state
+        if (isPlayerInPreTeleport(requester)) {
+            requester.sendMessage(Component.text("You are preparing for teleport. Please wait.", NamedTextColor.RED));
+            return false;
+        }
+
+        // Check if the requester is already teleporting
+        if (isPlayerTeleporting(requester)) {
+            requester.sendMessage(Component.text("You are already teleporting. Please wait.", NamedTextColor.RED));
+            return false;
+        }
+
         // Check if the target has already received a request from the requester
         incomingRequests.computeIfAbsent(target.getUniqueId(), k -> new HashSet<>()).add(requester.getUniqueId());
         // Add outgoing request (e.g., 60 seconds)
@@ -294,8 +332,27 @@ public class TeleportManager {
             // Remove request from incoming map
             removeRequest(requester, target);
 
-            // Start the teleportation process with countdown
-            teleportQueue(requester, target.getLocation());
+            // Notify the requester that their request has been accepted and they have 5 seconds to prepare
+            requester.sendMessage(Component.text("Your teleport request to " + target.getName() + " has been accepted!", NamedTextColor.GREEN));
+            requester.sendMessage(Component.text("You have " + PRE_TELEPORT_DELAY + " seconds to prepare. Don't move to avoid cancellation.", NamedTextColor.YELLOW));
+
+            // Notify the target that the requester will be teleported to them
+            target.sendMessage(Component.text(requester.getName() + " will be teleported to you in " + PRE_TELEPORT_DELAY + " seconds.", NamedTextColor.YELLOW));
+
+            // Schedule the teleport after the pre-teleport delay
+            BukkitTask task = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                // Remove from pre-teleport state
+                preTeleportTasks.remove(requester.getUniqueId());
+
+                // Start the teleportation process with countdown
+                teleportQueue(requester, target.getLocation());
+
+                // Notify the requester that the teleport process is starting
+                requester.sendMessage(Component.text("Teleport sequence initiated. Don't move!", NamedTextColor.YELLOW));
+            }, PRE_TELEPORT_DELAY * 20); // 20 ticks = 1 second
+
+            // Store the task to be able to cancel it if needed
+            preTeleportTasks.put(requester.getUniqueId(), task);
         }
     }
 
@@ -307,6 +364,12 @@ public class TeleportManager {
      */
     public void declineRequest(Player target, Player requester) {
         removeRequest(requester, target);
+
+        // Also cancel any pre-teleport task
+        cancelPreTeleportTask(requester);
+
+        // Notify the requester that their request was declined
+        requester.sendMessage(Component.text(target.getName() + " declined your teleport request.", NamedTextColor.RED));
     }
 
     /**
@@ -319,6 +382,9 @@ public class TeleportManager {
         if (targetUUID != null) {
             removeRequest(requester, plugin.getServer().getPlayer(targetUUID));
         }
+
+        // Also cancel any pre-teleport task
+        cancelPreTeleportTask(requester);
     }
 
     /**
@@ -416,6 +482,12 @@ public class TeleportManager {
         }
         teleportTasks.clear();
 
+        // Cancel all pending pre-teleport tasks
+        for (BukkitTask task : preTeleportTasks.values()) {
+            task.cancel();
+        }
+        preTeleportTasks.clear();
+
         incomingRequests.clear();
         outgoingRequests.clear();
         denyAll.clear();
@@ -448,6 +520,12 @@ public class TeleportManager {
             for (UUID requesterId : requests) {
                 outgoingRequests.remove(requesterId);
             }
+        }
+
+        // Cancel and remove any pre-teleport task
+        BukkitTask preTeleportTask = preTeleportTasks.remove(playerUUID);
+        if (preTeleportTask != null) {
+            preTeleportTask.cancel();
         }
 
         saveConfiguration();

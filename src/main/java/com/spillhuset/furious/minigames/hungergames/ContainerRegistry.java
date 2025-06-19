@@ -374,8 +374,11 @@ public class ContainerRegistry {
         if (material.getMaxDurability() > 0) {
             short maxDurability = material.getMaxDurability();
             // Set durability to 70-100% of max
-            short durability = (short) (maxDurability * (0.7 + Math.random() * 0.3));
-            item.setDurability(durability);
+            int durability = (int) (maxDurability * (0.7 + Math.random() * 0.3));
+            if (item.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable damageable) {
+                damageable.setDamage(durability);
+                item.setItemMeta(damageable);
+            }
         }
 
         return item;

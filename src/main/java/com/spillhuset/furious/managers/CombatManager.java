@@ -8,6 +8,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.RenderType;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 
@@ -124,7 +125,7 @@ public class CombatManager {
         Objective objective = scoreboard.getObjective("combat");
 
         if (objective == null) {
-            objective = scoreboard.registerNewObjective("combat", "dummy", Component.text("Combat Status", NamedTextColor.RED));
+            objective = scoreboard.registerNewObjective("combat", "dummy", Component.text("Combat Status", NamedTextColor.RED), RenderType.INTEGER);
             objective.setDisplaySlot(DisplaySlot.BELOW_NAME);
         }
 

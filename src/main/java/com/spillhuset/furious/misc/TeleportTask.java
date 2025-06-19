@@ -36,6 +36,9 @@ public class TeleportTask {
         // Apply nausea effect
         player.addPotionEffect(nauseaEffect);
 
+        // Display initial countdown in action bar
+        updateActionBar(delay);
+
         countdownTask = new BukkitRunnable() {
             private int secondsLeft = delay;
 
@@ -53,9 +56,8 @@ public class TeleportTask {
                     return;
                 }
 
-                // Display countdown message for every second
-                player.sendMessage(Component.text("Teleporting in " + secondsLeft + "...",
-                        NamedTextColor.YELLOW));
+                // Update action bar with countdown timer
+                updateActionBar(secondsLeft);
 
                 secondsLeft--;
             }
@@ -64,10 +66,15 @@ public class TeleportTask {
 
     private boolean hasPlayerMoved() {
         Location currentLoc = player.getLocation();
-        return startLocation.getWorld() != currentLoc.getWorld() ||
-                startLocation.getX() != currentLoc.getX() ||
-                startLocation.getY() != currentLoc.getY() ||
-                startLocation.getZ() != currentLoc.getZ();
+
+        // Check if player changed worlds
+        if (startLocation.getWorld() != currentLoc.getWorld()) {
+            return true;
+        }
+
+        // Allow for small movements (0.2 blocks in any direction)
+        double distanceSquared = startLocation.distanceSquared(currentLoc);
+        return distanceSquared > 0.2 * 0.2; // 0.2 blocks squared
     }
 
     private void complete() {
@@ -77,6 +84,9 @@ public class TeleportTask {
 
         // Remove nausea effect
         player.removePotionEffect(PotionEffectType.NAUSEA);
+
+        // Clear action bar
+        clearActionBar();
 
         player.sendMessage(Component.text("Teleporting...", NamedTextColor.GREEN));
         player.teleport(destination);
@@ -89,5 +99,24 @@ public class TeleportTask {
 
         // Remove nausea effect
         player.removePotionEffect(PotionEffectType.NAUSEA);
+
+        // Clear action bar
+        clearActionBar();
+    }
+
+    /**
+     * Updates the action bar with the current countdown time
+     *
+     * @param secondsLeft The number of seconds left in the countdown
+     */
+    private void updateActionBar(int secondsLeft) {
+        player.sendActionBar(Component.text("Teleporting in " + secondsLeft + "s. Don't move!", NamedTextColor.YELLOW));
+    }
+
+    /**
+     * Clears the action bar
+     */
+    private void clearActionBar() {
+        player.sendActionBar(Component.empty());
     }
 }

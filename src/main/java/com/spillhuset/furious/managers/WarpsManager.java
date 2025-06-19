@@ -15,6 +15,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.util.RayTraceResult;
 
 import java.io.File;
 import java.io.IOException;
@@ -494,15 +495,12 @@ public class WarpsManager {
         }
 
         // Find gold blocks
-        Set<Material> transparent = new HashSet<>();
-        transparent.add(Material.AIR);
-        transparent.add(Material.WATER);
-        transparent.add(Material.LAVA);
-        Block targetBlock = player.getTargetBlock(transparent, 5);
-        if (targetBlock.getType() != Material.GOLD_BLOCK) {
+        RayTraceResult rayTraceResult = player.rayTraceBlocks(5);
+        if (rayTraceResult == null || rayTraceResult.getHitBlock() == null || rayTraceResult.getHitBlock().getType() != Material.GOLD_BLOCK) {
             player.sendMessage(Component.text("You must be looking at a gold block to create a portal!", NamedTextColor.RED));
             return false;
         }
+        Block targetBlock = rayTraceResult.getHitBlock();
 
         // Find the second gold block (diagonal)
         Block secondGoldBlock = findDiagonalGoldBlock(targetBlock);
@@ -516,8 +514,20 @@ public class WarpsManager {
             filling = "air";
         } else {
             filling = filling.toLowerCase();
-            if (!filling.equals("water") && !filling.equals("lava") && !filling.equals("air")) {
-                player.sendMessage(Component.text("Invalid filling material! Use 'water', 'lava', or 'air'.", NamedTextColor.RED));
+            // Check if filling is a valid option
+            List<String> validFillings = Arrays.asList(
+                "water", "real_water", "lava", "air",
+                "white_glass", "orange_glass", "magenta_glass", "light_blue_glass",
+                "yellow_glass", "lime_glass", "pink_glass", "gray_glass",
+                "light_gray_glass", "cyan_glass", "purple_glass", "blue_glass",
+                "brown_glass", "green_glass", "red_glass", "black_glass",
+                "iron_bars", "oak_fence", "spruce_fence", "birch_fence",
+                "jungle_fence", "acacia_fence", "dark_oak_fence", "crimson_fence",
+                "warped_fence", "chain"
+            );
+
+            if (!validFillings.contains(filling)) {
+                player.sendMessage(Component.text("Invalid filling material! Valid options are: " + String.join(", ", validFillings), NamedTextColor.RED));
                 return false;
             }
         }
@@ -545,12 +555,18 @@ public class WarpsManager {
 
     /**
      * Finds a gold block placed diagonally from the given block.
+     * Supports both cubic and rectangular portal shapes.
      *
      * @param block The starting gold block
      * @return The diagonal gold block, or null if not found
      */
     private Block findDiagonalGoldBlock(Block block) {
-        // Check all possible diagonal positions
+        World world = block.getWorld();
+        int startX = block.getX();
+        int startY = block.getY();
+        int startZ = block.getZ();
+
+        // First, check the traditional 3D diagonals (cubic shape)
         for (int dx = -1; dx <= 1; dx += 2) {
             for (int dy = -1; dy <= 1; dy += 2) {
                 for (int dz = -1; dz <= 1; dz += 2) {
@@ -561,6 +577,33 @@ public class WarpsManager {
                 }
             }
         }
+
+        // If no cubic diagonal found, search for rectangular diagonals
+        // Search in a larger area (up to 10 blocks in each direction)
+        int searchRadius = 10;
+
+        // Check for gold blocks that form a rectangular diagonal
+        for (int x = startX - searchRadius; x <= startX + searchRadius; x++) {
+            for (int y = startY - searchRadius; y <= startY + searchRadius; y++) {
+                for (int z = startZ - searchRadius; z <= startZ + searchRadius; z++) {
+                    // Skip the starting block itself
+                    if (x == startX && y == startY && z == startZ) {
+                        continue;
+                    }
+
+                    // Skip blocks that are on the same plane (not diagonal)
+                    if (x == startX && y == startY) continue;
+                    if (x == startX && z == startZ) continue;
+                    if (y == startY && z == startZ) continue;
+
+                    Block checkBlock = world.getBlockAt(x, y, z);
+                    if (checkBlock.getType() == Material.GOLD_BLOCK) {
+                        return checkBlock;
+                    }
+                }
+            }
+        }
+
         return null;
     }
 
@@ -583,27 +626,127 @@ public class WarpsManager {
 
         World world = block1.getWorld();
 
-        // Create the frame with CHISELED_STONE_BRICKS
+        // Create the portal frame
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    // If it's on the edge of the box, make it a frame block
                     Block block = world.getBlockAt(x, y, z);
-                    if (x == minX || x == maxX || y == minY || y == maxY || z == minZ || z == maxZ) {
+
+                    // Check if this is a frame edge block (only the edges of the box)
+                    boolean isFrameEdge = false;
+
+                    // Check if it's on an edge (intersection of two faces)
+                    int onFaceCount = 0;
+                    if (x == minX || x == maxX) onFaceCount++;
+                    if (y == minY || y == maxY) onFaceCount++;
+                    if (z == minZ || z == maxZ) onFaceCount++;
+
+                    // It's a frame edge if it's on at least two faces (i.e., an edge)
+                    isFrameEdge = (onFaceCount >= 2);
+
+                    // If it's a frame edge, make it a frame block
+                    if (isFrameEdge) {
                         if (block.getType() != Material.GOLD_BLOCK) { // Don't replace the gold blocks
                             block.setType(Material.CHISELED_STONE_BRICKS);
                         }
                     }
-                    // Otherwise, it's inside the box, fill with the specified material
-                    else {
-                        if (filling.equals("water")) {
-                            block.setType(Material.WATER);
-                        } else if (filling.equals("lava")) {
-                            block.setType(Material.LAVA);
-                        } else {
-                            block.setType(Material.AIR);
+                    // If it's on a face but not an edge, fill with the specified material
+                    else if (onFaceCount == 1) {
+                        // Set the block type based on the filling material
+                        switch (filling) {
+                            case "water":
+                                block.setType(Material.BLUE_STAINED_GLASS_PANE);
+                                break;
+                            case "real_water":
+                                block.setType(Material.WATER);
+                                break;
+                            case "lava":
+                                block.setType(Material.LAVA);
+                                break;
+                            case "white_glass":
+                                block.setType(Material.WHITE_STAINED_GLASS_PANE);
+                                break;
+                            case "orange_glass":
+                                block.setType(Material.ORANGE_STAINED_GLASS_PANE);
+                                break;
+                            case "magenta_glass":
+                                block.setType(Material.MAGENTA_STAINED_GLASS_PANE);
+                                break;
+                            case "light_blue_glass":
+                                block.setType(Material.LIGHT_BLUE_STAINED_GLASS_PANE);
+                                break;
+                            case "yellow_glass":
+                                block.setType(Material.YELLOW_STAINED_GLASS_PANE);
+                                break;
+                            case "lime_glass":
+                                block.setType(Material.LIME_STAINED_GLASS_PANE);
+                                break;
+                            case "pink_glass":
+                                block.setType(Material.PINK_STAINED_GLASS_PANE);
+                                break;
+                            case "gray_glass":
+                                block.setType(Material.GRAY_STAINED_GLASS_PANE);
+                                break;
+                            case "light_gray_glass":
+                                block.setType(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
+                                break;
+                            case "cyan_glass":
+                                block.setType(Material.CYAN_STAINED_GLASS_PANE);
+                                break;
+                            case "purple_glass":
+                                block.setType(Material.PURPLE_STAINED_GLASS_PANE);
+                                break;
+                            case "blue_glass":
+                                block.setType(Material.BLUE_STAINED_GLASS_PANE);
+                                break;
+                            case "brown_glass":
+                                block.setType(Material.BROWN_STAINED_GLASS_PANE);
+                                break;
+                            case "green_glass":
+                                block.setType(Material.GREEN_STAINED_GLASS_PANE);
+                                break;
+                            case "red_glass":
+                                block.setType(Material.RED_STAINED_GLASS_PANE);
+                                break;
+                            case "black_glass":
+                                block.setType(Material.BLACK_STAINED_GLASS_PANE);
+                                break;
+                            case "iron_bars":
+                                block.setType(Material.IRON_BARS);
+                                break;
+                            case "oak_fence":
+                                block.setType(Material.OAK_FENCE);
+                                break;
+                            case "spruce_fence":
+                                block.setType(Material.SPRUCE_FENCE);
+                                break;
+                            case "birch_fence":
+                                block.setType(Material.BIRCH_FENCE);
+                                break;
+                            case "jungle_fence":
+                                block.setType(Material.JUNGLE_FENCE);
+                                break;
+                            case "acacia_fence":
+                                block.setType(Material.ACACIA_FENCE);
+                                break;
+                            case "dark_oak_fence":
+                                block.setType(Material.DARK_OAK_FENCE);
+                                break;
+                            case "crimson_fence":
+                                block.setType(Material.CRIMSON_FENCE);
+                                break;
+                            case "warped_fence":
+                                block.setType(Material.WARPED_FENCE);
+                                break;
+                            case "chain":
+                                block.setType(Material.CHAIN);
+                                break;
+                            default:
+                                block.setType(Material.AIR);
+                                break;
                         }
                     }
+                    // Otherwise, it's inside the box, leave it as is
                 }
             }
         }
@@ -613,6 +756,37 @@ public class WarpsManager {
         int centerY = (minY + maxY) / 2;
         int centerZ = (minZ + maxZ) / 2;
         return new Location(world, centerX, centerY, centerZ);
+    }
+
+    /**
+     * Checks if a material is part of a portal (frame or filling).
+     *
+     * @param type The material type to check
+     * @return True if the material is part of a portal, false otherwise
+     */
+    private boolean isPortalBlock(Material type) {
+        return type == Material.CHISELED_STONE_BRICKS || type == Material.GOLD_BLOCK ||
+                type == Material.WATER || type == Material.LAVA ||
+                // All stained glass panes
+                type == Material.WHITE_STAINED_GLASS_PANE || type == Material.ORANGE_STAINED_GLASS_PANE ||
+                type == Material.MAGENTA_STAINED_GLASS_PANE || type == Material.LIGHT_BLUE_STAINED_GLASS_PANE ||
+                type == Material.YELLOW_STAINED_GLASS_PANE || type == Material.LIME_STAINED_GLASS_PANE ||
+                type == Material.PINK_STAINED_GLASS_PANE || type == Material.GRAY_STAINED_GLASS_PANE ||
+                type == Material.LIGHT_GRAY_STAINED_GLASS_PANE || type == Material.CYAN_STAINED_GLASS_PANE ||
+                type == Material.PURPLE_STAINED_GLASS_PANE || type == Material.BLUE_STAINED_GLASS_PANE ||
+                type == Material.BROWN_STAINED_GLASS_PANE || type == Material.GREEN_STAINED_GLASS_PANE ||
+                type == Material.RED_STAINED_GLASS_PANE || type == Material.BLACK_STAINED_GLASS_PANE ||
+                // Legacy glass block (for backward compatibility)
+                type == Material.BLUE_STAINED_GLASS ||
+                // Iron bars
+                type == Material.IRON_BARS ||
+                // All fence types
+                type == Material.OAK_FENCE || type == Material.SPRUCE_FENCE ||
+                type == Material.BIRCH_FENCE || type == Material.JUNGLE_FENCE ||
+                type == Material.ACACIA_FENCE || type == Material.DARK_OAK_FENCE ||
+                type == Material.CRIMSON_FENCE || type == Material.WARPED_FENCE ||
+                // Chain
+                type == Material.CHAIN;
     }
 
     /**
@@ -645,14 +819,14 @@ public class WarpsManager {
             // Check X direction
             if (!foundMinX) {
                 Block block = world.getBlockAt(centerX - r, centerY, centerZ);
-                if (block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK) {
+                if (isPortalBlock(block.getType())) {
                     minX = centerX - r;
                     foundMinX = true;
                 }
             }
             if (!foundMaxX) {
                 Block block = world.getBlockAt(centerX + r, centerY, centerZ);
-                if (block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK) {
+                if (isPortalBlock(block.getType())) {
                     maxX = centerX + r;
                     foundMaxX = true;
                 }
@@ -661,14 +835,14 @@ public class WarpsManager {
             // Check Y direction
             if (!foundMinY) {
                 Block block = world.getBlockAt(centerX, centerY - r, centerZ);
-                if (block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK) {
+                if (isPortalBlock(block.getType())) {
                     minY = centerY - r;
                     foundMinY = true;
                 }
             }
             if (!foundMaxY) {
                 Block block = world.getBlockAt(centerX, centerY + r, centerZ);
-                if (block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK) {
+                if (isPortalBlock(block.getType())) {
                     maxY = centerY + r;
                     foundMaxY = true;
                 }
@@ -677,14 +851,14 @@ public class WarpsManager {
             // Check Z direction
             if (!foundMinZ) {
                 Block block = world.getBlockAt(centerX, centerY, centerZ - r);
-                if (block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK) {
+                if (isPortalBlock(block.getType())) {
                     minZ = centerZ - r;
                     foundMinZ = true;
                 }
             }
             if (!foundMaxZ) {
                 Block block = world.getBlockAt(centerX, centerY, centerZ + r);
-                if (block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK) {
+                if (isPortalBlock(block.getType())) {
                     maxZ = centerZ + r;
                     foundMaxZ = true;
                 }
@@ -701,9 +875,8 @@ public class WarpsManager {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     Block block = world.getBlockAt(x, y, z);
-                    if (block.getType() == Material.CHISELED_STONE_BRICKS ||
-                            block.getType() == Material.WATER ||
-                            block.getType() == Material.LAVA) {
+                    // Check if the block is part of the portal frame or filling
+                    if (isPortalBlock(block.getType())) {
                         block.setType(Material.AIR);
                     }
                 }
@@ -751,15 +924,24 @@ public class WarpsManager {
             player.sendMessage(Component.text("You paid " + cost + " to use warp '" + warpName + "'.", NamedTextColor.YELLOW));
         }
 
-        // Teleport player
+        // Get the warp location
         Location location = warp.getLocation();
         if (location == null) {
             player.sendMessage(Component.text("Warp world doesn't exist!", NamedTextColor.RED));
             return false;
         }
 
-        player.teleport(location);
-        player.sendMessage(Component.text("Teleported to warp '" + warpName + "'!", NamedTextColor.GREEN));
+        // Check if player is an op or has the admin permission
+        if (player.isOp() || player.hasPermission("furious.teleport.admin")) {
+            // Teleport immediately
+            player.teleport(location);
+            player.sendMessage(Component.text("Teleported to warp '" + warpName + "'!", NamedTextColor.GREEN));
+        } else {
+            // Start teleport sequence with countdown and nausea effect
+            plugin.getTeleportManager().teleportQueue(player, location);
+            player.sendMessage(Component.text("Starting teleport to warp '" + warpName + "'...", NamedTextColor.YELLOW));
+        }
+
         return true;
     }
 
@@ -771,22 +953,89 @@ public class WarpsManager {
      * @return The warp linked to this portal, or null if not found
      */
     public Warp getWarpByPortal(Location location) {
-        // Check if the exact location is a portal center
-        Warp warp = portalLocations.get(location);
+        plugin.getLogger().info("[DEBUG] getWarpByPortal called for location: " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
+        plugin.getLogger().info("[DEBUG] portalLocations size: " + portalLocations.size());
+
+        // Check if the exact location is a portal center (by block coordinates, not by reference)
+        Warp warp = findWarpByBlockCoordinates(location);
         if (warp != null) {
+            plugin.getLogger().info("[DEBUG] Found exact portal center match for warp: " + warp.getName());
             return warp;
         }
 
+        // Log some portal locations for debugging
+        int count = 0;
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            Location portalLoc = entry.getKey();
+            Warp portalWarp = entry.getValue();
+            plugin.getLogger().info("[DEBUG] Portal #" + count + ": " + portalLoc.getBlockX() + ", " + portalLoc.getBlockY() + ", " + portalLoc.getBlockZ() + " -> " + portalWarp.getName());
+            count++;
+            if (count >= 5) break; // Only log the first 5 portals to avoid spam
+        }
+
         // Check nearby blocks (portal might be larger than 1 block)
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
+        // Use a larger search radius to better detect when a player is inside a portal
+        plugin.getLogger().info("[DEBUG] Checking nearby blocks with radius 2");
+        for (int x = -2; x <= 2; x++) {
+            for (int y = -2; y <= 2; y++) {
+                for (int z = -2; z <= 2; z++) {
                     Location checkLoc = location.clone().add(x, y, z);
-                    warp = portalLocations.get(checkLoc);
+                    warp = findWarpByBlockCoordinates(checkLoc);
                     if (warp != null) {
+                        plugin.getLogger().info("[DEBUG] Found portal center match at offset " + x + ", " + y + ", " + z + " for warp: " + warp.getName());
                         return warp;
                     }
                 }
+            }
+        }
+
+        // If we still haven't found a portal, check if the player is standing on a portal block
+        Block block = location.getBlock();
+        Material blockType = block.getType();
+        plugin.getLogger().info("[DEBUG] Player is standing on block type: " + blockType.name());
+        plugin.getLogger().info("[DEBUG] isPortalBlock result: " + isPortalBlock(blockType));
+
+        if (isPortalBlock(blockType)) {
+            // Search for a portal center in a larger area
+            plugin.getLogger().info("[DEBUG] Player is standing on a portal block, checking larger area with radius 5");
+            for (int x = -5; x <= 5; x++) {
+                for (int y = -5; y <= 5; y++) {
+                    for (int z = -5; z <= 5; z++) {
+                        Location checkLoc = location.clone().add(x, y, z);
+                        warp = findWarpByBlockCoordinates(checkLoc);
+                        if (warp != null) {
+                            plugin.getLogger().info("[DEBUG] Found portal center match in larger area at offset " + x + ", " + y + ", " + z + " for warp: " + warp.getName());
+                            return warp;
+                        }
+                    }
+                }
+            }
+            plugin.getLogger().info("[DEBUG] No portal center found in larger area");
+        }
+
+        plugin.getLogger().info("[DEBUG] No portal found for location: " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
+        return null;
+    }
+
+    /**
+     * Finds a warp by comparing the block coordinates of the portal locations.
+     *
+     * @param location The location to check
+     * @return The warp linked to this portal, or null if not found
+     */
+    private Warp findWarpByBlockCoordinates(Location location) {
+        int x = location.getBlockX();
+        int y = location.getBlockY();
+        int z = location.getBlockZ();
+        World world = location.getWorld();
+
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            Location portalLoc = entry.getKey();
+            if (portalLoc.getWorld().equals(world) &&
+                portalLoc.getBlockX() == x &&
+                portalLoc.getBlockY() == y &&
+                portalLoc.getBlockZ() == z) {
+                return entry.getValue();
             }
         }
 
@@ -809,7 +1058,7 @@ public class WarpsManager {
      * @return true if the block is part of a portal frame, false otherwise
      */
     public boolean isPortalFrame(Block block) {
-        return block.getType() == Material.CHISELED_STONE_BRICKS;
+        return block.getType() == Material.CHISELED_STONE_BRICKS || block.getType() == Material.GOLD_BLOCK;
     }
 
     /**
@@ -825,8 +1074,8 @@ public class WarpsManager {
             return false;
         }
 
-        // Check if the block is part of a portal frame
-        if (!isPortalFrame(block)) {
+        // Check if the block is part of a portal (frame or filling)
+        if (!isPortalFrame(block) && !isPortalBlock(block.getType())) {
             return false;
         }
 

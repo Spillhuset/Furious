@@ -373,6 +373,16 @@ public class Guild {
     }
 
     /**
+     * Claims a chunk using its string representation.
+     *
+     * @param chunkStr The string representation of the chunk (format: "worldUUID:chunkX:chunkZ")
+     * @return true if the chunk was claimed, false if it was already claimed by this guild
+     */
+    public boolean claimChunkFromString(String chunkStr) {
+        return claimedChunks.add(chunkStr);
+    }
+
+    /**
      * Gets the number of chunks claimed by this guild.
      *
      * @return The number of claimed chunks

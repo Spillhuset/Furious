@@ -11,8 +11,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /**
  * Listener for handling player responses when selecting chest types
@@ -47,14 +48,14 @@ public class ChestTypeResponseListener implements Listener {
      * @param event The chat event
      */
     @EventHandler(priority = EventPriority.NORMAL)
-    public void onPlayerChat(AsyncPlayerChatEvent event) {
+    public void onPlayerChat(AsyncChatEvent event) {
         // Only process messages from the player who placed the chest
         if (!event.getPlayer().equals(player)) {
             return;
         }
 
         // Get the message
-        String message = event.getMessage().trim();
+        String message = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
 
         // Process the response
         ContainerType type;
