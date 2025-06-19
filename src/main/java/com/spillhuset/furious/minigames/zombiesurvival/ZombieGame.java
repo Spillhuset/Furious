@@ -193,20 +193,24 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
                 }
 
                 // Check if all players are dead
-                boolean allPlayersDead = true;
-                for (UUID playerId : getPlayers()) {
-                    Player player = Bukkit.getPlayer(playerId);
-                    if (player != null && player.isOnline() && player.getGameMode() != GameMode.SPECTATOR) {
-                        allPlayersDead = false;
-                        break;
-                    }
-                }
-
-                if (allPlayersDead) {
-                    endGame();
-                }
+                checkAllPlayersDead();
             }
         }, 20L, 20L); // Run every second
+    }
+
+    private void checkAllPlayersDead() {
+        boolean allPlayersDead = true;
+        for (UUID playerId : getPlayers()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null && player.isOnline() && player.getGameMode() != GameMode.SPECTATOR) {
+                allPlayersDead = false;
+                break;
+            }
+        }
+
+        if (allPlayersDead) {
+            endGame();
+        }
     }
 
     /**
@@ -272,18 +276,7 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
         }
 
         // Check if all players are dead
-        boolean allPlayersDead = true;
-        for (UUID playerId : getPlayers()) {
-            Player gamePlayer = Bukkit.getPlayer(playerId);
-            if (gamePlayer != null && gamePlayer.isOnline() && gamePlayer.getGameMode() != GameMode.SPECTATOR) {
-                allPlayersDead = false;
-                break;
-            }
-        }
-
-        if (allPlayersDead) {
-            endGame();
-        }
+        checkAllPlayersDead();
     }
 
     @Override
