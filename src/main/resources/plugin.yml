@@ -61,6 +61,9 @@ commands:
   perm:
     description: Manage permissions, roles, and player permissions
     usage: /<command> [help|createrole|deleterole|listroles|roleinfo|setroledescription|addpermission|removepermission|addplayerrole|removeplayerrole|listplayerroles|addplayerpermission|removeplayerpermission|listplayerpermissions]
+  wallet:
+    description: Manage your wallet and trade scraps
+    usage: /<command> [pay|give|take|set]
 
 permissions:
   furious.invsee:
@@ -514,6 +517,18 @@ permissions:
   furious.permission.listplayerpermissions:
     description: Allows listing the direct permissions assigned to a player
     default: op
+
+  furious.wallet.*:
+    description: Gives access to all wallet commands
+    children:
+      furious.wallet: true
+      furious.wallet.admin: true
+  furious.wallet:
+    description: Allows basic wallet operations (check balance, pay)
+    default: true
+  furious.wallet.admin:
+    description: Allows administrative wallet operations (give, take, set)
+    default: op
   furious.*:
     description: Gives access to all furious plugin permissions
     children:
@@ -532,6 +547,7 @@ permissions:
       furious.security.*: true
       furious.bank.*: true
       furious.permission.*: true
+      furious.wallet.*: true
       furious.ratelimit.exempt: true
   furious.ratelimit.exempt:
     description: Exempts a player from all rate limits

@@ -6,6 +6,7 @@ import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -88,7 +89,10 @@ public class AddPlayerPermissionSubCommand implements SubCommand {
 
             if (playerId == null) {
                 // Try to get from offline players
-                playerId = Bukkit.getOfflinePlayer(playerName).getUniqueId();
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(playerName);
+                if (offlinePlayer != null) {
+                    playerId = offlinePlayer.getUniqueId();
+                }
             }
 
             if (playerId == null) {

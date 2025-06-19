@@ -8,6 +8,7 @@ import com.spillhuset.furious.commands.InvseeCommand;
 import com.spillhuset.furious.commands.PermissionCommand;
 import com.spillhuset.furious.commands.SecurityCommand;
 import com.spillhuset.furious.commands.TombstonesCommand;
+import com.spillhuset.furious.commands.WalletCommand;
 import com.spillhuset.furious.commands.guild.GuildCommand;
 import com.spillhuset.furious.commands.homes.HomesCommand;
 import com.spillhuset.furious.commands.locks.LocksCommand;
@@ -101,6 +102,7 @@ public final class Furious extends JavaPlugin {
         getCommand("security").setExecutor(new SecurityCommand(this, securityReviewManager));
         getCommand("bank").setExecutor(new BankCommand(this));
         getCommand("perm").setExecutor(new PermissionCommand(this));
+        getCommand("wallet").setExecutor(new WalletCommand(this));
 
         getServer().getPluginManager().registerEvents(new TeleportListener(this), this);
         getServer().getPluginManager().registerEvents(new WalletListener(this), this);

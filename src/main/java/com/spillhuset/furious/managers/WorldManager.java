@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import java.util.stream.Stream;
 
 /**
  * Manages world operations for minigames and maps
@@ -201,101 +202,23 @@ public class WorldManager {
         return false;
     }
 
-    /**
-     * Saves the GameWorld to GameBackup
-     *
-     * @param player The player who initiated the save (for feedback)
-     * @return True if save was successful, false otherwise
-     */
-    public boolean saveGameWorldToBackup(Player player) {
-        plugin.getLogger().info("Saving GameWorld to GameBackup...");
-
-        // Get the game world
-        World gameWorld = Bukkit.getWorld(GAME_WORLD_NAME);
-        if (gameWorld == null) {
-            if (player != null) {
-                player.sendMessage(Component.text("GameWorld not found!", NamedTextColor.RED));
-            }
-            return false;
-        }
-
-        // Save the game world to ensure all changes are written to disk
-        gameWorld.save();
-
-        // Get the backup world
-        World backupWorld = Bukkit.getWorld(GAME_BACKUP_NAME);
-        if (backupWorld != null) {
-            // Teleport all players out of the backup world
-            for (Player p : backupWorld.getPlayers()) {
-                p.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
-            }
-
-            // Unload the backup world
-            if (!Bukkit.unloadWorld(backupWorld, false)) {
-                if (player != null) {
-                    player.sendMessage(Component.text("Failed to unload GameBackup world!", NamedTextColor.RED));
-                }
-                return false;
-            }
-        }
-
-        // Delete the backup world directory
-        File backupFolder = new File(Bukkit.getWorldContainer(), GAME_BACKUP_NAME);
-        if (backupFolder.exists() && !deleteDirectory(backupFolder)) {
-            if (player != null) {
-                player.sendMessage(Component.text("Failed to delete GameBackup directory!", NamedTextColor.RED));
-            }
-            return false;
-        }
-
-        // Copy the game world to create the backup
-        if (copyWorld(GAME_WORLD_NAME, GAME_BACKUP_NAME)) {
-            // Load the backup world
-            WorldCreator creator = new WorldCreator(GAME_BACKUP_NAME);
-            backupWorld = creator.createWorld();
-
-            if (backupWorld != null) {
-                // Set world border
-                setWorldBorder(backupWorld);
-                if (player != null) {
-                    player.sendMessage(Component.text("GameWorld saved to GameBackup successfully!", NamedTextColor.GREEN));
-                }
-                plugin.getLogger().info("GameWorld saved to GameBackup successfully!");
-                return true;
-            } else {
-                if (player != null) {
-                    player.sendMessage(Component.text("Failed to load GameBackup world!", NamedTextColor.RED));
-                }
-                plugin.getLogger().severe("Failed to load GameBackup world!");
-            }
-        } else {
-            if (player != null) {
-                player.sendMessage(Component.text("Failed to copy GameWorld to GameBackup!", NamedTextColor.RED));
-            }
-            plugin.getLogger().severe("Failed to copy GameWorld to GameBackup!");
-        }
-
-        return false;
-    }
 
     /**
      * Teleports a player to the GameWorld
      *
      * @param player The player to teleport
-     * @return True if teleport was successful, false otherwise
      */
-    public boolean teleportToGameWorld(Player player) {
+    public void teleportToGameWorld(Player player) {
         // Get the game world
         World gameWorld = Bukkit.getWorld(GAME_WORLD_NAME);
         if (gameWorld == null) {
             player.sendMessage(Component.text("GameWorld not found!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Teleport the player to the game world
         player.teleport(gameWorld.getSpawnLocation());
         player.sendMessage(Component.text("Teleported to GameWorld!", NamedTextColor.GREEN));
-        return true;
     }
 
     /**
@@ -388,9 +311,9 @@ public class WorldManager {
             return true;
         }
 
-        try {
+        try (Stream<Path> pathStream = Files.walk(directory.toPath())) {
             // Walk through the directory and delete all files and subdirectories
-            Files.walk(directory.toPath())
+            pathStream
                     .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
                     .forEach(File::delete);
@@ -486,12 +409,12 @@ public class WorldManager {
     }
 
     /**
-     * Creates a backup of a map if it doesn't exist
+     * Ensures a backup of a map exists, creating one if needed
      *
      * @param mapName The name of the map
-     * @return True if the backup was created or already exists, false otherwise
+     * @return True if the backup exists or was successfully created, false if backup creation failed
      */
-    public boolean createMapBackupIfNeeded(String mapName) {
+    public boolean ensureMapBackupExists(String mapName) {
         if (hasMapBackup(mapName)) {
             return true;
         }
@@ -564,7 +487,7 @@ public class WorldManager {
      */
     public boolean createMapEditCopy(String mapName) {
         // Ensure the backup exists
-        if (!createMapBackupIfNeeded(mapName)) {
+        if (!ensureMapBackupExists(mapName)) {
             return false;
         }
 
@@ -648,12 +571,11 @@ public class WorldManager {
      *
      * @param player      The player
      * @param saveChanges Whether to save changes to the backup
-     * @return True if the player was removed as an editor, false otherwise
      */
-    public boolean removeMapEditor(Player player, boolean saveChanges) {
+    public void removeMapEditor(Player player, boolean saveChanges) {
         // Check if the player is editing a map
         if (!playerEditingMap.containsKey(player.getUniqueId())) {
-            return false;
+            return;
         }
 
         String mapName = playerEditingMap.get(player.getUniqueId());
@@ -686,18 +608,8 @@ public class WorldManager {
             player.sendMessage(Component.text("You have stopped editing map " + mapName + " without saving changes.", NamedTextColor.YELLOW));
         }
 
-        return true;
     }
 
-    /**
-     * Gets the set of editors for a map
-     *
-     * @param mapName The name of the map
-     * @return The set of editors for the map, or an empty set if none
-     */
-    public Set<UUID> getMapEditors(String mapName) {
-        return mapEditors.getOrDefault(mapName, Collections.emptySet());
-    }
 
     /**
      * Checks if a player is editing a map
@@ -709,24 +621,14 @@ public class WorldManager {
         return playerEditingMap.containsKey(player.getUniqueId());
     }
 
-    /**
-     * Gets the name of the map a player is editing
-     *
-     * @param player The player
-     * @return The name of the map the player is editing, or null if none
-     */
-    public String getPlayerEditingMap(Player player) {
-        return playerEditingMap.get(player.getUniqueId());
-    }
 
     /**
      * Saves changes from an editable copy of a map to its backup
      *
      * @param mapName The name of the map
      * @param player  The player who initiated the save (for feedback)
-     * @return True if the changes were saved successfully, false otherwise
      */
-    public boolean saveMapChanges(String mapName, Player player) {
+    public void saveMapChanges(String mapName, Player player) {
         String editName = getMapEditName(mapName);
         String backupName = getMapBackupName(mapName);
 
@@ -737,7 +639,7 @@ public class WorldManager {
                 player.sendMessage(Component.text("Edit copy of map " + mapName + " not found!", NamedTextColor.RED));
             }
             plugin.getLogger().severe("Edit copy of map " + mapName + " not found!");
-            return false;
+            return;
         }
 
         // Save the edit world to ensure all changes are written to disk
@@ -757,7 +659,7 @@ public class WorldManager {
                     player.sendMessage(Component.text("Failed to unload backup world for map " + mapName + "!", NamedTextColor.RED));
                 }
                 plugin.getLogger().severe("Failed to unload backup world for map " + mapName + "!");
-                return false;
+                return;
             }
         }
 
@@ -768,7 +670,7 @@ public class WorldManager {
                 player.sendMessage(Component.text("Failed to delete backup directory for map " + mapName + "!", NamedTextColor.RED));
             }
             plugin.getLogger().severe("Failed to delete backup directory for map " + mapName + "!");
-            return false;
+            return;
         }
 
         // Copy the edit world to create the backup
@@ -791,7 +693,6 @@ public class WorldManager {
                     player.sendMessage(Component.text("Changes to map " + mapName + " saved successfully!", NamedTextColor.GREEN));
                 }
                 plugin.getLogger().info("Changes to map " + mapName + " saved successfully!");
-                return true;
             } else {
                 if (player != null) {
                     player.sendMessage(Component.text("Failed to load backup world for map " + mapName + "!", NamedTextColor.RED));
@@ -805,16 +706,14 @@ public class WorldManager {
             plugin.getLogger().severe("Failed to copy edit world to backup for map " + mapName + "!");
         }
 
-        return false;
     }
 
     /**
      * Deletes the editable copy of a map
      *
      * @param mapName The name of the map
-     * @return True if the editable copy was deleted successfully, false otherwise
      */
-    public boolean deleteMapEditCopy(String mapName) {
+    public void deleteMapEditCopy(String mapName) {
         String editName = getMapEditName(mapName);
 
         // Get the edit world
@@ -829,7 +728,7 @@ public class WorldManager {
             // Unload the edit world
             if (!Bukkit.unloadWorld(editWorld, false)) {
                 plugin.getLogger().severe("Failed to unload edit world for map " + mapName + "!");
-                return false;
+                return;
             }
         }
 
@@ -837,11 +736,10 @@ public class WorldManager {
         File editFolder = new File(Bukkit.getWorldContainer(), editName);
         if (editFolder.exists() && !deleteDirectory(editFolder)) {
             plugin.getLogger().severe("Failed to delete edit directory for map " + mapName + "!");
-            return false;
+            return;
         }
 
         plugin.getLogger().info("Edit copy of map " + mapName + " deleted successfully!");
-        return true;
     }
 
     /**
@@ -853,7 +751,7 @@ public class WorldManager {
      */
     public World createMapInstance(String mapName, String uniqueId) {
         // Ensure the backup exists
-        if (!createMapBackupIfNeeded(mapName)) {
+        if (!ensureMapBackupExists(mapName)) {
             plugin.getLogger().severe("Failed to create backup for map " + mapName + "!");
             return null;
         }
@@ -919,9 +817,8 @@ public class WorldManager {
      *
      * @param mapName  The name of the map
      * @param uniqueId The unique identifier for the instance
-     * @return True if the instance was deleted successfully, false otherwise
      */
-    public boolean deleteMapInstance(String mapName, String uniqueId) {
+    public void deleteMapInstance(String mapName, String uniqueId) {
         String instanceName = getMapInstanceName(mapName, uniqueId);
 
         plugin.getLogger().info("Deleting instance " + instanceName + "...");
@@ -937,22 +834,21 @@ public class WorldManager {
             // Unload the instance world
             if (!Bukkit.unloadWorld(instanceWorld, false)) {
                 plugin.getLogger().severe("Failed to unload instance " + instanceName + "!");
-                return false;
+                return;
             }
         } else {
             // World doesn't exist, consider it deleted
-            return true;
+            return;
         }
 
         // Delete the instance world directory
         File instanceFolder = new File(Bukkit.getWorldContainer(), instanceName);
         if (instanceFolder.exists() && !deleteDirectory(instanceFolder)) {
             plugin.getLogger().severe("Failed to delete instance directory " + instanceName + "!");
-            return false;
+            return;
         }
 
         plugin.getLogger().info("Instance " + instanceName + " deleted successfully!");
-        return true;
     }
 
     /**

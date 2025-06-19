@@ -49,9 +49,9 @@ public class PlayerDataManager {
         }
 
         // If player is offline, try to load their data
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
-        if (!offlinePlayer.hasPlayedBefore()) {
-            return null; // Player has never played on this server
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(playerName);
+        if (offlinePlayer == null || !offlinePlayer.hasPlayedBefore()) {
+            return null; // Player has never played on this server or is not cached
         }
 
         // Create a message inventory to inform the user that offline viewing is not supported
@@ -79,9 +79,9 @@ public class PlayerDataManager {
         }
 
         // If player is offline, try to load their data
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
-        if (!offlinePlayer.hasPlayedBefore()) {
-            return null; // Player has never played on this server
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(playerName);
+        if (offlinePlayer == null || !offlinePlayer.hasPlayedBefore()) {
+            return null; // Player has never played on this server or is not cached
         }
 
         // Create a message inventory to inform the user that offline viewing is not supported

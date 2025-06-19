@@ -103,6 +103,11 @@ public class CreateSubCommand implements GuildSubCommand {
     }
 
     @Override
+    public boolean denyOp() {
+        return true;
+    }
+
+    @Override
     public Guild isInGuild(@NotNull Player player) {
         return plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
     }

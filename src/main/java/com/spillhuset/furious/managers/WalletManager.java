@@ -385,32 +385,18 @@ public class WalletManager {
     }
 
     /**
-     * Initializes a wallet for the specified player with a default balance of 0.0.
-     *
-     * @param playerId the unique identifier of the player for whom the wallet is being initialized
-     */
-    public void init(UUID playerId) {
-        double initialBalance = 0.0;
-        wallets.put(playerId, initialBalance);
-        logTransaction(playerId, "init", initialBalance, initialBalance);
-        saveWallets();
-    }
-
-    /**
      * Initializes a wallet for the specified player with a custom initial balance.
      *
-     * @param playerId the unique identifier of the player for whom the wallet is being initialized
-     * @param initialBalance the initial balance to set in the player's wallet
-     * @return true if the wallet was initialized successfully, false if the initial balance is negative
+     * @param playerId       the unique identifier of the player for whom the wallet is being initialized
+     * @param initialBalance the initial balance to set in the player's wallet. If negative, the method will return early without initializing the wallet.
      */
-    public boolean init(UUID playerId, double initialBalance) {
+    public void init(UUID playerId, double initialBalance) {
         if (initialBalance < 0) {
-            return false;
+            return;
         }
         wallets.put(playerId, initialBalance);
         logTransaction(playerId, "init", initialBalance, initialBalance);
         saveWallets();
-        return true;
     }
 
     /**
@@ -427,16 +413,14 @@ public class WalletManager {
      * Sets the balance for the specified player's wallet by UUID.
      *
      * @param playerId the UUID of the player whose wallet balance is to be set
-     * @param amount the new balance to set in the player's wallet
-     * @return true if the balance was set successfully, false if the amount is negative
+     * @param amount   the new balance to set in the player's wallet
      */
-    public boolean setWallet(UUID playerId, double amount) {
+    public void setWallet(UUID playerId, double amount) {
         if (amount < 0) {
-            return false;
+            return;
         }
         wallets.put(playerId, amount);
         logTransaction(playerId, "set_balance", amount, amount);
         saveWallets();
-        return true;
     }
 }

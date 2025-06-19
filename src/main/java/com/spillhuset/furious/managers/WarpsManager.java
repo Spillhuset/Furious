@@ -77,9 +77,18 @@ public class WarpsManager {
                 ConfigurationSection warpSection = warpsSection.getConfigurationSection(warpName);
                 if (warpSection != null) {
                     try {
-                        UUID warpId = UUID.fromString(warpSection.getString("id"));
-                        UUID creatorId = UUID.fromString(warpSection.getString("creator"));
-                        UUID worldId = UUID.fromString(warpSection.getString("world"));
+                        String idStr = warpSection.getString("id");
+                        String creatorStr = warpSection.getString("creator");
+                        String worldStr = warpSection.getString("world");
+
+                        if (idStr == null || creatorStr == null || worldStr == null) {
+                            plugin.getLogger().warning("Missing essential UUID field(s) in warps.yml for warp: " + warpName);
+                            continue;
+                        }
+
+                        UUID warpId = UUID.fromString(idStr);
+                        UUID creatorId = UUID.fromString(creatorStr);
+                        UUID worldId = UUID.fromString(worldStr);
                         double x = warpSection.getDouble("x");
                         double y = warpSection.getDouble("y");
                         double z = warpSection.getDouble("z");
@@ -485,7 +494,11 @@ public class WarpsManager {
         }
 
         // Find gold blocks
-        Block targetBlock = player.getTargetBlock(null, 5);
+        Set<Material> transparent = new HashSet<>();
+        transparent.add(Material.AIR);
+        transparent.add(Material.WATER);
+        transparent.add(Material.LAVA);
+        Block targetBlock = player.getTargetBlock(transparent, 5);
         if (targetBlock.getType() != Material.GOLD_BLOCK) {
             player.sendMessage(Component.text("You must be looking at a gold block to create a portal!", NamedTextColor.RED));
             return false;
@@ -511,10 +524,6 @@ public class WarpsManager {
 
         // Create portal
         Location portalLocation = createPortal(targetBlock, secondGoldBlock, filling);
-        if (portalLocation == null) {
-            player.sendMessage(Component.text("Failed to create portal! Make sure there's enough space.", NamedTextColor.RED));
-            return false;
-        }
 
         // Update warp with portal info
         if (warp.hasPortal() && warp.getPortalLocation() != null) {
@@ -561,7 +570,7 @@ public class WarpsManager {
      * @param block1  The first gold block
      * @param block2  The second gold block
      * @param filling The material to fill the portal with
-     * @return The center location of the portal, or null if creation failed
+     * @return The center location of the portal
      */
     private Location createPortal(Block block1, Block block2, String filling) {
         // Get the min and max coordinates to form a box
@@ -579,15 +588,14 @@ public class WarpsManager {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     // If it's on the edge of the box, make it a frame block
+                    Block block = world.getBlockAt(x, y, z);
                     if (x == minX || x == maxX || y == minY || y == maxY || z == minZ || z == maxZ) {
-                        Block block = world.getBlockAt(x, y, z);
                         if (block.getType() != Material.GOLD_BLOCK) { // Don't replace the gold blocks
                             block.setType(Material.CHISELED_STONE_BRICKS);
                         }
                     }
                     // Otherwise, it's inside the box, fill with the specified material
                     else {
-                        Block block = world.getBlockAt(x, y, z);
                         if (filling.equals("water")) {
                             block.setType(Material.WATER);
                         } else if (filling.equals("lava")) {
@@ -628,11 +636,11 @@ public class WarpsManager {
         int minZ = centerZ, maxZ = centerZ;
 
         // Find the boundaries of the portal
+        boolean foundMinX = false, foundMaxX = false;
+        boolean foundMinY = false, foundMaxY = false;
+        boolean foundMinZ = false, foundMaxZ = false;
+
         for (int r = 1; r <= radius; r++) {
-            // Check if we've found the frame in all directions
-            boolean foundMinX = false, foundMaxX = false;
-            boolean foundMinY = false, foundMaxY = false;
-            boolean foundMinZ = false, foundMaxZ = false;
 
             // Check X direction
             if (!foundMinX) {
@@ -755,15 +763,6 @@ public class WarpsManager {
         return true;
     }
 
-    /**
-     * Gets a warp by name.
-     *
-     * @param warpName The name of the warp
-     * @return The warp, or null if not found
-     */
-    public Warp getWarp(String warpName) {
-        return warps.get(warpName.toLowerCase());
-    }
 
     /**
      * Gets a warp by portal location.

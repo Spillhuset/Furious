@@ -118,6 +118,11 @@ public class JoinSubCommand implements GuildSubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
+        // Check permissions first
+        if (!checkGuildPermission(sender, false)) {
+            return completions;
+        }
+
         if (sender instanceof Player player && args.length == 2) {
             String partial = args[1].toLowerCase();
 
@@ -147,6 +152,11 @@ public class JoinSubCommand implements GuildSubCommand {
     @Override
     public String getPermission() {
         return "furious.guild.join";
+    }
+
+    @Override
+    public boolean denyOp() {
+        return true;
     }
 
     @Override

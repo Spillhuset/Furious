@@ -19,24 +19,8 @@ public class WalletListener implements Listener {
         this.walletManager = plugin.getWalletManager();
     }
 
-    @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getPlayer();
-        double droppedAmount = walletManager.getBalance(player);
-        if (droppedAmount > 0) {
-            if (walletManager.setBalance(player, 0)) {
-                // Drop physical scraps that other players can pick up
-                player.getWorld().dropItem(player.getLocation(),
-                        plugin.createScrapItem(droppedAmount));
-
-                player.sendMessage(Component.text("You dropped " +
-                                walletManager.formatAmount(droppedAmount) + " upon death!",
-                        NamedTextColor.RED));
-            } else {
-                plugin.getLogger().warning("Failed to set balance to 0 for player " + player.getName() + " on death");
-            }
-        }
-    }
+    // Player death is now handled by TombstoneManager
+    // This ensures scraps appear in the tombstone instead of being dropped in the world
 
     // Player join event is now handled by MessageListener
 

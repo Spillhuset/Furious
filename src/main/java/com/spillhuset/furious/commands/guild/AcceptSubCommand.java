@@ -227,13 +227,19 @@ public class AcceptSubCommand implements GuildSubCommand {
 
     @Override
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        // Check permissions first
+        if (!checkGuildPermission(sender, false)) {
+            return completions;
+        }
+
         if (!(sender instanceof Player player)) {
-            return new ArrayList<>();
+            return completions;
         }
 
         if (args.length == 2) {
             Guild playerGuild = isInGuild(player);
-            List<String> completions = new ArrayList<>();
 
             if (playerGuild != null) {
                 // Player is in a guild, suggest players who have requested to join
@@ -251,16 +257,19 @@ public class AcceptSubCommand implements GuildSubCommand {
                     }
                 }
             }
-
-            return completions;
         }
 
-        return new ArrayList<>();
+        return completions;
     }
 
     @Override
     public String getPermission() {
         return "furious.guild.accept";
+    }
+
+    @Override
+    public boolean denyOp() {
+        return true;
     }
 
     @Override

@@ -17,7 +17,7 @@ A comprehensive Minecraft plugin for server administrators looking to enhance th
 - **Economy Integration**: Built-in currency system with player wallets, transactions, and integration with other features (homes, warps)
 - **Banking System**: Store currency in banks, transfer between players, and claim bank territories
 - **Combat System**: Tracks player combat status with visual indicators and notifications. Players enter combat when they are damaged by or damage another entity, and exit combat after 10 seconds or when they die.
-- **Tombstones**: When players die, their inventory, armor, and wallet are stored in a tombstone (represented by an armor stand) that can be retrieved within a configurable time limit. Players can right-click the tombstone to access their items. Tombstones are indestructible except by player punches and will disappear when empty or when the time limit expires. Admin players don't get tombstones when they die, and tombstones won't be created for players in minigames.
+- **Tombstones**: When players die, their inventory, armor, and wallet are stored in a tombstone (represented by an armor stand) that can be retrieved within a configurable time limit. Players can right-click the tombstone to access their items. When collecting scraps from a tombstone, they are automatically added to the player's wallet balance instead of being taken as physical items. Tombstones are indestructible except by player punches and will disappear when empty or when the time limit expires. Admin players don't get tombstones when they die, and tombstones won't be created for players in minigames.
 - **Security Features**: 
   - **Audit Logging**: Detailed logging of sensitive operations like inventory viewing, teleportation, and administrative actions
   - **Rate Limiting**: Prevents command spam and abuse by limiting how frequently commands can be used
@@ -222,9 +222,9 @@ The security review interval can be configured using the `/security review inter
 
 ### Guild Commands
 - `/guild` (aliases: `/g`) - Guild command for creating and managing guilds
-  - `/guild create <name>` - Create a new guild
+  - `/guild create <name>` - Create a new guild (not available to ops)
   - `/guild invite <player>` - Invite a player to your guild
-  - `/guild join <guild>` - Join a guild you've been invited to or request to join
+  - `/guild join <guild>` - Join a guild you've been invited to or request to join (not available to ops)
   - `/guild leave` - Leave your current guild
   - `/guild info [guild]` - View information about a guild
   - `/guild list` - List all guilds
@@ -237,16 +237,16 @@ The security review interval can be configured using the `/security review inter
   - `/guild claims` - View claimed chunks of your guild
   - `/guild set mobs <allow|deny>` - Control mob spawning in guild claimed chunks
   - `/guild set open <true|false>` - Set whether the guild is open for anyone to join
-  - `/guild accept [player]` - Accept a join request or invitation
-  - `/guild decline [player]` - Decline a join request or invitation
+  - `/guild accept [player]` - Accept a join request or invitation (not available to ops)
+  - `/guild decline [player]` - Decline a join request or invitation (not available to ops)
   - `/guild homes` - Manage guild homes
   - `/guild world` - Manage guild world settings (admin only)
     - `/guild world list` - Show all worlds and their guild settings
     - `/guild world disable <world>` - Disable guilds in a world
     - `/guild world enable <world>` - Enable guilds in a world
   - Admin commands (require `furious.guild.admin` permission):
-    - `/guild claim <SAFE|WAR|WILD>` - Claim a chunk for an unmanned guild
-    - `/guild unclaim <SAFE|WAR|WILD>` - Unclaim a chunk from an unmanned guild
+    - `/guild claim <SAFE|WAR|WILD>` - Claim a chunk for an unmanned guild (available to ops)
+    - `/guild unclaim <SAFE|WAR|WILD>` - Unclaim a chunk from an unmanned guild (available to ops)
     - `/guild home <guild> [home]` - Teleport to another guild's home
     - `/guild homes <guild> [home]` - Alternative way to teleport to another guild's home
     - `/guild transfer <guild> <player>` - Transfer ownership of any guild
@@ -254,6 +254,7 @@ The security review interval can be configured using the `/security review inter
     - `/guild kick <guild> <player>` - Kick a player from any guild
   - Permission: `furious.guild.*` (includes all guild permissions)
   - Permission: `furious.guild.admin` (includes all admin guild permissions)
+  - Note: Operators (ops) cannot use the create, accept, decline, and join commands, but they can still claim and unclaim plots for unmanned guilds.
 
 ### Player Status Commands
 - `/heal [player1] [player2]...` - Heals yourself or given players to maximum
@@ -377,6 +378,17 @@ The security review interval can be configured using the `/security review inter
   - After interest is applied, new random interest rates (between 0.00 and 1.00) are set for each bank
   - The editInterest command can override the random interest rates
   - Permission: `furious.bank.editinterest` (default: op)
+
+### Wallet Commands
+- `/wallet` - Manage your wallet and trade scraps
+  - `/wallet` - Check your wallet balance
+  - `/wallet pay <player> <amount>` - Pay scraps to another player
+  - Admin commands (require `furious.wallet.admin` permission):
+    - `/wallet give <player> <amount>` - Give scraps to a player
+    - `/wallet take <player> <amount>` - Take scraps from a player
+    - `/wallet set <player> <amount>` - Set a player's wallet balance
+  - Permission: `furious.wallet` (default: true)
+  - Permission: `furious.wallet.admin` (default: op)
 
 ## Permission Management
 
@@ -563,6 +575,11 @@ The plugin includes a comprehensive permission management system that allows ser
 - `furious.bank.unclaim` - Unclaim chunks from banks (default: op)
 - `furious.bank.info` - View bank information at current location (default: true)
 - `furious.bank.admin` - Administrative bank operations (default: op)
+
+### Wallet Permissions
+- `furious.wallet.*` - Access to all wallet commands
+- `furious.wallet` - Allows basic wallet operations (check balance, pay) (default: true)
+- `furious.wallet.admin` - Allows administrative wallet operations (give, take, set) (default: op)
 
 ## Support and Contributing
 
