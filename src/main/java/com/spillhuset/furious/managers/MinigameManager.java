@@ -84,12 +84,6 @@ public class MinigameManager {
         config = YamlConfiguration.loadConfiguration(configFile);
 
         // Set default values if they don't exist
-        if (!config.contains("minPlayers.hungergame")) {
-            config.set("minPlayers.hungergame", 2);
-        }
-        if (!config.contains("maxPlayers.hungergame")) {
-            config.set("maxPlayers.hungergame", 10);
-        }
         if (!config.contains("queueTime.hungergame")) {
             config.set("queueTime.hungergame", 300); // 5 minutes in seconds
         }
@@ -299,8 +293,8 @@ public class MinigameManager {
         player.sendMessage(Component.text("You have joined the queue for " + gameName + "!", NamedTextColor.GREEN));
 
         // Check if we should start the game
-        int minPlayers = config.getInt("minPlayers." + gameName);
-        int maxPlayers = config.getInt("maxPlayers." + gameName);
+        int minPlayers = getMinPlayers(gameName);
+        int maxPlayers = getMaxPlayers(gameName);
 
         // Update the game state if it's a ConfigurableMinigame
         if (game instanceof ConfigurableMinigame configGame) {
@@ -349,14 +343,14 @@ public class MinigameManager {
                     configGame.setInQueue(entry.getValue().size());
 
                     // If queue size is now less than minimum players, change state back to READY
-                    if (entry.getValue().size() < config.getInt("minPlayers." + gameName) &&
+                    if (entry.getValue().size() < getMinPlayers(gameName) &&
                         configGame.getState() == MinigameState.COUNTDOWN) {
                         configGame.setState(MinigameState.READY);
                     }
                 }
 
                 // Check if we need to cancel the timer
-                if (entry.getValue().size() < config.getInt("minPlayers." + gameName) && queueTimers.containsKey(gameName)) {
+                if (entry.getValue().size() < getMinPlayers(gameName) && queueTimers.containsKey(gameName)) {
                     queueTimers.get(gameName).cancel();
                     queueTimers.remove(gameName);
 
@@ -386,7 +380,7 @@ public class MinigameManager {
 
         // Get the players from the queue
         List<Player> players = new ArrayList<>();
-        while (!queue.isEmpty() && players.size() < config.getInt("maxPlayers." + gameName)) {
+        while (!queue.isEmpty() && players.size() < getMaxPlayers(gameName)) {
             UUID playerId = queue.poll();
             Player player = null;
             if (playerId != null) {
@@ -397,7 +391,7 @@ public class MinigameManager {
             }
         }
 
-        if (players.size() < config.getInt("minPlayers." + gameName)) {
+        if (players.size() < getMinPlayers(gameName)) {
             // Not enough players, put them back in the queue
             for (Player player : players) {
                 queue.add(player.getUniqueId());
@@ -594,10 +588,18 @@ public class MinigameManager {
     }
 
     public int getMinPlayers(String gameName) {
+        Minigame game = games.get(gameName);
+        if (game instanceof ConfigurableMinigame configGame) {
+            return configGame.getMinPlayers();
+        }
         return config.getInt("minPlayers." + gameName);
     }
 
     public int getMaxPlayers(String gameName) {
+        Minigame game = games.get(gameName);
+        if (game instanceof ConfigurableMinigame configGame) {
+            return configGame.getMaxPlayers();
+        }
         return config.getInt("maxPlayers." + gameName);
     }
 

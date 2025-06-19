@@ -40,26 +40,9 @@ public class PermissionCommand implements CommandExecutor, TabCompleter {
      * Registers all permission subcommands.
      */
     private void registerSubCommands() {
-        // Role management
-        registerSubCommand(new CreateRoleSubCommand(plugin), "cr");
-        registerSubCommand(new DeleteRoleSubCommand(plugin), "dr");
-        registerSubCommand(new ListRolesSubCommand(plugin), "lr");
-        registerSubCommand(new RoleInfoSubCommand(plugin), "ri");
-        registerSubCommand(new SetRoleDescriptionSubCommand(plugin), "srd");
-
-        // Permission management
-        registerSubCommand(new AddPermissionSubCommand(plugin), "ap");
-        registerSubCommand(new RemovePermissionSubCommand(plugin), "rp");
-
-        // Player-role management
-        registerSubCommand(new AddPlayerRoleSubCommand(plugin), "apr");
-        registerSubCommand(new RemovePlayerRoleSubCommand(plugin), "rpr");
-        registerSubCommand(new ListPlayerRolesSubCommand(plugin), "lpr");
-
-        // Player-permission management
-        registerSubCommand(new AddPlayerPermissionSubCommand(plugin), "app");
-        registerSubCommand(new RemovePlayerPermissionSubCommand(plugin), "rpp");
-        registerSubCommand(new ListPlayerPermissionsSubCommand(plugin), "lpp");
+        // Register the subcommand hierarchy
+        registerSubCommand(new RolesSubCommand(plugin), "r");
+        registerSubCommand(new PlayerSubCommand(plugin), "p");
 
         // Help command
         registerSubCommand(new HelpSubCommand(plugin, subCommands), "h");

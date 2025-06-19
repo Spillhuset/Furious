@@ -60,7 +60,7 @@ commands:
     aliases: [b]
   perm:
     description: Manage permissions, roles, and player permissions
-    usage: /<command> [help|createrole|deleterole|listroles|roleinfo|setroledescription|addpermission|removepermission|addplayerrole|removeplayerrole|listplayerroles|addplayerpermission|removeplayerpermission|listplayerpermissions]
+    usage: /<command> [roles|player|help] or /<command> roles [create|delete|list|info|set|add|remove] or /<command> player [add|remove|list]
   wallet:
     description: Manage your wallet and trade scraps
     usage: /<command> [pay|give|take|set]
@@ -464,58 +464,6 @@ permissions:
     default: op
   furious.permission.*:
     description: Gives access to all permission management commands
-    children:
-      furious.permission.createrole: true
-      furious.permission.deleterole: true
-      furious.permission.listroles: true
-      furious.permission.roleinfo: true
-      furious.permission.setroledescription: true
-      furious.permission.addpermission: true
-      furious.permission.removepermission: true
-      furious.permission.addplayerrole: true
-      furious.permission.removeplayerrole: true
-      furious.permission.listplayerroles: true
-      furious.permission.addplayerpermission: true
-      furious.permission.removeplayerpermission: true
-      furious.permission.listplayerpermissions: true
-  furious.permission.createrole:
-    description: Allows creating roles
-    default: op
-  furious.permission.deleterole:
-    description: Allows deleting roles
-    default: op
-  furious.permission.listroles:
-    description: Allows listing all roles
-    default: op
-  furious.permission.roleinfo:
-    description: Allows viewing detailed information about a role
-    default: op
-  furious.permission.setroledescription:
-    description: Allows setting the description of a role
-    default: op
-  furious.permission.addpermission:
-    description: Allows adding a permission to a role
-    default: op
-  furious.permission.removepermission:
-    description: Allows removing a permission from a role
-    default: op
-  furious.permission.addplayerrole:
-    description: Allows adding a role to a player
-    default: op
-  furious.permission.removeplayerrole:
-    description: Allows removing a role from a player
-    default: op
-  furious.permission.listplayerroles:
-    description: Allows listing the roles assigned to a player
-    default: op
-  furious.permission.addplayerpermission:
-    description: Allows adding a direct permission to a player
-    default: op
-  furious.permission.removeplayerpermission:
-    description: Allows removing a direct permission from a player
-    default: op
-  furious.permission.listplayerpermissions:
-    description: Allows listing the direct permissions assigned to a player
     default: op
 
   furious.wallet.*:

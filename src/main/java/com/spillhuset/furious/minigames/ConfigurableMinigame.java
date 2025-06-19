@@ -6,13 +6,10 @@ import com.spillhuset.furious.enums.MinigameType;
 import com.spillhuset.furious.managers.MinigameManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,12 +29,12 @@ public class ConfigurableMinigame extends Minigame {
     /**
      * Constructor for a configurable minigame
      *
-     * @param plugin The plugin instance
-     * @param manager The minigame manager
-     * @param name The name of the minigame
-     * @param type The type of the minigame
+     * @param plugin     The plugin instance
+     * @param manager    The minigame manager
+     * @param name       The name of the minigame
+     * @param type       The type of the minigame
      * @param minPlayers The minimum number of players
-     * @param mapName The name of the map (optional)
+     * @param mapName    The name of the map (optional)
      */
     public ConfigurableMinigame(Furious plugin, MinigameManager manager, String name, MinigameType type, int minPlayers, String mapName) {
         super(plugin, manager, name);
@@ -53,9 +50,9 @@ public class ConfigurableMinigame extends Minigame {
     /**
      * Constructor for loading a minigame from configuration
      *
-     * @param plugin The plugin instance
+     * @param plugin  The plugin instance
      * @param manager The minigame manager
-     * @param config The configuration section
+     * @param config  The configuration section
      */
     public ConfigurableMinigame(Furious plugin, MinigameManager manager, ConfigurationSection config) {
         super(plugin, manager, config.getString("name"));
@@ -74,17 +71,20 @@ public class ConfigurableMinigame extends Minigame {
                 int index = Integer.parseInt(key);
                 ConfigurationSection pointSection = spawnSection.getConfigurationSection(key);
                 if (pointSection != null) {
-                    World world = Bukkit.getWorld(pointSection.getString("world"));
-                    if (world != null) {
-                        Location location = new Location(
-                                world,
-                                pointSection.getDouble("x"),
-                                pointSection.getDouble("y"),
-                                pointSection.getDouble("z"),
-                                (float) pointSection.getDouble("yaw"),
-                                (float) pointSection.getDouble("pitch")
-                        );
-                        spawnPoints.put(index, location);
+                    String worldName = pointSection.getString("world");
+                    if (worldName != null) {
+                        World world = Bukkit.getWorld(worldName);
+                        if (world != null) {
+                            Location location = new Location(
+                                    world,
+                                    pointSection.getDouble("x"),
+                                    pointSection.getDouble("y"),
+                                    pointSection.getDouble("z"),
+                                    (float) pointSection.getDouble("yaw"),
+                                    (float) pointSection.getDouble("pitch")
+                            );
+                            spawnPoints.put(index, location);
+                        }
                     }
                 }
             }
@@ -121,7 +121,7 @@ public class ConfigurableMinigame extends Minigame {
     /**
      * Sets a spawn point for the minigame
      *
-     * @param index The index of the spawn point
+     * @param index    The index of the spawn point
      * @param location The location of the spawn point
      */
     public void setSpawnPoint(int index, Location location) {
@@ -131,6 +131,9 @@ public class ConfigurableMinigame extends Minigame {
 
     /**
      * Gets a spawn point by index
+     *
+     * Note: This method is currently not used in the codebase but is maintained
+     * for API completeness and potential future use.
      *
      * @param index The index of the spawn point
      * @return The location of the spawn point, or null if not found
@@ -205,6 +208,9 @@ public class ConfigurableMinigame extends Minigame {
     /**
      * Gets the number of players in the queue
      *
+     * Note: This method is currently not used in the codebase but is maintained
+     * for API completeness and potential future use.
+     *
      * @return The number of players in the queue
      */
     public int getInQueue() {
@@ -243,7 +249,7 @@ public class ConfigurableMinigame extends Minigame {
      */
     public void stop() {
         if (state == MinigameState.QUEUE || state == MinigameState.COUNTDOWN ||
-            state == MinigameState.STARTED || state == MinigameState.FINAL) {
+                state == MinigameState.STARTED || state == MinigameState.FINAL) {
             state = MinigameState.DISABLED;
             inQueue = 0;
             if (isRunning()) {

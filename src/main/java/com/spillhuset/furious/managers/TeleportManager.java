@@ -9,6 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -33,7 +34,7 @@ public class TeleportManager {
         this.incomingRequests = new HashMap<>();
         this.outgoingRequests = new HashMap<>();
         this.denyAll = new HashSet<>();
-        this.configFile = new File(plugin.getDataFolder(), "teleport-preferences.yml");
+        this.configFile = new File(plugin.getDataFolder(), "teleport.yml");
         loadConfiguration();
     }
 
@@ -132,10 +133,10 @@ public class TeleportManager {
      */
     private void loadConfiguration() {
         if (!configFile.exists()) {
-            plugin.saveResource("teleport-preferences.yml", false);
+            plugin.saveResource("teleport.yml", false);
         }
 
-        config = plugin.getConfig();
+        config = YamlConfiguration.loadConfiguration(configFile);
 
         // Load the deny-all list from config
         List<String> denyList = config.getStringList("deny-all");
@@ -143,7 +144,7 @@ public class TeleportManager {
             try {
                 denyAll.add(UUID.fromString(uuidStr));
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid UUID in teleport-preferences.yml: " + uuidStr);
+                plugin.getLogger().warning("Invalid UUID in teleport.yml: " + uuidStr);
             }
         }
     }
@@ -173,7 +174,7 @@ public class TeleportManager {
      * @return True if the world is disabled, false otherwise.
      */
     public boolean isWorldDisabled(UUID worldUid) {
-        List<String> disabledWorlds = config.getStringList("teleport.disabled-worlds");
+        List<String> disabledWorlds = config.getStringList("disabled-worlds");
         return disabledWorlds.contains(worldUid.toString());
     }
 
@@ -184,12 +185,12 @@ public class TeleportManager {
      * @param world The world to add.
      */
     public void addDisabledWorld(World world) {
-        List<String> disabledWorlds = new ArrayList<>(config.getStringList("teleport.disabled-worlds"));
+        List<String> disabledWorlds = new ArrayList<>(config.getStringList("disabled-worlds"));
         String worldUid = world.getUID().toString();
 
         if (!disabledWorlds.contains(worldUid)) {
             disabledWorlds.add(worldUid);
-            config.set("teleport.disabled-worlds", disabledWorlds);
+            config.set("disabled-worlds", disabledWorlds);
             saveConfiguration();
         }
     }
@@ -200,11 +201,11 @@ public class TeleportManager {
      * @param world The world to remove.
      */
     public void removeDisabledWorld(World world) {
-        List<String> disabledWorlds = new ArrayList<>(config.getStringList("teleport.disabled-worlds"));
+        List<String> disabledWorlds = new ArrayList<>(config.getStringList("disabled-worlds"));
         String worldUid = world.getUID().toString();
 
         if (disabledWorlds.remove(worldUid)) {
-            config.set("teleport.disabled-worlds", disabledWorlds);
+            config.set("disabled-worlds", disabledWorlds);
             saveConfiguration();
         }
     }
@@ -228,7 +229,7 @@ public class TeleportManager {
      * @return A message to display when a player tries to teleport to a player in a different world.
      */
     private Component getCrossWorldMessage() {
-        return Component.text(config.getString("teleport.cross-world-message", "You can only teleport to players in the same world!").replace("&", "§"), NamedTextColor.RED);
+        return Component.text(config.getString("cross-world-message", "You can only teleport to players in the same world!").replace("&", "§"), NamedTextColor.RED);
     }
 
     /**
@@ -237,7 +238,7 @@ public class TeleportManager {
      * @return A message to display when a player tries to teleport in a disabled world.
      */
     private Component getDisabledWorldMessage() {
-        return Component.text(config.getString("teleport.disabled-world-message", "Teleportation is disabled in this world!").replace("&", "§"), NamedTextColor.RED);
+        return Component.text(config.getString("disabled-world-message", "Teleportation is disabled in this world!").replace("&", "§"), NamedTextColor.RED);
     }
 
     /**
@@ -246,7 +247,7 @@ public class TeleportManager {
      * @return True if the same-world-only config option is enabled, false otherwise.
      */
     private boolean isSameWorldOnly() {
-        return config.getBoolean("teleport.same-world-only", true);
+        return config.getBoolean("same-world-only", true);
     }
 
     /**

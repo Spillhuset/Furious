@@ -51,59 +51,24 @@ public class HelpSubCommand implements SubCommand {
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
         sender.sendMessage(Component.text("=== Permission Commands ===", NamedTextColor.GOLD));
 
-        // Display role management commands
-        sender.sendMessage(Component.text("=== Role Management ===", NamedTextColor.GOLD));
-        for (SubCommand subCommand : subCommands.values()) {
-            if (subCommand.getName().startsWith("create") ||
-                subCommand.getName().startsWith("delete") ||
-                subCommand.getName().startsWith("list") ||
-                subCommand.getName().startsWith("role") ||
-                subCommand.getName().startsWith("set")) {
-
-                if (subCommand.checkPermission(sender, false)) {
-                    sender.sendMessage(Component.text("/perm " + subCommand.getName(), NamedTextColor.YELLOW)
-                            .append(Component.text(" - " + subCommand.getDescription(), NamedTextColor.WHITE)));
-                }
-            }
+        // Display roles subcommand
+        SubCommand rolesCommand = subCommands.get("roles");
+        if (rolesCommand != null && rolesCommand.checkPermission(sender, false)) {
+            sender.sendMessage(Component.text("/perm roles", NamedTextColor.YELLOW)
+                    .append(Component.text(" - " + rolesCommand.getDescription(), NamedTextColor.WHITE)));
+            rolesCommand.getUsage(sender);
         }
 
-        // Display permission management commands
-        sender.sendMessage(Component.text("=== Permission Management ===", NamedTextColor.GOLD));
-        for (SubCommand subCommand : subCommands.values()) {
-            if (subCommand.getName().startsWith("add") && subCommand.getName().contains("permission") && !subCommand.getName().contains("player") ||
-                subCommand.getName().startsWith("remove") && subCommand.getName().contains("permission") && !subCommand.getName().contains("player")) {
-
-                if (subCommand.checkPermission(sender, false)) {
-                    sender.sendMessage(Component.text("/perm " + subCommand.getName(), NamedTextColor.YELLOW)
-                            .append(Component.text(" - " + subCommand.getDescription(), NamedTextColor.WHITE)));
-                }
-            }
-        }
-
-        // Display player-role management commands
-        sender.sendMessage(Component.text("=== Player-Role Management ===", NamedTextColor.GOLD));
-        for (SubCommand subCommand : subCommands.values()) {
-            if (subCommand.getName().contains("player") && subCommand.getName().contains("role")) {
-                if (subCommand.checkPermission(sender, false)) {
-                    sender.sendMessage(Component.text("/perm " + subCommand.getName(), NamedTextColor.YELLOW)
-                            .append(Component.text(" - " + subCommand.getDescription(), NamedTextColor.WHITE)));
-                }
-            }
-        }
-
-        // Display player-permission management commands
-        sender.sendMessage(Component.text("=== Player-Permission Management ===", NamedTextColor.GOLD));
-        for (SubCommand subCommand : subCommands.values()) {
-            if (subCommand.getName().contains("player") && subCommand.getName().contains("permission")) {
-                if (subCommand.checkPermission(sender, false)) {
-                    sender.sendMessage(Component.text("/perm " + subCommand.getName(), NamedTextColor.YELLOW)
-                            .append(Component.text(" - " + subCommand.getDescription(), NamedTextColor.WHITE)));
-                }
-            }
+        // Display player subcommand
+        SubCommand playerCommand = subCommands.get("player");
+        if (playerCommand != null && playerCommand.checkPermission(sender, false)) {
+            sender.sendMessage(Component.text("/perm player", NamedTextColor.YELLOW)
+                    .append(Component.text(" - " + playerCommand.getDescription(), NamedTextColor.WHITE)));
+            playerCommand.getUsage(sender);
         }
 
         // Show shorthand commands
-        sender.sendMessage(Component.text("Shorthand: /perm cr (createrole), /perm dr (deleterole), /perm lr (listroles), /perm ri (roleinfo), /perm srd (setroledescription), /perm ap (addpermission), /perm rp (removepermission), /perm apr (addplayerrole), /perm rpr (removeplayerrole), /perm lpr (listplayerroles), /perm app (addplayerpermission), /perm rpp (removeplayerpermission), /perm lpp (listplayerpermissions), /perm h (help)", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Shorthand: /perm r (roles), /perm p (player), /perm h (help)", NamedTextColor.GRAY));
 
         return true;
     }
