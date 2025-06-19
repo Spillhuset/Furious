@@ -74,12 +74,8 @@ public class EnderseeCommand extends StandaloneCommand {
 
     @Override
     protected boolean executeCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        // Check if the sender is a player
-        if (!(sender instanceof Player viewer)) {
-            sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
-            auditLogger.logFailedAccess(sender, "unknown", "view enderchest", "Command can only be used by players");
-            return true;
-        }
+        // Since denyNonPlayer() returns true, we know sender is a Player at this point
+        Player viewer = (Player) sender;
 
         // Check rate limit
         if (!rateLimiter.checkRateLimit(sender, "endersee")) {

@@ -47,6 +47,19 @@ public abstract class StandaloneCommand implements CommandExecutor, TabCompleter
     }
 
     /**
+     * Override of the checkPermission method from SubCommand.
+     * This ensures that StandaloneCommand uses the same permission checking logic as SubCommand.
+     *
+     * @param sender The command sender
+     * @param feedback Whether to send feedback messages
+     * @return true if the sender has permission, false otherwise
+     */
+    @Override
+    public boolean checkPermission(@NotNull CommandSender sender, boolean feedback) {
+        return SubCommand.super.checkPermission(sender, feedback);
+    }
+
+    /**
      * Executes the command after permission check.
      * This method should be implemented by subclasses to handle the command logic.
      *

@@ -110,6 +110,7 @@ public final class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LocksListener(this), this);
         getServer().getPluginManager().registerEvents(new TombstoneListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
+        getServer().getPluginManager().registerEvents(new MessageListener(this), this);
 
         // Register bank interest listener for tracking day cycles and applying interest
         bankInterestListener = new BankInterestListener(this);

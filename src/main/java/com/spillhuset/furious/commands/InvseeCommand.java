@@ -58,11 +58,8 @@ public class InvseeCommand extends StandaloneCommand {
 
     @Override
     protected boolean executeCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        // Check if the sender is a player
-        if (!(sender instanceof Player viewer)) {
-            sender.sendMessage(Component.text("This command can only be used by players!", NamedTextColor.RED));
-            return true;
-        }
+        // Since denyNonPlayer() returns true, we know sender is a Player at this point
+        Player viewer = (Player) sender;
 
         // Check rate limit
         if (!rateLimiter.checkRateLimit(sender, "invsee")) {
