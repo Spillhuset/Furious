@@ -239,7 +239,7 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
         spawnLoc.setY(gameWorld.getHighestBlockYAt(spawnLoc) + 1);
 
         // Spawn the zombie
-        Zombie zombie = (Zombie) gameWorld.spawnEntity(spawnLoc, EntityType.ZOMBIE);
+        gameWorld.spawnEntity(spawnLoc, EntityType.ZOMBIE);
         zombiesSpawned++;
 
         // Announce the spawn
