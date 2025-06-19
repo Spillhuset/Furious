@@ -248,7 +248,7 @@ public class WarpsManager {
         warps.put(warpName, warp);
         saveConfiguration();
 
-        player.sendMessage(Component.text("Warp '" + warpName + "' created successfully!", NamedTextColor.GREEN));
+        // Success message is now handled by the calling command
         return true;
     }
 

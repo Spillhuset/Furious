@@ -15,6 +15,26 @@ persistent-locks: true
 # Maximum number of locks a player can create (0 for unlimited)
 max-locks-per-player: 0
 
+# Maximum number of locks per block type
+max-locks:
+  doors: 5
+  containers: 10
+  blocks: 10
+
+# Cost to purchase additional lock slots (in server currency)
+lock-purchase-cost:
+  doors: 50
+  containers: 30
+  blocks: 100
+
+# Cost to create keys (in server currency)
+key-cost:
+  player: 200
+  guild: 1000
+
+# Minimum guild role required to create guild keys (USER, MOD, ADMIN, OWNER)
+guild-key-min-role: MOD
+
 # List of block types that cannot be locked
 unlockable-blocks: []
 

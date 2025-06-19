@@ -1,9 +1,11 @@
 package com.spillhuset.furious.listeners;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.entities.Guild;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -34,6 +36,7 @@ public class LocksListener implements Listener {
     private final NamespacedKey keyKey;
     private final NamespacedKey ownerKey;
     private final NamespacedKey blockTypeKey;
+    private final NamespacedKey guildKey;
 
     /**
      * Creates a new LocksListener.
@@ -48,6 +51,7 @@ public class LocksListener implements Listener {
         this.keyKey = new NamespacedKey(plugin, "key_item");
         this.ownerKey = new NamespacedKey(plugin, "owner_uuid");
         this.blockTypeKey = new NamespacedKey(plugin, "block_type");
+        this.guildKey = new NamespacedKey(plugin, "guild_key");
     }
 
     /**
@@ -61,6 +65,48 @@ public class LocksListener implements Listener {
 
         // Only handle right-clicks on blocks with items
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || item == null || block == null) {
+            return;
+        }
+
+        // Check if the block is locked and handle access control
+        // This needs to happen before handling lock items
+        if (plugin.getLocksManager().isLocked(block)) {
+            // Get the owner of the lock
+            UUID lockOwner = plugin.getLocksManager().getOwner(block);
+
+            // Check if the player is the owner or an op
+            if (player.getUniqueId().equals(lockOwner) || player.isOp()) {
+                // Allow access
+                return;
+            }
+
+            // Check if the player has a key for this lock in either hand
+            // First check main hand
+            if (checkKeyForLock(item, lockOwner, block)) {
+                // Allow access
+                return;
+            }
+
+            // Then check off hand
+            ItemStack offHandItem = player.getInventory().getItemInOffHand();
+            if (checkKeyForLock(offHandItem, lockOwner, block)) {
+                // Allow access
+                return;
+            }
+
+            // Check if the block is in a guild territory
+            Chunk chunk = block.getChunk();
+            Guild guild = plugin.getGuildManager().getChunkOwner(chunk);
+
+            if (guild != null) {
+                // Block is in guild territory, use existing guild permission system
+                // The GuildListener will handle this
+                return;
+            }
+
+            // Block is outside guild territory and player doesn't have permission
+            event.setCancelled(true);
+            player.sendMessage(Component.text("This block is locked by someone else!", NamedTextColor.RED));
             return;
         }
 
@@ -290,6 +336,70 @@ public class LocksListener implements Listener {
             event.setCancelled(true);
             event.getPlayer().sendMessage(Component.text("You cannot drop the lock info tool!", NamedTextColor.RED));
         }
+    }
+
+    /**
+     * Checks if an item is a key for a specific lock.
+     *
+     * @param item The item to check
+     * @param lockOwner The UUID of the lock owner
+     * @param block The locked block
+     * @return true if the item is a key for the lock, false otherwise
+     */
+    private boolean checkKeyForLock(ItemStack item, UUID lockOwner, Block block) {
+        if (item == null || !item.hasItemMeta()) {
+            return false;
+        }
+
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+
+        if (container.has(keyKey, PersistentDataType.STRING)) {
+            // Check if the key is for a specific block type
+            String keyBlockType = container.get(blockTypeKey, PersistentDataType.STRING);
+            if (keyBlockType != null && !block.getType().name().equals(keyBlockType)) {
+                return false; // Key is for a different block type
+            }
+
+            // Check if this is a guild key
+            String guildIdStr = container.get(guildKey, PersistentDataType.STRING);
+            if (guildIdStr != null) {
+                // This is a guild key
+                UUID guildId = UUID.fromString(guildIdStr);
+
+                // Get the guild that owns the lock
+                Guild lockGuild = null;
+                for (Guild guild : plugin.getGuildManager().getAllGuilds()) {
+                    if (guild.isMember(lockOwner)) {
+                        lockGuild = guild;
+                        break;
+                    }
+                }
+
+                // If the lock owner is not in a guild, check if the key's guild matches
+                if (lockGuild == null) {
+                    // Get the key's guild
+                    Guild keyGuild = plugin.getGuildManager().getGuild(guildId);
+                    if (keyGuild != null && keyGuild.isMember(lockOwner)) {
+                        return true; // The lock owner is a member of the key's guild
+                    }
+                } else {
+                    // Check if the key's guild matches the lock owner's guild
+                    return lockGuild.getId().equals(guildId);
+                }
+            } else {
+                // This is a player key
+                // Get the owner of the key
+                String keyOwnerStr = container.get(ownerKey, PersistentDataType.STRING);
+                if (keyOwnerStr != null) {
+                    UUID keyOwner = UUID.fromString(keyOwnerStr);
+                    // Check if the key owner matches the lock owner
+                    return keyOwner.equals(lockOwner);
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

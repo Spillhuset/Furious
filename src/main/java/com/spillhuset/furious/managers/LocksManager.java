@@ -1,6 +1,8 @@
 package com.spillhuset.furious.managers;
 
 import com.spillhuset.furious.Furious;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -25,12 +27,43 @@ public class LocksManager {
     // Store UUIDs of worlds where locks are disabled
     private Set<UUID> disabledWorlds;
 
+    // Maps to store player-specific lock counts by type
+    private final Map<UUID, Map<LockType, Integer>> playerLockCounts;
+    // Maps to store player-specific purchased additional slots by type
+    private final Map<UUID, Map<LockType, Integer>> playerPurchasedSlots;
+
+    // Default lock limits by type
+    private int maxDoorLocks;
+    private int maxContainerLocks;
+    private int maxBlockLocks;
+
+    // Costs to purchase additional slots
+    private int doorLockCost;
+    private int containerLockCost;
+    private int blockLockCost;
+
+    // Costs to create keys
+    private int playerKeyCost;
+    private int guildKeyCost;
+
+    // Minimum guild role required to create guild keys
+    private String guildKeyMinRole;
+
+    // Enum to represent different lock types
+    public enum LockType {
+        DOOR,
+        CONTAINER,
+        BLOCK
+    }
+
     public LocksManager(Furious plugin) {
         this.lockedBlocks = new HashMap<>();
         this.plugin = plugin;
         this.lockFile = new File(this.plugin.getDataFolder(), "locks.yml");
         this.lockConfig = YamlConfiguration.loadConfiguration(lockFile);
         this.disabledWorlds = new HashSet<>();
+        this.playerLockCounts = new HashMap<>();
+        this.playerPurchasedSlots = new HashMap<>();
         loadLocks();
     }
 
@@ -67,10 +100,110 @@ public class LocksManager {
                 plugin.getLogger().warning("Invalid world UUID in locks.yml: " + worldUuidStr);
             }
         }
+
+        // Load max locks per type
+        maxDoorLocks = lockConfig.getInt("max-locks.doors", 5);
+        maxContainerLocks = lockConfig.getInt("max-locks.containers", 10);
+        maxBlockLocks = lockConfig.getInt("max-locks.blocks", 10);
+
+        // Load purchase costs
+        doorLockCost = lockConfig.getInt("lock-purchase-cost.doors", 50);
+        containerLockCost = lockConfig.getInt("lock-purchase-cost.containers", 30);
+        blockLockCost = lockConfig.getInt("lock-purchase-cost.blocks", 100);
+
+        // Load key costs
+        playerKeyCost = lockConfig.getInt("key-cost.player", 200);
+        guildKeyCost = lockConfig.getInt("key-cost.guild", 1000);
+
+        // Load guild key minimum role
+        guildKeyMinRole = lockConfig.getString("guild-key-min-role", "MOD");
+
+        // Load player lock counts
+        if (lockConfig.contains("player-locks")) {
+            for (String playerUUIDStr : lockConfig.getConfigurationSection("player-locks").getKeys(false)) {
+                try {
+                    UUID playerUUID = UUID.fromString(playerUUIDStr);
+                    playerLockCounts.computeIfAbsent(playerUUID, k -> new HashMap<>());
+                    Map<LockType, Integer> counts = playerLockCounts.get(playerUUID);
+
+                    for (String lockTypeStr : lockConfig.getConfigurationSection("player-locks." + playerUUIDStr).getKeys(false)) {
+                        try {
+                            LockType lockType = LockType.valueOf(lockTypeStr.toUpperCase());
+                            int count = lockConfig.getInt("player-locks." + playerUUIDStr + "." + lockTypeStr);
+                            counts.put(lockType, count);
+                        } catch (IllegalArgumentException e) {
+                            plugin.getLogger().warning("Invalid lock type in locks.yml: " + lockTypeStr);
+                        }
+                    }
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid player UUID in locks.yml: " + playerUUIDStr);
+                }
+            }
+        } else {
+            // Initialize lock counts for existing locks if player-locks section doesn't exist
+            for (Map.Entry<Location, UUID> entry : lockedBlocks.entrySet()) {
+                UUID playerUUID = entry.getValue();
+                Location location = entry.getKey();
+                Block block = location.getBlock();
+                LockType lockType = getLockType(block);
+
+                // Initialize player's lock counts if not already done
+                playerLockCounts.computeIfAbsent(playerUUID, k -> new HashMap<>());
+
+                // Increment the count for this lock type
+                Map<LockType, Integer> counts = playerLockCounts.get(playerUUID);
+                counts.put(lockType, counts.getOrDefault(lockType, 0) + 1);
+            }
+        }
+
+        // Load player purchased slots
+        if (lockConfig.contains("player-purchased-slots")) {
+            for (String playerUUIDStr : lockConfig.getConfigurationSection("player-purchased-slots").getKeys(false)) {
+                try {
+                    UUID playerUUID = UUID.fromString(playerUUIDStr);
+                    playerPurchasedSlots.computeIfAbsent(playerUUID, k -> new HashMap<>());
+                    Map<LockType, Integer> purchased = playerPurchasedSlots.get(playerUUID);
+
+                    for (String lockTypeStr : lockConfig.getConfigurationSection("player-purchased-slots." + playerUUIDStr).getKeys(false)) {
+                        try {
+                            LockType lockType = LockType.valueOf(lockTypeStr.toUpperCase());
+                            int slots = lockConfig.getInt("player-purchased-slots." + playerUUIDStr + "." + lockTypeStr);
+                            purchased.put(lockType, slots);
+                        } catch (IllegalArgumentException e) {
+                            plugin.getLogger().warning("Invalid lock type in locks.yml: " + lockTypeStr);
+                        }
+                    }
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid player UUID in locks.yml: " + playerUUIDStr);
+                }
+            }
+        }
     }
 
     public boolean lockBlock(Player player, Block block) {
         if (!isLockable(block)) {
+            return false;
+        }
+
+        // Get the lock type
+        LockType lockType = getLockType(block);
+        UUID playerUUID = player.getUniqueId();
+
+        // Check if player has reached their lock limit for this type
+        if (!canCreateLock(playerUUID, lockType)) {
+            int currentCount = getPlayerLockCount(playerUUID, lockType);
+            int maxLocks = getPlayerMaxLocks(playerUUID, lockType);
+
+            String typeName = lockType.name().toLowerCase();
+            int cost = switch (lockType) {
+                case DOOR -> doorLockCost;
+                case CONTAINER -> containerLockCost;
+                case BLOCK -> blockLockCost;
+            };
+
+            player.sendMessage(Component.text("You have reached your limit of " + maxLocks + " " + typeName + " locks!", NamedTextColor.RED));
+            player.sendMessage(Component.text("You can purchase more slots for " + cost + " " + plugin.getWalletManager().getCurrencyName() + " each.", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Use /locks buy " + typeName + " <amount> to purchase more slots.", NamedTextColor.YELLOW));
             return false;
         }
 
@@ -80,7 +213,7 @@ public class LocksManager {
             if (type != Chest.Type.SINGLE) {
                 Block otherHalf = getOtherChestHalf(block);
                 if (otherHalf != null) {
-                    lockedBlocks.put(otherHalf.getLocation(), player.getUniqueId());
+                    lockedBlocks.put(otherHalf.getLocation(), playerUUID);
                 }
             }
         }
@@ -88,11 +221,16 @@ public class LocksManager {
         else if (block.getBlockData() instanceof Door door) {
             Block otherHalf = getOtherDoorHalf(block);
             if (otherHalf != null) {
-                lockedBlocks.put(otherHalf.getLocation(), player.getUniqueId());
+                lockedBlocks.put(otherHalf.getLocation(), playerUUID);
             }
         }
 
-        lockedBlocks.put(block.getLocation(), player.getUniqueId());
+        // Update the player's lock count
+        playerLockCounts.computeIfAbsent(playerUUID, k -> new HashMap<>());
+        Map<LockType, Integer> counts = playerLockCounts.get(playerUUID);
+        counts.put(lockType, counts.getOrDefault(lockType, 0) + 1);
+
+        lockedBlocks.put(block.getLocation(), playerUUID);
         saveLocks();
         return true;
     }
@@ -102,6 +240,10 @@ public class LocksManager {
         if (owner == null || !owner.equals(player.getUniqueId())) {
             return false;
         }
+
+        // Get the lock type
+        LockType lockType = getLockType(block);
+        UUID playerUUID = player.getUniqueId();
 
         // Handle double chests
         if (block.getBlockData() instanceof Chest chest) {
@@ -121,6 +263,15 @@ public class LocksManager {
             }
         }
 
+        // Update the player's lock count
+        Map<LockType, Integer> counts = playerLockCounts.get(playerUUID);
+        if (counts != null) {
+            int currentCount = counts.getOrDefault(lockType, 0);
+            if (currentCount > 0) {
+                counts.put(lockType, currentCount - 1);
+            }
+        }
+
         lockedBlocks.remove(block.getLocation());
         saveLocks();
         return true;
@@ -136,8 +287,84 @@ public class LocksManager {
 
     public boolean isLockable(Block block) {
         BlockState state = block.getState();
-        return block.getBlockData() instanceof Chest ||
-                block.getBlockData() instanceof Door;
+
+        // Check if it's a chest or door
+        if (block.getBlockData() instanceof Chest || block.getBlockData() instanceof Door) {
+            return true;
+        }
+
+        // Check for redstone components that should be treated as doors
+        Material type = block.getType();
+        return type == Material.LEVER ||
+               type == Material.STONE_PRESSURE_PLATE ||
+               type == Material.OAK_PRESSURE_PLATE ||
+               type == Material.SPRUCE_PRESSURE_PLATE ||
+               type == Material.BIRCH_PRESSURE_PLATE ||
+               type == Material.JUNGLE_PRESSURE_PLATE ||
+               type == Material.ACACIA_PRESSURE_PLATE ||
+               type == Material.DARK_OAK_PRESSURE_PLATE ||
+               type == Material.CRIMSON_PRESSURE_PLATE ||
+               type == Material.WARPED_PRESSURE_PLATE ||
+               type == Material.POLISHED_BLACKSTONE_PRESSURE_PLATE ||
+               type == Material.LIGHT_WEIGHTED_PRESSURE_PLATE ||
+               type == Material.HEAVY_WEIGHTED_PRESSURE_PLATE ||
+               type == Material.TRIPWIRE ||
+               type == Material.TRIPWIRE_HOOK ||
+               type == Material.STONE_BUTTON ||
+               type == Material.OAK_BUTTON ||
+               type == Material.SPRUCE_BUTTON ||
+               type == Material.BIRCH_BUTTON ||
+               type == Material.JUNGLE_BUTTON ||
+               type == Material.ACACIA_BUTTON ||
+               type == Material.DARK_OAK_BUTTON ||
+               type == Material.CRIMSON_BUTTON ||
+               type == Material.WARPED_BUTTON ||
+               type == Material.POLISHED_BLACKSTONE_BUTTON;
+    }
+
+    /**
+     * Determines the lock type based on the block type.
+     *
+     * @param block The block to check
+     * @return The lock type (DOOR, CONTAINER, or BLOCK)
+     */
+    public LockType getLockType(Block block) {
+        if (block.getBlockData() instanceof Door) {
+            return LockType.DOOR;
+        } else if (block.getBlockData() instanceof Chest) {
+            return LockType.CONTAINER;
+        } else {
+            // Check for redstone components that should be treated as doors
+            Material type = block.getType();
+            if (type == Material.LEVER ||
+                type == Material.STONE_PRESSURE_PLATE ||
+                type == Material.OAK_PRESSURE_PLATE ||
+                type == Material.SPRUCE_PRESSURE_PLATE ||
+                type == Material.BIRCH_PRESSURE_PLATE ||
+                type == Material.JUNGLE_PRESSURE_PLATE ||
+                type == Material.ACACIA_PRESSURE_PLATE ||
+                type == Material.DARK_OAK_PRESSURE_PLATE ||
+                type == Material.CRIMSON_PRESSURE_PLATE ||
+                type == Material.WARPED_PRESSURE_PLATE ||
+                type == Material.POLISHED_BLACKSTONE_PRESSURE_PLATE ||
+                type == Material.LIGHT_WEIGHTED_PRESSURE_PLATE ||
+                type == Material.HEAVY_WEIGHTED_PRESSURE_PLATE ||
+                type == Material.TRIPWIRE ||
+                type == Material.TRIPWIRE_HOOK ||
+                type == Material.STONE_BUTTON ||
+                type == Material.OAK_BUTTON ||
+                type == Material.SPRUCE_BUTTON ||
+                type == Material.BIRCH_BUTTON ||
+                type == Material.JUNGLE_BUTTON ||
+                type == Material.ACACIA_BUTTON ||
+                type == Material.DARK_OAK_BUTTON ||
+                type == Material.CRIMSON_BUTTON ||
+                type == Material.WARPED_BUTTON ||
+                type == Material.POLISHED_BLACKSTONE_BUTTON) {
+                return LockType.DOOR;
+            }
+            return LockType.BLOCK;
+        }
     }
 
     private Block getOtherChestHalf(Block chest) {
@@ -197,6 +424,34 @@ public class LocksManager {
             disabledWorldsList.add(worldUuid.toString());
         }
         lockConfig.set("disabled-worlds", disabledWorldsList);
+
+        // Save player lock counts
+        lockConfig.set("player-locks", null);
+        for (Map.Entry<UUID, Map<LockType, Integer>> entry : playerLockCounts.entrySet()) {
+            UUID playerUUID = entry.getKey();
+            Map<LockType, Integer> counts = entry.getValue();
+
+            for (Map.Entry<LockType, Integer> countEntry : counts.entrySet()) {
+                LockType lockType = countEntry.getKey();
+                int count = countEntry.getValue();
+
+                lockConfig.set("player-locks." + playerUUID + "." + lockType.name().toLowerCase(), count);
+            }
+        }
+
+        // Save player purchased slots
+        lockConfig.set("player-purchased-slots", null);
+        for (Map.Entry<UUID, Map<LockType, Integer>> entry : playerPurchasedSlots.entrySet()) {
+            UUID playerUUID = entry.getKey();
+            Map<LockType, Integer> purchased = entry.getValue();
+
+            for (Map.Entry<LockType, Integer> purchaseEntry : purchased.entrySet()) {
+                LockType lockType = purchaseEntry.getKey();
+                int slots = purchaseEntry.getValue();
+
+                lockConfig.set("player-purchased-slots." + playerUUID + "." + lockType.name().toLowerCase(), slots);
+            }
+        }
 
         try {
             lockConfig.save(lockFile);
@@ -285,6 +540,167 @@ public class LocksManager {
      *
      * @return A map of world names to boolean values indicating if locks are enabled
      */
+    /**
+     * Gets the current number of locks a player has of a specific type.
+     *
+     * @param playerUUID The UUID of the player
+     * @param lockType The type of lock
+     * @return The number of locks
+     */
+    public int getPlayerLockCount(UUID playerUUID, LockType lockType) {
+        Map<LockType, Integer> counts = playerLockCounts.getOrDefault(playerUUID, new HashMap<>());
+        return counts.getOrDefault(lockType, 0);
+    }
+
+    /**
+     * Gets the maximum number of locks a player can have of a specific type.
+     * This includes the base limit plus any purchased slots.
+     *
+     * @param playerUUID The UUID of the player
+     * @param lockType The type of lock
+     * @return The maximum number of locks
+     */
+    public int getPlayerMaxLocks(UUID playerUUID, LockType lockType) {
+        int baseLimit;
+        switch (lockType) {
+            case DOOR:
+                baseLimit = maxDoorLocks;
+                break;
+            case CONTAINER:
+                baseLimit = maxContainerLocks;
+                break;
+            case BLOCK:
+                baseLimit = maxBlockLocks;
+                break;
+            default:
+                baseLimit = 0;
+        }
+
+        // Add purchased slots
+        Map<LockType, Integer> purchased = playerPurchasedSlots.getOrDefault(playerUUID, new HashMap<>());
+        int additionalSlots = purchased.getOrDefault(lockType, 0);
+
+        return baseLimit + additionalSlots;
+    }
+
+    /**
+     * Checks if a player can create another lock of the specified type.
+     *
+     * @param playerUUID The UUID of the player
+     * @param lockType The type of lock
+     * @return True if the player can create another lock, false otherwise
+     */
+    public boolean canCreateLock(UUID playerUUID, LockType lockType) {
+        int currentCount = getPlayerLockCount(playerUUID, lockType);
+        int maxLocks = getPlayerMaxLocks(playerUUID, lockType);
+
+        return currentCount < maxLocks;
+    }
+
+    /**
+     * Purchases additional lock slots for a player.
+     *
+     * @param player The player
+     * @param lockType The type of lock
+     * @param amount The number of slots to purchase
+     * @return True if the purchase was successful, false otherwise
+     */
+    public boolean purchaseLockSlots(Player player, LockType lockType, int amount) {
+        if (amount <= 0) {
+            return false;
+        }
+
+        // Calculate cost
+        int costPerSlot;
+        switch (lockType) {
+            case DOOR:
+                costPerSlot = doorLockCost;
+                break;
+            case CONTAINER:
+                costPerSlot = containerLockCost;
+                break;
+            case BLOCK:
+                costPerSlot = blockLockCost;
+                break;
+            default:
+                return false;
+        }
+
+        int totalCost = costPerSlot * amount;
+
+        // Check if player has enough money
+        if (!plugin.getWalletManager().has(player, totalCost)) {
+            return false;
+        }
+
+        // Withdraw money
+        if (!plugin.getWalletManager().withdraw(player, totalCost)) {
+            return false;
+        }
+
+        // Add purchased slots
+        UUID playerUUID = player.getUniqueId();
+        playerPurchasedSlots.computeIfAbsent(playerUUID, k -> new HashMap<>());
+        Map<LockType, Integer> purchased = playerPurchasedSlots.get(playerUUID);
+        purchased.put(lockType, purchased.getOrDefault(lockType, 0) + amount);
+
+        return true;
+    }
+
+    /**
+     * Gets the cost to purchase an additional door lock slot.
+     *
+     * @return The cost in server currency
+     */
+    public int getDoorLockCost() {
+        return doorLockCost;
+    }
+
+    /**
+     * Gets the cost to purchase an additional container lock slot.
+     *
+     * @return The cost in server currency
+     */
+    public int getContainerLockCost() {
+        return containerLockCost;
+    }
+
+    /**
+     * Gets the cost to purchase an additional block lock slot.
+     *
+     * @return The cost in server currency
+     */
+    public int getBlockLockCost() {
+        return blockLockCost;
+    }
+
+    /**
+     * Gets the cost to create a player key.
+     *
+     * @return The cost in server currency
+     */
+    public int getPlayerKeyCost() {
+        return playerKeyCost;
+    }
+
+    /**
+     * Gets the cost to create a guild key.
+     *
+     * @return The cost in server currency
+     */
+    public int getGuildKeyCost() {
+        return guildKeyCost;
+    }
+
+    /**
+     * Gets the minimum guild role required to create guild keys.
+     *
+     * @return The minimum guild role as a string
+     */
+    public String getGuildKeyMinRole() {
+        return guildKeyMinRole;
+    }
+
     public Map<String, Boolean> getWorldsStatus() {
         Map<String, Boolean> worldsStatus = new HashMap<>();
 

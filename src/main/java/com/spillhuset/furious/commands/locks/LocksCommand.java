@@ -44,6 +44,7 @@ public class LocksCommand implements CommandExecutor, TabCompleter {
         subCommands.put("info", new InfoSubCommand(plugin));
         subCommands.put("key", new KeySubCommand(plugin));
         subCommands.put("world", new WorldSubCommand(plugin));
+        subCommands.put("buy", new BuySubCommand(plugin));
     }
 
     @Override

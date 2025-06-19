@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -23,6 +24,10 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -265,6 +270,31 @@ public class GuildListener implements Listener {
             return;
         }
 
+        // Check if the block is locked by a player
+        if (plugin.getLocksManager().isLocked(block)) {
+            UUID lockOwner = plugin.getLocksManager().getOwner(block);
+
+            // If the player is the owner of the lock, allow access regardless of guild restrictions
+            if (player.getUniqueId().equals(lockOwner)) {
+                return;
+            }
+
+            // Check if the player has a key for this lock in either hand
+            // First check main hand
+            ItemStack mainHandItem = player.getInventory().getItemInMainHand();
+            if (checkKeyForLock(mainHandItem, lockOwner, block)) {
+                // Allow access regardless of guild restrictions
+                return;
+            }
+
+            // Then check off hand
+            ItemStack offHandItem = player.getInventory().getItemInOffHand();
+            if (checkKeyForLock(offHandItem, lockOwner, block)) {
+                // Allow access regardless of guild restrictions
+                return;
+            }
+        }
+
         // Handle based on guild type for chests and doors
         if (guild.isUnmanned()) {
             // For unmanned guilds (SAFE, WAR, WILD)
@@ -395,6 +425,43 @@ public class GuildListener implements Listener {
      */
     private boolean isDoor(Material material) {
         return material.name().contains("_DOOR");
+    }
+
+    /**
+     * Checks if an item is a key for a specific lock.
+     *
+     * @param item The item to check
+     * @param lockOwner The UUID of the lock owner
+     * @param block The locked block
+     * @return true if the item is a key for the lock, false otherwise
+     */
+    private boolean checkKeyForLock(ItemStack item, UUID lockOwner, Block block) {
+        if (item == null || !item.hasItemMeta()) {
+            return false;
+        }
+
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        NamespacedKey keyKey = new NamespacedKey(plugin, "key_item");
+        NamespacedKey ownerKey = new NamespacedKey(plugin, "owner_uuid");
+        NamespacedKey blockTypeKey = new NamespacedKey(plugin, "block_type");
+
+        if (container.has(keyKey, PersistentDataType.STRING)) {
+            // Get the owner of the key
+            String keyOwnerStr = container.get(ownerKey, PersistentDataType.STRING);
+            if (keyOwnerStr != null) {
+                UUID keyOwner = UUID.fromString(keyOwnerStr);
+
+                // Check if the key is for a specific block type
+                String keyBlockType = container.get(blockTypeKey, PersistentDataType.STRING);
+                if (keyBlockType == null || block.getType().name().equals(keyBlockType)) {
+                    // Check if the key owner matches the lock owner
+                    return keyOwner.equals(lockOwner);
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

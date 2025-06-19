@@ -10,7 +10,7 @@ A comprehensive Minecraft plugin for server administrators looking to enhance th
 - **Guild System**: Create and manage guilds with chunk claiming, homes, and member management
 - **Homes**: Personal teleport locations with customizable limits and purchase options
 - **Warps**: Server-wide teleport locations with optional costs and passwords
-- **Locks**: Secure containers and doors with lock and key items
+- **Locks**: Secure containers, doors, and redstone components (levers, pressure plates, buttons, tripwires) with lock and key items. Includes configurable limits per lock type, purchasable slots, and guild key support
 - **Minigames**: Built-in minigames including Hunger Games, Spleef, and Zombie Survival
 - **Game World Management**: Tools for managing game worlds
 - **Player Utilities**: Commands for healing and feeding players
@@ -123,6 +123,26 @@ The plugin includes a tombstone system that can be configured in the `config.yml
 
 - `tombstones.timeout-seconds` - Time in seconds before a tombstone expires (default: 1800, which is 30 minutes)
 - `tombstones.owner-only-access` - If true, only the owner of the tombstone can access it (default: true)
+
+### Locks Configuration
+
+The plugin includes a comprehensive lock system that can be configured in the `locks.yml` file:
+
+- `max-locks.doors` - Maximum number of door locks a player can have (default: 5)
+- `max-locks.containers` - Maximum number of container locks a player can have (default: 10)
+- `max-locks.blocks` - Maximum number of block locks a player can have (default: 10)
+- `lock-purchase-cost.doors` - Cost to purchase additional door lock slots (default: 50S)
+- `lock-purchase-cost.containers` - Cost to purchase additional container lock slots (default: 30S)
+- `lock-purchase-cost.blocks` - Cost to purchase additional block lock slots (default: 100S)
+- `key-cost.player` - Cost to create a player key (default: 200S)
+- `key-cost.guild` - Cost to create a guild key (default: 1000S)
+- `guild-key-min-role` - Minimum guild role required to create guild keys (default: MOD)
+- `disabled-worlds` - List of worlds where locks cannot be used
+- `disabled-world-message` - Message shown when lock functionality is attempted in a disabled world
+- `owner-only-unlock` - If true, only the owner of a lock can unlock it
+- `persistent-locks` - If true, locks will persist even if the block is broken and replaced
+
+The lock system supports locking doors, containers (chests, barrels, etc.), and redstone components (levers, pressure plates, buttons, tripwires). Players can create keys for specific locks, including guild keys that work for all locks owned by guild members. Locks outside of guild territory can only be accessed by the lock owner, players with a matching key, or operators.
 
 ### Security Configuration
 
@@ -246,12 +266,16 @@ The security review interval can be configured using the `/security review inter
   - `/locks lock` - Create lock items
   - `/locks unlock` - Create unlock items
   - `/locks info` - Check lock ownership
-  - `/locks key` - Create key items
+  - `/locks key [block_type] [guild]` - Create key items
+    - Optional `block_type` parameter specifies which block type the key can open
+    - Optional `guild` parameter creates a guild key (requires appropriate guild role)
+  - `/locks buy <door|container|block> <amount>` - Purchase additional lock slots
   - `/locks world` - Manage locks world settings
     - `/locks world list` - Show all worlds and their locks settings
     - `/locks world disable <world>` - Disable locks in a world
     - `/locks world enable <world>` - Enable locks in a world
   - Permission: `furious.locks.*` (includes all locks permissions)
+  - Permission: `furious.locks.buy` (allows purchasing additional lock slots)
 
 ### Minigame Commands
 - `/minigame` (aliases: `/mg`) - Manage minigames
@@ -466,6 +490,7 @@ The plugin includes a comprehensive permission management system that allows ser
 - `furious.locks.unlock` - Create unlock items (default: true)
 - `furious.locks.info` - Check lock ownership (default: true)
 - `furious.locks.key` - Create key items (default: true)
+- `furious.locks.buy` - Purchase additional lock slots (default: true)
 - `furious.locks.world` - Manage locks world settings (default: op)
 
 ### Minigame Permissions
