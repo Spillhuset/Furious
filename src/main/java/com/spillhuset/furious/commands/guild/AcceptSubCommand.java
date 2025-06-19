@@ -98,10 +98,15 @@ public class AcceptSubCommand implements GuildSubCommand {
             } else {
                 player.sendMessage(Component.text("There are multiple pending join requests. Please specify a player name:", NamedTextColor.YELLOW));
                 for (UUID requesterId : guild.getJoinRequests()) {
-                    String requesterName = Bukkit.getOfflinePlayer(requesterId).getName();
-                    if (requesterName != null) {
-                        player.sendMessage(Component.text("- " + requesterName, NamedTextColor.YELLOW));
+                    Player requester = Bukkit.getPlayer(requesterId);
+                    String requesterName;
+                    if (requester != null) {
+                        requesterName = requester.getName();
+                    } else {
+                        // Use UUID string representation for offline players to avoid blocking network calls
+                        requesterName = requesterId.toString();
                     }
+                    player.sendMessage(Component.text("- " + requesterName, NamedTextColor.YELLOW));
                 }
                 return true;
             }
@@ -117,10 +122,11 @@ public class AcceptSubCommand implements GuildSubCommand {
                 return acceptJoinRequest(player, guild, targetPlayer.getUniqueId());
             }
         } else {
-            // Try to find offline player
+            // Try to find offline player by UUID string representation
             for (UUID requesterId : guild.getJoinRequests()) {
-                String requesterName = Bukkit.getOfflinePlayer(requesterId).getName();
-                if (requesterName != null && requesterName.equalsIgnoreCase(targetName)) {
+                // Use UUID string representation for offline players to avoid blocking network calls
+                String requesterUUID = requesterId.toString();
+                if (requesterUUID.equalsIgnoreCase(targetName)) {
                     return acceptJoinRequest(player, guild, requesterId);
                 }
             }

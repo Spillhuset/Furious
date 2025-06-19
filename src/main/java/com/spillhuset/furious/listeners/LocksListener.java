@@ -177,10 +177,8 @@ public class LocksListener implements Listener {
                 if (owner != null) {
                     ownerName = owner.getName();
                 } else {
-                    ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
-                    if (ownerName == null) {
-                        ownerName = ownerUUID.toString();
-                    }
+                    // Use UUID string representation for offline players to avoid blocking network calls
+                    ownerName = ownerUUID.toString();
                 }
             }
 

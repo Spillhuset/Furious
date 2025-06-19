@@ -829,18 +829,22 @@ public class GuildManager {
         // Change the role
         if (guild.setMemberRole(playerId, role)) {
             // Get the player's name
-            String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-            if (playerName == null) {
-                playerName = "Unknown Player";
+            Player player = Bukkit.getPlayer(playerId);
+            String playerName;
+            if (player != null) {
+                playerName = player.getName();
+            } else {
+                // Use UUID string representation for offline players to avoid blocking network calls
+                playerName = playerId.toString();
             }
 
             // Notify the changer
             changer.sendMessage(Component.text("Changed " + playerName + "'s role to " + role.name(), NamedTextColor.GREEN));
 
             // Notify the player if they're online
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null && player.isOnline()) {
-                player.sendMessage(Component.text("Your role in " + guild.getName() + " has been changed to " + role.name(), NamedTextColor.GREEN));
+            Player targetPlayer = Bukkit.getPlayer(playerId);
+            if (targetPlayer != null && targetPlayer.isOnline()) {
+                targetPlayer.sendMessage(Component.text("Your role in " + guild.getName() + " has been changed to " + role.name(), NamedTextColor.GREEN));
             }
 
             // Save the configuration
@@ -963,9 +967,13 @@ public class GuildManager {
                 if (role == GuildRole.OWNER || role == GuildRole.ADMIN) {
                     Player member = Bukkit.getPlayer(memberId);
                     if (member != null && member.isOnline()) {
-                        String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-                        if (playerName == null) {
-                            playerName = "Unknown Player";
+                        Player requestingPlayer = Bukkit.getPlayer(playerId);
+                        String playerName;
+                        if (requestingPlayer != null) {
+                            playerName = requestingPlayer.getName();
+                        } else {
+                            // Use UUID string representation for offline players to avoid blocking network calls
+                            playerName = playerId.toString();
                         }
                         member.sendMessage(Component.text(playerName + " has requested to join your guild. " +
                                 "Type /guild accept " + playerName + " to accept or /guild decline " + playerName + " to decline.",
@@ -1010,9 +1018,13 @@ public class GuildManager {
             saveConfiguration();
 
             // Get the player's name
-            String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-            if (playerName == null) {
-                playerName = "Unknown Player";
+            Player joinedPlayer = Bukkit.getPlayer(playerId);
+            String playerName;
+            if (joinedPlayer != null) {
+                playerName = joinedPlayer.getName();
+            } else {
+                // Use UUID string representation for offline players to avoid blocking network calls
+                playerName = playerId.toString();
             }
 
             // Notify the acceptor
@@ -1050,9 +1062,13 @@ public class GuildManager {
         saveConfiguration();
 
         // Get the player's name
-        String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-        if (playerName == null) {
-            playerName = "Unknown Player";
+        Player declinedPlayer = Bukkit.getPlayer(playerId);
+        String playerName;
+        if (declinedPlayer != null) {
+            playerName = declinedPlayer.getName();
+        } else {
+            // Use UUID string representation for offline players to avoid blocking network calls
+            playerName = playerId.toString();
         }
 
         // Notify the decliner
@@ -1166,16 +1182,19 @@ public class GuildManager {
         saveConfiguration();
 
         // Get player names
-        String newOwnerName = Bukkit.getOfflinePlayer(newOwner).getName();
-        if (newOwnerName == null) {
-            newOwnerName = "Unknown Player";
+        Player newOwnerPlayer = Bukkit.getPlayer(newOwner);
+        String newOwnerName;
+        if (newOwnerPlayer != null) {
+            newOwnerName = newOwnerPlayer.getName();
+        } else {
+            // Use UUID string representation for offline players to avoid blocking network calls
+            newOwnerName = newOwner.toString();
         }
 
         // Notify the admin
         admin.sendMessage(Component.text("Transferred ownership of " + guild.getName() + " to " + newOwnerName + "!", NamedTextColor.GREEN));
 
         // Notify the new owner if they're online
-        Player newOwnerPlayer = Bukkit.getPlayer(newOwner);
         if (newOwnerPlayer != null && newOwnerPlayer.isOnline()) {
             newOwnerPlayer.sendMessage(Component.text("You are now the owner of " + guild.getName() + "!", NamedTextColor.GREEN));
         }
@@ -1289,9 +1308,13 @@ public class GuildManager {
         }
 
         // Get the player's name
-        String playerName = Bukkit.getOfflinePlayer(playerId).getName();
-        if (playerName == null) {
-            playerName = "Unknown Player";
+        Player kickedPlayer = Bukkit.getPlayer(playerId);
+        String playerName;
+        if (kickedPlayer != null) {
+            playerName = kickedPlayer.getName();
+        } else {
+            // Use UUID string representation for offline players to avoid blocking network calls
+            playerName = playerId.toString();
         }
 
         // Remove the player from the guild

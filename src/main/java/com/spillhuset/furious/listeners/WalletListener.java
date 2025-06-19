@@ -77,7 +77,8 @@ public class WalletListener implements Listener {
             if (guild != null) {
                 GuildRole role = guild.getMemberRole(playerId);
                 UUID guildMasterId = guild.getOwner();
-                String guildMasterName = Bukkit.getOfflinePlayer(guildMasterId).getName();
+                Player guildMasterPlayer = Bukkit.getPlayer(guildMasterId);
+                String guildMasterName = guildMasterPlayer != null ? guildMasterPlayer.getName() : guildMasterId.toString();
                 int claimedChunks = guild.getClaimedChunkCount();
                 // Assuming there's a max chunks limit per guild, if not, this can be removed or adjusted
                 int maxChunks = 100; // This should be retrieved from config or a constant
