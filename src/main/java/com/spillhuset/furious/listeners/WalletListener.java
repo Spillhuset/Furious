@@ -95,10 +95,12 @@ public class WalletListener implements Listener {
             }
         }
 
-        // Wallet balance
-        double walletBalance = walletManager.getBalance(player);
-        player.sendMessage(Component.text("Wallet: ", NamedTextColor.YELLOW)
-                .append(Component.text(walletManager.formatAmount(walletBalance), NamedTextColor.WHITE)));
+        // Wallet balance - don't show for ops
+        if (!player.isOp()) {
+            double walletBalance = walletManager.getBalance(player);
+            player.sendMessage(Component.text("Wallet: ", NamedTextColor.YELLOW)
+                    .append(Component.text(walletManager.formatAmount(walletBalance), NamedTextColor.WHITE)));
+        }
 
         // Bank balances
         BankManager bankManager = plugin.getBankManager();

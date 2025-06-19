@@ -3,6 +3,7 @@ package com.spillhuset.furious.listeners;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -28,10 +29,14 @@ public class MessageListener implements Listener {
         if (plugin.getGuildManager().isInGuild(playerId)) {
             Guild guild = plugin.getGuildManager().getPlayerGuild(playerId);
             // Format: [✔] <player> - <guild>
-            event.joinMessage(Component.text("[✔] " + player.getName() + " - " + guild.getName()));
+            event.joinMessage(Component.text("[", NamedTextColor.WHITE)
+                    .append(Component.text("✔", NamedTextColor.DARK_GREEN))
+                    .append(Component.text("] " + player.getName() + " - " + guild.getName(), NamedTextColor.WHITE)));
         } else {
             // Format: [✔] <player>
-            event.joinMessage(Component.text("[✔] " + player.getName()));
+            event.joinMessage(Component.text("[", NamedTextColor.WHITE)
+                    .append(Component.text("✔", NamedTextColor.DARK_GREEN))
+                    .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
         }
     }
 
@@ -44,10 +49,14 @@ public class MessageListener implements Listener {
         if (plugin.getGuildManager().isInGuild(playerId)) {
             Guild guild = plugin.getGuildManager().getPlayerGuild(playerId);
             // Format: [✘] <player> - <guild>
-            event.quitMessage(Component.text("[✘] " + player.getName() + " - " + guild.getName()));
+            event.quitMessage(Component.text("[", NamedTextColor.WHITE)
+                    .append(Component.text("✘", NamedTextColor.DARK_RED))
+                    .append(Component.text("] " + player.getName() + " - " + guild.getName(), NamedTextColor.WHITE)));
         } else {
             // Format: [✘] <player>
-            event.quitMessage(Component.text("[✘] " + player.getName()));
+            event.quitMessage(Component.text("[", NamedTextColor.WHITE)
+                    .append(Component.text("✘", NamedTextColor.DARK_RED))
+                    .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
         }
     }
 
@@ -55,6 +64,8 @@ public class MessageListener implements Listener {
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
         // Format: [☠] <player>
-        event.deathMessage(Component.text("[☠] " + player.getName()));
+        event.deathMessage(Component.text("[", NamedTextColor.WHITE)
+                .append(Component.text("☠", NamedTextColor.BLACK))
+                .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
     }
 }
