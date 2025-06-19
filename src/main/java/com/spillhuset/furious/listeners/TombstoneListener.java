@@ -128,12 +128,10 @@ public class TombstoneListener implements Listener {
         // Check if the clicked inventory belongs to a tombstone
         Inventory inventory = event.getInventory();
         boolean isTombstoneInventory = false;
-        Tombstone clickedTombstone = null;
 
         for (Tombstone tombstone : tombstoneManager.getAllTombstones()) {
             if (tombstone.getInventory().equals(inventory)) {
                 isTombstoneInventory = true;
-                clickedTombstone = tombstone;
                 break;
             }
         }

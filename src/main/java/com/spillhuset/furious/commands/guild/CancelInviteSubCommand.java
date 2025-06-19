@@ -118,7 +118,7 @@ public class CancelInviteSubCommand implements GuildSubCommand {
             return true;
         } else {
             player.sendMessage(Component.text("Failed to cancel the invitation for " + targetName + ".", NamedTextColor.RED));
-            return true;
+            return false;
         }
     }
 

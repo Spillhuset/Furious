@@ -2,7 +2,6 @@ package com.spillhuset.furious.commands.guild;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
-import com.spillhuset.furious.entities.Home;
 import com.spillhuset.furious.enums.GuildRole;
 import com.spillhuset.furious.misc.GuildSubCommand;
 import com.spillhuset.furious.misc.SubCommand;

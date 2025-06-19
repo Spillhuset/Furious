@@ -5,14 +5,12 @@ import com.spillhuset.furious.entities.Guild;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Subcommand for admin unclaiming of chunks from unmanned guilds.

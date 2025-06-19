@@ -13,7 +13,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Subcommand for disbanding a guild.
@@ -143,7 +142,7 @@ public class DisbandSubCommand implements GuildSubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
-        if (sender instanceof Player player) {
+        if (sender instanceof Player) {
             // Player tab completion
             if (args.length == 2) {
                 if ("confirm".startsWith(args[1].toLowerCase())) {

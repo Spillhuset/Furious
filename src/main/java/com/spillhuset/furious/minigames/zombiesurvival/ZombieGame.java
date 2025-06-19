@@ -352,6 +352,10 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
         if (difficulty != null) {
             playerDifficulties.put(player.getUniqueId(), difficulty);
             player.sendMessage(Component.text("You selected " + difficulty.name() + " difficulty!", NamedTextColor.GREEN));
+
+            // Give equipment based on selected difficulty
+            giveEquipment(player, difficulty);
+
             event.setCancelled(true);
         }
     }
@@ -360,51 +364,13 @@ public class ZombieGame extends ConfigurableMinigame implements Listener {
      * Enum representing different difficulty levels for the zombie game
      */
     public enum ZombieDifficulty {
-        EASY(Material.DIAMOND_HELMET, Material.DIAMOND_CHESTPLATE, Material.DIAMOND_LEGGINGS, Material.DIAMOND_BOOTS, Material.DIAMOND_SWORD),    // Diamond armor, diamond sword
-        NORMAL(Material.IRON_HELMET, Material.IRON_CHESTPLATE, Material.IRON_LEGGINGS, Material.IRON_BOOTS, Material.IRON_SWORD),  // Iron armor, iron sword
-        HARD(Material.LEATHER_HELMET, Material.LEATHER_CHESTPLATE, Material.LEATHER_LEGGINGS, Material.LEATHER_BOOTS, Material.WOODEN_SWORD),    // Leather armor, wooden sword
-        INSANE(null, null, null, null, null);   // No armor, no weapon
+        EASY(),    // Diamond armor, diamond sword
+        NORMAL(),  // Iron armor, iron sword
+        HARD(),    // Leather armor, wooden sword
+        INSANE();   // No armor, no weapon
 
-        private final Material helmet;
-        private final Material chestplate;
-        private final Material leggings;
-        private final Material boots;
-        private final Material sword;
-
-        ZombieDifficulty(Material helmet, Material chestplate, Material leggings, Material boots, Material sword) {
-            this.helmet = helmet;
-            this.chestplate = chestplate;
-            this.leggings = leggings;
-            this.boots = boots;
-            this.sword = sword;
+        ZombieDifficulty() {
         }
 
-        public Material getHelmet() {
-            return helmet;
-        }
-
-        public Material getChestplate() {
-            return chestplate;
-        }
-
-        public Material getLeggings() {
-            return leggings;
-        }
-
-        public Material getBoots() {
-            return boots;
-        }
-
-        public Material getSword() {
-            return sword;
-        }
-
-        public boolean hasArmor() {
-            return helmet != null && chestplate != null && leggings != null && boots != null;
-        }
-
-        public boolean hasWeapon() {
-            return sword != null;
-        }
     }
 }
