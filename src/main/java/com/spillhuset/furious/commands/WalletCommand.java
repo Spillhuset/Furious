@@ -78,19 +78,16 @@ public class WalletCommand extends StandaloneCommand {
 
         String subCommand = args[0].toLowerCase();
 
-        switch (subCommand) {
-            case "pay":
-                return executePayCommand(sender, args);
-            case "give":
-                return executeGiveCommand(sender, args);
-            case "take":
-                return executeTakeCommand(sender, args);
-            case "set":
-                return executeSetCommand(sender, args);
-            default:
+        return switch (subCommand) {
+            case "pay" -> executePayCommand(sender, args);
+            case "give" -> executeGiveCommand(sender, args);
+            case "take" -> executeTakeCommand(sender, args);
+            case "set" -> executeSetCommand(sender, args);
+            default -> {
                 getUsage(sender);
-                return true;
-        }
+                yield true;
+            }
+        };
     }
 
     /**

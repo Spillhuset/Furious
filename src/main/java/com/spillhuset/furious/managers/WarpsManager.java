@@ -2,10 +2,12 @@ package com.spillhuset.furious.managers;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
+import com.spillhuset.furious.entities.Portal;
 import com.spillhuset.furious.entities.Warp;
 import com.spillhuset.furious.utils.EncryptionUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -20,6 +22,7 @@ import org.bukkit.util.RayTraceResult;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.ArrayList;
 
 /**
  * Manages warps in the game.
@@ -27,7 +30,7 @@ import java.util.*;
 public class WarpsManager {
     private final Furious plugin;
     private final Map<String, Warp> warps; // Warp Name -> Warp
-    private final Map<Location, Warp> portalLocations; // Portal Location -> Warp
+    private final Map<Location, Warp> portalLocations; // Portal Location -> Warp (supports multiple portals per warp)
     private final File configFile;
     private FileConfiguration config;
     private final EncryptionUtil encryptionUtil;
@@ -120,6 +123,15 @@ public class WarpsManager {
                         double portalY = 0;
                         double portalZ = 0;
 
+                        // Gold block locations
+                        double gold1X = 0;
+                        double gold1Y = 0;
+                        double gold1Z = 0;
+                        double gold2X = 0;
+                        double gold2Y = 0;
+                        double gold2Z = 0;
+                        boolean hasGoldBlockLocations = false;
+
                         if (hasPortal) {
                             String portalWorldIdStr = warpSection.getString("portal-world");
                             if (portalWorldIdStr != null) {
@@ -127,11 +139,41 @@ public class WarpsManager {
                                 portalX = warpSection.getDouble("portal-x");
                                 portalY = warpSection.getDouble("portal-y");
                                 portalZ = warpSection.getDouble("portal-z");
+
+                                // Check if gold block locations are defined
+                                if (warpSection.contains("portal-gold1-x") && 
+                                    warpSection.contains("portal-gold1-y") && 
+                                    warpSection.contains("portal-gold1-z") && 
+                                    warpSection.contains("portal-gold2-x") && 
+                                    warpSection.contains("portal-gold2-y") && 
+                                    warpSection.contains("portal-gold2-z")) {
+
+                                    gold1X = warpSection.getDouble("portal-gold1-x");
+                                    gold1Y = warpSection.getDouble("portal-gold1-y");
+                                    gold1Z = warpSection.getDouble("portal-gold1-z");
+                                    gold2X = warpSection.getDouble("portal-gold2-x");
+                                    gold2Y = warpSection.getDouble("portal-gold2-y");
+                                    gold2Z = warpSection.getDouble("portal-gold2-z");
+                                    hasGoldBlockLocations = true;
+                                }
                             }
                         }
 
                         Warp warp = new Warp(warpId, warpName, creatorId, worldId, x, y, z, yaw, pitch,
                                 cost, password, hasPortal, portalFilling, portalWorldId, portalX, portalY, portalZ);
+
+                        // Set gold block locations if they exist
+                        if (hasPortal && hasGoldBlockLocations && warp.hasPortal()) {
+                            Portal portal = warp.getPortal();
+                            if (portal != null && portal.getLocation() != null && portal.getLocation().getWorld() != null) {
+                                World portalWorld = portal.getLocation().getWorld();
+                                Location gold1Location = new Location(portalWorld, gold1X, gold1Y, gold1Z);
+                                Location gold2Location = new Location(portalWorld, gold2X, gold2Y, gold2Z);
+                                portal.setGoldBlock1(gold1Location);
+                                portal.setGoldBlock2(gold2Location);
+                                plugin.getLogger().info("[DEBUG] Loaded gold block locations for portal in warp: " + warpName);
+                            }
+                        }
 
                         warps.put(warpName.toLowerCase(), warp);
 
@@ -145,6 +187,93 @@ public class WarpsManager {
                 }
             }
         }
+
+        // Load additional portals (for multiple portals per warp)
+        ConfigurationSection portalsSection = config.getConfigurationSection("portals");
+        if (portalsSection != null) {
+            for (String portalKey : portalsSection.getKeys(false)) {
+                ConfigurationSection portalSection = portalsSection.getConfigurationSection(portalKey);
+                if (portalSection != null) {
+                    try {
+                        String warpIdStr = portalSection.getString("warp-id");
+                        String worldIdStr = portalSection.getString("world");
+
+                        if (warpIdStr == null || worldIdStr == null) {
+                            plugin.getLogger().warning("Missing essential UUID field(s) in warps.yml for portal: " + portalKey);
+                            continue;
+                        }
+
+                        UUID warpId = UUID.fromString(warpIdStr);
+                        UUID worldId = UUID.fromString(worldIdStr);
+                        double x = portalSection.getDouble("x");
+                        double y = portalSection.getDouble("y");
+                        double z = portalSection.getDouble("z");
+                        String filling = portalSection.getString("filling", "air");
+
+                        // Find the warp by ID
+                        Warp warp = null;
+                        for (Warp w : warps.values()) {
+                            if (w.getId().equals(warpId)) {
+                                warp = w;
+                                break;
+                            }
+                        }
+
+                        if (warp == null) {
+                            plugin.getLogger().warning("Could not find warp with ID " + warpIdStr + " for portal: " + portalKey);
+                            continue;
+                        }
+
+                        // Get the world
+                        World world = Bukkit.getWorld(worldId);
+                        if (world == null) {
+                            plugin.getLogger().warning("Could not find world with ID " + worldIdStr + " for portal: " + portalKey);
+                            continue;
+                        }
+
+                        // Create the portal location
+                        Location portalLocation = new Location(world, x, y, z);
+
+                        // Check if this portal is already in the map (from the warp section)
+                        if (portalLocations.containsKey(portalLocation)) {
+                            continue;
+                        }
+
+                        // Create a new Portal object
+                        Portal portal = new Portal(portalLocation, filling);
+
+                        // Check if gold block locations are defined
+                        if (portalSection.contains("gold1-x") && 
+                            portalSection.contains("gold1-y") && 
+                            portalSection.contains("gold1-z") && 
+                            portalSection.contains("gold2-x") && 
+                            portalSection.contains("gold2-y") && 
+                            portalSection.contains("gold2-z")) {
+
+                            double gold1X = portalSection.getDouble("gold1-x");
+                            double gold1Y = portalSection.getDouble("gold1-y");
+                            double gold1Z = portalSection.getDouble("gold1-z");
+                            double gold2X = portalSection.getDouble("gold2-x");
+                            double gold2Y = portalSection.getDouble("gold2-y");
+                            double gold2Z = portalSection.getDouble("gold2-z");
+
+                            Location gold1Location = new Location(world, gold1X, gold1Y, gold1Z);
+                            Location gold2Location = new Location(world, gold2X, gold2Y, gold2Z);
+
+                            portal.setGoldBlock1(gold1Location);
+                            portal.setGoldBlock2(gold2Location);
+                        }
+
+                        // Add the portal to the map
+                        portalLocations.put(portalLocation, warp);
+
+                        plugin.getLogger().info("[DEBUG] Loaded additional portal for warp: " + warp.getName());
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Invalid UUID in warps.yml for portal: " + portalKey);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -153,6 +282,7 @@ public class WarpsManager {
     private void saveConfiguration() {
         // Clear existing data
         config.set("warps", null);
+        config.set("portals", null);
 
         // Save warps
         for (Warp warp : warps.values()) {
@@ -184,6 +314,7 @@ public class WarpsManager {
                 config.set(path + ".password", encryptedPassword);
             }
 
+            // For backward compatibility, still save the main portal in the warp section
             config.set(path + ".has-portal", warp.hasPortal());
             config.set(path + ".portal-filling", warp.getPortalFilling());
 
@@ -193,7 +324,75 @@ public class WarpsManager {
                 config.set(path + ".portal-x", portalLoc.getX());
                 config.set(path + ".portal-y", portalLoc.getY());
                 config.set(path + ".portal-z", portalLoc.getZ());
+
+                // Save gold block locations if they exist
+                Portal portal = warp.getPortal();
+                if (portal != null && portal.hasGoldBlockLocations()) {
+                    Location gold1 = portal.getGoldBlock1();
+                    Location gold2 = portal.getGoldBlock2();
+
+                    config.set(path + ".portal-gold1-x", gold1.getX());
+                    config.set(path + ".portal-gold1-y", gold1.getY());
+                    config.set(path + ".portal-gold1-z", gold1.getZ());
+
+                    config.set(path + ".portal-gold2-x", gold2.getX());
+                    config.set(path + ".portal-gold2-y", gold2.getY());
+                    config.set(path + ".portal-gold2-z", gold2.getZ());
+                }
             }
+        }
+
+        // Save all portals (including those not stored in Warp objects)
+        int portalCount = 0;
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            Location portalLoc = entry.getKey();
+            Warp warp = entry.getValue();
+
+            // Skip if the warp doesn't exist anymore (should not happen, but just in case)
+            if (!warps.containsValue(warp)) {
+                continue;
+            }
+
+            String portalPath = "portals.portal" + portalCount;
+            config.set(portalPath + ".warp-id", warp.getId().toString());
+            config.set(portalPath + ".world", portalLoc.getWorld().getUID().toString());
+            config.set(portalPath + ".x", portalLoc.getX());
+            config.set(portalPath + ".y", portalLoc.getY());
+            config.set(portalPath + ".z", portalLoc.getZ());
+
+            // Try to find gold block locations for this portal
+            // First check if this is the main portal stored in the warp
+            boolean goldBlocksFound = false;
+            if (warp.hasPortal() && warp.getPortalLocation() != null &&
+                warp.getPortalLocation().getWorld().equals(portalLoc.getWorld()) &&
+                warp.getPortalLocation().getBlockX() == portalLoc.getBlockX() &&
+                warp.getPortalLocation().getBlockY() == portalLoc.getBlockY() &&
+                warp.getPortalLocation().getBlockZ() == portalLoc.getBlockZ()) {
+
+                Portal portal = warp.getPortal();
+                if (portal != null && portal.hasGoldBlockLocations()) {
+                    Location gold1 = portal.getGoldBlock1();
+                    Location gold2 = portal.getGoldBlock2();
+
+                    config.set(portalPath + ".gold1-x", gold1.getX());
+                    config.set(portalPath + ".gold1-y", gold1.getY());
+                    config.set(portalPath + ".gold1-z", gold1.getZ());
+
+                    config.set(portalPath + ".gold2-x", gold2.getX());
+                    config.set(portalPath + ".gold2-y", gold2.getY());
+                    config.set(portalPath + ".gold2-z", gold2.getZ());
+
+                    config.set(portalPath + ".filling", portal.getFilling());
+                    goldBlocksFound = true;
+                }
+            }
+
+            // If gold blocks weren't found, use default filling
+            if (!goldBlocksFound) {
+                config.set(portalPath + ".filling", warp.getPortalFilling());
+            }
+
+            portalCount++;
         }
 
         try {
@@ -443,10 +642,24 @@ public class WarpsManager {
             return false;
         }
 
-        // Remove portal if it exists
+        // Remove all portals associated with this warp
+        // First, remove the portal stored in the Warp object (for backward compatibility)
         if (warp.hasPortal() && warp.getPortalLocation() != null) {
-            portalLocations.remove(warp.getPortalLocation());
             removePortal(warp.getPortalLocation());
+        }
+
+        // Then, find and remove all portals linked to this warp from the portalLocations map
+        List<Location> locationsToRemove = new ArrayList<>();
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            if (entry.getValue().getId().equals(warp.getId())) {
+                locationsToRemove.add(entry.getKey());
+                removePortal(entry.getKey());
+            }
+        }
+
+        // Remove all found locations from the map
+        for (Location location : locationsToRemove) {
+            portalLocations.remove(location);
         }
 
         saveConfiguration();
@@ -502,10 +715,22 @@ public class WarpsManager {
         }
         Block targetBlock = rayTraceResult.getHitBlock();
 
+        // Check if the target gold block is already part of an existing portal
+        if (isGoldBlockPartOfPortal(targetBlock)) {
+            player.sendMessage(Component.text("This gold block is already part of an existing portal!", NamedTextColor.RED));
+            return false;
+        }
+
         // Find the second gold block (diagonal)
         Block secondGoldBlock = findDiagonalGoldBlock(targetBlock);
         if (secondGoldBlock == null) {
             player.sendMessage(Component.text("Could not find a second gold block placed diagonally!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Check if the second gold block is already part of an existing portal
+        if (isGoldBlockPartOfPortal(secondGoldBlock)) {
+            player.sendMessage(Component.text("The second gold block is already part of an existing portal!", NamedTextColor.RED));
             return false;
         }
 
@@ -517,13 +742,7 @@ public class WarpsManager {
             // Check if filling is a valid option
             List<String> validFillings = Arrays.asList(
                 "water", "real_water", "lava", "air",
-                "white_glass", "orange_glass", "magenta_glass", "light_blue_glass",
-                "yellow_glass", "lime_glass", "pink_glass", "gray_glass",
-                "light_gray_glass", "cyan_glass", "purple_glass", "blue_glass",
-                "brown_glass", "green_glass", "red_glass", "black_glass",
-                "iron_bars", "oak_fence", "spruce_fence", "birch_fence",
-                "jungle_fence", "acacia_fence", "dark_oak_fence", "crimson_fence",
-                "warped_fence", "chain"
+                "iron_bars", "chain"
             );
 
             if (!validFillings.contains(filling)) {
@@ -535,17 +754,17 @@ public class WarpsManager {
         // Create portal
         Location portalLocation = createPortal(targetBlock, secondGoldBlock, filling);
 
-        // Update warp with portal info
-        if (warp.hasPortal() && warp.getPortalLocation() != null) {
-            // Remove old portal from map
-            portalLocations.remove(warp.getPortalLocation());
-            // Remove old portal blocks
-            removePortal(warp.getPortalLocation());
-        }
+        // Create a new Portal entity with both gold block locations
+        Location goldBlock1Location = targetBlock.getLocation();
+        Location goldBlock2Location = secondGoldBlock.getLocation();
+        Portal portal = new Portal(portalLocation, goldBlock1Location, goldBlock2Location, filling);
 
-        warp.setHasPortal(true);
-        warp.setPortalFilling(filling);
-        warp.setPortalLocation(portalLocation);
+        // Store the portal in the warp for backward compatibility
+        // Note: This will overwrite the previous portal in the Warp object,
+        // but we're still keeping all portals in the portalLocations map
+        warp.setPortal(portal);
+
+        // Add the new portal location to the map (without removing old ones)
         portalLocations.put(portalLocation, warp);
         saveConfiguration();
 
@@ -764,29 +983,39 @@ public class WarpsManager {
      * @param type The material type to check
      * @return True if the material is part of a portal, false otherwise
      */
-    private boolean isPortalBlock(Material type) {
+    public boolean isPortalBlock(Material type) {
         return type == Material.CHISELED_STONE_BRICKS || type == Material.GOLD_BLOCK ||
                 type == Material.WATER || type == Material.LAVA ||
-                // All stained glass panes
-                type == Material.WHITE_STAINED_GLASS_PANE || type == Material.ORANGE_STAINED_GLASS_PANE ||
-                type == Material.MAGENTA_STAINED_GLASS_PANE || type == Material.LIGHT_BLUE_STAINED_GLASS_PANE ||
-                type == Material.YELLOW_STAINED_GLASS_PANE || type == Material.LIME_STAINED_GLASS_PANE ||
-                type == Material.PINK_STAINED_GLASS_PANE || type == Material.GRAY_STAINED_GLASS_PANE ||
-                type == Material.LIGHT_GRAY_STAINED_GLASS_PANE || type == Material.CYAN_STAINED_GLASS_PANE ||
-                type == Material.PURPLE_STAINED_GLASS_PANE || type == Material.BLUE_STAINED_GLASS_PANE ||
-                type == Material.BROWN_STAINED_GLASS_PANE || type == Material.GREEN_STAINED_GLASS_PANE ||
-                type == Material.RED_STAINED_GLASS_PANE || type == Material.BLACK_STAINED_GLASS_PANE ||
                 // Legacy glass block (for backward compatibility)
                 type == Material.BLUE_STAINED_GLASS ||
                 // Iron bars
                 type == Material.IRON_BARS ||
-                // All fence types
-                type == Material.OAK_FENCE || type == Material.SPRUCE_FENCE ||
-                type == Material.BIRCH_FENCE || type == Material.JUNGLE_FENCE ||
-                type == Material.ACACIA_FENCE || type == Material.DARK_OAK_FENCE ||
-                type == Material.CRIMSON_FENCE || type == Material.WARPED_FENCE ||
                 // Chain
                 type == Material.CHAIN;
+    }
+
+    /**
+     * Checks if a portal block material is walkable (players can move through it).
+     *
+     * @param type The material type to check
+     * @return True if the material is walkable, false otherwise
+     */
+    public boolean isWalkablePortalBlock(Material type) {
+        // Air is always walkable
+        if (type == Material.AIR) return true;
+
+        // Glass blocks are walkable
+        if (type == Material.BLUE_STAINED_GLASS) return true;
+
+        // The following materials block movement and are not walkable
+        if (type == Material.WATER || type == Material.LAVA ||
+            type == Material.IRON_BARS ||
+            type == Material.CHAIN) {
+            return false;
+        }
+
+        // Default to true for any other materials
+        return true;
     }
 
     /**
@@ -795,6 +1024,79 @@ public class WarpsManager {
      * @param location The center location of the portal
      */
     private void removePortal(Location location) {
+        // Find the warp associated with this portal
+        Warp warp = portalLocations.get(location);
+        if (warp != null && warp.hasPortal()) {
+            // Use the Portal object to remove the portal
+            removePortal(warp.getPortal());
+        } else {
+            // Fallback to the old method if we can't find a Portal object
+            removePortalByLocation(location);
+        }
+    }
+
+    /**
+     * Removes a portal using the Portal object.
+     *
+     * @param portal The Portal object
+     */
+    private void removePortal(Portal portal) {
+        if (portal == null) return;
+
+        Location location = portal.getLocation();
+        World world = location != null ? location.getWorld() : null;
+        if (world == null) return;
+
+        Set<Block> portalBlocks = new HashSet<>();
+
+        // If we have both gold block locations, use them to define the portal area
+        if (portal.hasGoldBlockLocations()) {
+            Location gold1 = portal.getGoldBlock1();
+            Location gold2 = portal.getGoldBlock2();
+
+            // Get the min and max coordinates to form a box
+            int minX = Math.min(gold1.getBlockX(), gold2.getBlockX());
+            int minY = Math.min(gold1.getBlockY(), gold2.getBlockY());
+            int minZ = Math.min(gold1.getBlockZ(), gold2.getBlockZ());
+            int maxX = Math.max(gold1.getBlockX(), gold2.getBlockX());
+            int maxY = Math.max(gold1.getBlockY(), gold2.getBlockY());
+            int maxZ = Math.max(gold1.getBlockZ(), gold2.getBlockZ());
+
+            // Find all portal blocks within the box
+            for (int x = minX; x <= maxX; x++) {
+                for (int y = minY; y <= maxY; y++) {
+                    for (int z = minZ; z <= maxZ; z++) {
+                        Block block = world.getBlockAt(x, y, z);
+                        if (isPortalBlock(block.getType())) {
+                            portalBlocks.add(block);
+                        }
+                    }
+                }
+            }
+
+            plugin.getLogger().info("[DEBUG] Removed portal using gold block locations: " + 
+                                   gold1.getBlockX() + "," + gold1.getBlockY() + "," + gold1.getBlockZ() + " to " +
+                                   gold2.getBlockX() + "," + gold2.getBlockY() + "," + gold2.getBlockZ());
+        } else {
+            // Fallback to the old method if we don't have gold block locations
+            removePortalByLocation(location);
+            return;
+        }
+
+        // Remove all found portal blocks
+        for (Block block : portalBlocks) {
+            block.setType(Material.AIR);
+        }
+
+        plugin.getLogger().info("[DEBUG] Removed " + portalBlocks.size() + " portal blocks");
+    }
+
+    /**
+     * Removes a portal using the center location (legacy method).
+     *
+     * @param location The center location of the portal
+     */
+    private void removePortalByLocation(Location location) {
         World world = location.getWorld();
         if (world == null) return;
 
@@ -803,85 +1105,74 @@ public class WarpsManager {
         int centerY = location.getBlockY();
         int centerZ = location.getBlockZ();
 
-        // Search for frame blocks in all directions
-        int radius = 5; // Maximum search radius
-        int minX = centerX, maxX = centerX;
-        int minY = centerY, maxY = centerY;
-        int minZ = centerZ, maxZ = centerZ;
+        // Use a more comprehensive search to find all portal blocks
+        int radius = 10; // Increased search radius to catch more of the portal
+        Set<Block> portalBlocks = new HashSet<>();
+        Set<Block> checkedBlocks = new HashSet<>();
 
-        // Find the boundaries of the portal
-        boolean foundMinX = false, foundMaxX = false;
-        boolean foundMinY = false, foundMaxY = false;
-        boolean foundMinZ = false, foundMaxZ = false;
+        // Start with the center block
+        Block centerBlock = world.getBlockAt(centerX, centerY, centerZ);
+        Queue<Block> blocksToCheck = new LinkedList<>();
+        blocksToCheck.add(centerBlock);
 
-        for (int r = 1; r <= radius; r++) {
+        // Use a breadth-first search to find all connected portal blocks
+        while (!blocksToCheck.isEmpty()) {
+            Block currentBlock = blocksToCheck.poll();
 
-            // Check X direction
-            if (!foundMinX) {
-                Block block = world.getBlockAt(centerX - r, centerY, centerZ);
-                if (isPortalBlock(block.getType())) {
-                    minX = centerX - r;
-                    foundMinX = true;
-                }
-            }
-            if (!foundMaxX) {
-                Block block = world.getBlockAt(centerX + r, centerY, centerZ);
-                if (isPortalBlock(block.getType())) {
-                    maxX = centerX + r;
-                    foundMaxX = true;
-                }
+            // Skip if we've already checked this block
+            if (checkedBlocks.contains(currentBlock)) {
+                continue;
             }
 
-            // Check Y direction
-            if (!foundMinY) {
-                Block block = world.getBlockAt(centerX, centerY - r, centerZ);
-                if (isPortalBlock(block.getType())) {
-                    minY = centerY - r;
-                    foundMinY = true;
-                }
-            }
-            if (!foundMaxY) {
-                Block block = world.getBlockAt(centerX, centerY + r, centerZ);
-                if (isPortalBlock(block.getType())) {
-                    maxY = centerY + r;
-                    foundMaxY = true;
-                }
-            }
+            // Mark as checked
+            checkedBlocks.add(currentBlock);
 
-            // Check Z direction
-            if (!foundMinZ) {
-                Block block = world.getBlockAt(centerX, centerY, centerZ - r);
-                if (isPortalBlock(block.getType())) {
-                    minZ = centerZ - r;
-                    foundMinZ = true;
-                }
-            }
-            if (!foundMaxZ) {
-                Block block = world.getBlockAt(centerX, centerY, centerZ + r);
-                if (isPortalBlock(block.getType())) {
-                    maxZ = centerZ + r;
-                    foundMaxZ = true;
-                }
-            }
+            // If it's a portal block, add it to our list and check its neighbors
+            if (isPortalBlock(currentBlock.getType())) {
+                portalBlocks.add(currentBlock);
 
-            // If we've found the frame in all directions, break
-            if (foundMinX && foundMaxX && foundMinY && foundMaxY && foundMinZ && foundMaxZ) {
-                break;
-            }
-        }
+                // Check all 26 neighboring blocks (3x3x3 cube around the current block)
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            // Skip the current block
+                            if (dx == 0 && dy == 0 && dz == 0) {
+                                continue;
+                            }
 
-        // Remove all blocks inside the frame (including the frame itself)
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                for (int z = minZ; z <= maxZ; z++) {
-                    Block block = world.getBlockAt(x, y, z);
-                    // Check if the block is part of the portal frame or filling
-                    if (isPortalBlock(block.getType())) {
-                        block.setType(Material.AIR);
+                            Block neighbor = currentBlock.getRelative(dx, dy, dz);
+
+                            // Only add to queue if we haven't checked it yet and it's within our search radius
+                            if (!checkedBlocks.contains(neighbor) && 
+                                Math.abs(neighbor.getX() - centerX) <= radius &&
+                                Math.abs(neighbor.getY() - centerY) <= radius &&
+                                Math.abs(neighbor.getZ() - centerZ) <= radius) {
+                                blocksToCheck.add(neighbor);
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // Also search in a cube around the center to catch any disconnected portal blocks
+        for (int x = centerX - radius; x <= centerX + radius; x++) {
+            for (int y = centerY - radius; y <= centerY + radius; y++) {
+                for (int z = centerZ - radius; z <= centerZ + radius; z++) {
+                    Block block = world.getBlockAt(x, y, z);
+                    if (isPortalBlock(block.getType())) {
+                        portalBlocks.add(block);
+                    }
+                }
+            }
+        }
+
+        // Remove all found portal blocks
+        for (Block block : portalBlocks) {
+            block.setType(Material.AIR);
+        }
+
+        plugin.getLogger().info("[DEBUG] Removed " + portalBlocks.size() + " portal blocks using legacy method");
     }
 
     /**
@@ -932,17 +1223,24 @@ public class WarpsManager {
         }
 
         // Check if player is an op or has the admin permission
+        boolean success = false;
         if (player.isOp() || player.hasPermission("furious.teleport.admin")) {
             // Teleport immediately
-            player.teleport(location);
-            player.sendMessage(Component.text("Teleported to warp '" + warpName + "'!", NamedTextColor.GREEN));
+            success = player.teleport(location);
+            if (success) {
+                player.sendMessage(Component.text("Teleported to warp '" + warpName + "'!", NamedTextColor.GREEN));
+            } else {
+                player.sendMessage(Component.text("Failed to teleport to warp '" + warpName + "'!", NamedTextColor.RED));
+            }
         } else {
             // Start teleport sequence with countdown and nausea effect
             plugin.getTeleportManager().teleportQueue(player, location);
+            // teleportQueue doesn't return a success value, but it will always queue the teleport
             player.sendMessage(Component.text("Starting teleport to warp '" + warpName + "'...", NamedTextColor.YELLOW));
+            success = true; // Assume success since teleportQueue doesn't return a value
         }
 
-        return true;
+        return success;
     }
 
 
@@ -955,6 +1253,12 @@ public class WarpsManager {
     public Warp getWarpByPortal(Location location) {
         plugin.getLogger().info("[DEBUG] getWarpByPortal called for location: " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
         plugin.getLogger().info("[DEBUG] portalLocations size: " + portalLocations.size());
+
+        // If portalLocations is empty, log a warning but continue with other checks
+        if (portalLocations.isEmpty()) {
+            plugin.getLogger().warning("[DEBUG] portalLocations map is empty! No portals have been created yet.");
+            // Don't return null here, continue with other checks
+        }
 
         // Check if the exact location is a portal center (by block coordinates, not by reference)
         Warp warp = findWarpByBlockCoordinates(location);
@@ -989,15 +1293,19 @@ public class WarpsManager {
             }
         }
 
-        // If we still haven't found a portal, check if the player is standing on a portal block
+        // If we still haven't found a portal, check if the player is standing on a walkable portal block
+        // or if they're standing in AIR within a portal area
         Block block = location.getBlock();
         Material blockType = block.getType();
         plugin.getLogger().info("[DEBUG] Player is standing on block type: " + blockType.name());
         plugin.getLogger().info("[DEBUG] isPortalBlock result: " + isPortalBlock(blockType));
+        plugin.getLogger().info("[DEBUG] isWalkablePortalBlock result: " + isWalkablePortalBlock(blockType));
 
-        if (isPortalBlock(blockType)) {
+        // Check if player is standing on a walkable portal block
+        // This ensures we only detect portals with fillings that players can walk through
+        if (isWalkablePortalBlock(blockType)) {
             // Search for a portal center in a larger area
-            plugin.getLogger().info("[DEBUG] Player is standing on a portal block, checking larger area with radius 5");
+            plugin.getLogger().info("[DEBUG] Player is standing on a walkable portal block, checking larger area with radius 5");
             for (int x = -5; x <= 5; x++) {
                 for (int y = -5; y <= 5; y++) {
                     for (int z = -5; z <= 5; z++) {
@@ -1013,8 +1321,95 @@ public class WarpsManager {
             plugin.getLogger().info("[DEBUG] No portal center found in larger area");
         }
 
+        // As a last resort, check if any warp has a portal with gold block locations that contain the player's location
+        plugin.getLogger().info("[DEBUG] Checking if player is between gold blocks of any portal");
+        int warpCount = 0;
+        for (Warp w : warps.values()) {
+            warpCount++;
+            if (w.hasPortal()) {
+                plugin.getLogger().info("[DEBUG] Checking warp " + w.getName() + " (has portal)");
+                if (isPlayerBetweenGoldBlocks(location, w)) {
+                    plugin.getLogger().info("[DEBUG] Player is between gold blocks for warp: " + w.getName());
+                    return w;
+                }
+            }
+        }
+        plugin.getLogger().info("[DEBUG] Checked " + warpCount + " warps, none had the player between gold blocks");
+
         plugin.getLogger().info("[DEBUG] No portal found for location: " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
         return null;
+    }
+
+    /**
+     * Checks if a player is between the gold blocks that define a portal.
+     *
+     * @param location The player's location
+     * @param warp The warp to check
+     * @return true if the player is between the gold blocks, false otherwise
+     */
+    public boolean isPlayerBetweenGoldBlocks(Location location, Warp warp) {
+        if (warp == null) {
+            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: warp is null");
+            return false;
+        }
+
+        if (!warp.hasPortal()) {
+            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: warp " + warp.getName() + " has no portal");
+            return false;
+        }
+
+        Portal portal = warp.getPortal();
+        if (portal == null) {
+            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: portal is null for warp " + warp.getName());
+            return false;
+        }
+
+        if (!portal.hasGoldBlockLocations()) {
+            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: portal for warp " + warp.getName() + " has no gold block locations");
+            return false;
+        }
+
+        Location gold1 = portal.getGoldBlock1();
+        Location gold2 = portal.getGoldBlock2();
+
+        plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: checking for warp " + warp.getName() + 
+                               " with gold blocks at " + gold1.getBlockX() + "," + gold1.getBlockY() + "," + gold1.getBlockZ() + 
+                               " and " + gold2.getBlockX() + "," + gold2.getBlockY() + "," + gold2.getBlockZ());
+
+        // Check if the player is in the same world as the portal
+        if (!location.getWorld().equals(gold1.getWorld())) {
+            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: player is in a different world");
+            return false;
+        }
+
+        // Get the min and max coordinates to form a box
+        int minX = Math.min(gold1.getBlockX(), gold2.getBlockX());
+        int minY = Math.min(gold1.getBlockY(), gold2.getBlockY());
+        int minZ = Math.min(gold1.getBlockZ(), gold2.getBlockZ());
+        int maxX = Math.max(gold1.getBlockX(), gold2.getBlockX());
+        int maxY = Math.max(gold1.getBlockY(), gold2.getBlockY());
+        int maxZ = Math.max(gold1.getBlockZ(), gold2.getBlockZ());
+
+        // Check if the player is within the box defined by the gold blocks
+        int playerX = location.getBlockX();
+        int playerY = location.getBlockY();
+        int playerZ = location.getBlockZ();
+
+        plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: player at " + playerX + "," + playerY + "," + playerZ + 
+                               " checking box " + minX + "," + minY + "," + minZ + " to " + maxX + "," + maxY + "," + maxZ);
+
+        // Use exact frame boundaries for more precise portal detection
+        boolean isInBox = (playerX >= minX && playerX <= maxX &&
+                           playerY >= minY && playerY <= maxY &&
+                           playerZ >= minZ && playerZ <= maxZ);
+
+        if (isInBox) {
+            plugin.getLogger().info("[DEBUG] Player is between gold blocks for warp: " + warp.getName());
+        } else {
+            plugin.getLogger().info("[DEBUG] Player is NOT between gold blocks for warp: " + warp.getName());
+        }
+
+        return isInBox;
     }
 
     /**
@@ -1029,12 +1424,28 @@ public class WarpsManager {
         int z = location.getBlockZ();
         World world = location.getWorld();
 
+        plugin.getLogger().info("[DEBUG] findWarpByBlockCoordinates checking location: " + x + ", " + y + ", " + z + " in world: " + world.getName());
+
         for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
             Location portalLoc = entry.getKey();
             if (portalLoc.getWorld().equals(world) &&
                 portalLoc.getBlockX() == x &&
                 portalLoc.getBlockY() == y &&
                 portalLoc.getBlockZ() == z) {
+                plugin.getLogger().info("[DEBUG] Found exact match for portal at: " + x + ", " + y + ", " + z);
+                return entry.getValue();
+            }
+        }
+
+        // If no exact match was found, try a more lenient approach
+        // Check if any portal is within 1 block of the given location
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            Location portalLoc = entry.getKey();
+            if (portalLoc.getWorld().equals(world) &&
+                Math.abs(portalLoc.getBlockX() - x) <= 1 &&
+                Math.abs(portalLoc.getBlockY() - y) <= 1 &&
+                Math.abs(portalLoc.getBlockZ() - z) <= 1) {
+                plugin.getLogger().info("[DEBUG] Found nearby portal at: " + portalLoc.getBlockX() + ", " + portalLoc.getBlockY() + ", " + portalLoc.getBlockZ());
                 return entry.getValue();
             }
         }
@@ -1086,16 +1497,109 @@ public class WarpsManager {
                     Location checkLoc = block.getLocation().clone().add(x, y, z);
                     Warp warp = portalLocations.get(checkLoc);
                     if (warp != null) {
-                        // Remove the portal
+                        // Remove only this specific portal
                         portalLocations.remove(checkLoc);
                         removePortal(checkLoc);
 
-                        // Update the warp
-                        warp.setHasPortal(false);
-                        warp.setPortalLocation(null);
+                        // Check if this was the portal stored in the Warp object
+                        if (warp.hasPortal() && warp.getPortalLocation() != null && 
+                            warp.getPortalLocation().getWorld().equals(checkLoc.getWorld()) &&
+                            warp.getPortalLocation().getBlockX() == checkLoc.getBlockX() &&
+                            warp.getPortalLocation().getBlockY() == checkLoc.getBlockY() &&
+                            warp.getPortalLocation().getBlockZ() == checkLoc.getBlockZ()) {
+
+                            // This was the portal stored in the Warp object
+                            // Check if there are any other portals for this warp
+                            Portal newPortal = null;
+                            for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+                                if (entry.getValue().getId().equals(warp.getId())) {
+                                    // Found another portal for this warp, use it as the new main portal
+                                    Location portalLoc = entry.getKey();
+                                    World world = portalLoc.getWorld();
+
+                                    // Create a new Portal object for the Warp
+                                    newPortal = new Portal(portalLoc, warp.getPortalFilling());
+                                    break;
+                                }
+                            }
+
+                            // Update the warp with the new portal or null if no other portals exist
+                            warp.setPortal(newPortal);
+                        }
+
                         saveConfiguration();
 
                         player.sendMessage(Component.text("Portal for warp '" + warp.getName() + "' removed!", NamedTextColor.GREEN));
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a gold block is already part of an existing portal.
+     *
+     * @param block The gold block to check
+     * @return true if the block is part of an existing portal, false otherwise
+     */
+    private boolean isGoldBlockPartOfPortal(Block block) {
+        // Check if the block is a gold block
+        if (block.getType() != Material.GOLD_BLOCK) {
+            return false;
+        }
+
+        // Check all portals to see if this gold block is one of their corner blocks
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            Warp warp = entry.getValue();
+            if (warp.hasPortal()) {
+                Portal portal = warp.getPortal();
+                if (portal != null && portal.hasGoldBlockLocations()) {
+                    Location gold1 = portal.getGoldBlock1();
+                    Location gold2 = portal.getGoldBlock2();
+
+                    // Check if this block matches either gold block location
+                    if ((gold1.getWorld().equals(block.getWorld()) &&
+                         gold1.getBlockX() == block.getX() &&
+                         gold1.getBlockY() == block.getY() &&
+                         gold1.getBlockZ() == block.getZ()) ||
+                        (gold2.getWorld().equals(block.getWorld()) &&
+                         gold2.getBlockX() == block.getX() &&
+                         gold2.getBlockY() == block.getY() &&
+                         gold2.getBlockZ() == block.getZ())) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Also check if the block is within the bounds of any existing portal
+        // This handles cases where the gold block might be part of a portal but not one of the corner blocks
+        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
+            Location portalLoc = entry.getKey();
+            Warp warp = entry.getValue();
+
+            if (warp.hasPortal()) {
+                Portal portal = warp.getPortal();
+                if (portal != null && portal.hasGoldBlockLocations()) {
+                    Location gold1 = portal.getGoldBlock1();
+                    Location gold2 = portal.getGoldBlock2();
+
+                    // Get the min and max coordinates to form a box
+                    int minX = Math.min(gold1.getBlockX(), gold2.getBlockX());
+                    int minY = Math.min(gold1.getBlockY(), gold2.getBlockY());
+                    int minZ = Math.min(gold1.getBlockZ(), gold2.getBlockZ());
+                    int maxX = Math.max(gold1.getBlockX(), gold2.getBlockX());
+                    int maxY = Math.max(gold1.getBlockY(), gold2.getBlockY());
+                    int maxZ = Math.max(gold1.getBlockZ(), gold2.getBlockZ());
+
+                    // Check if the block is within the portal bounds
+                    if (block.getWorld().equals(gold1.getWorld()) &&
+                        block.getX() >= minX && block.getX() <= maxX &&
+                        block.getY() >= minY && block.getY() <= maxY &&
+                        block.getZ() >= minZ && block.getZ() <= maxZ) {
                         return true;
                     }
                 }

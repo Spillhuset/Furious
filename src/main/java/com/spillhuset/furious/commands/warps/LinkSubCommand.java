@@ -34,7 +34,7 @@ public class LinkSubCommand implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Links a warp to a portal.";
+        return "Links a warp to a portal. Multiple portals can be linked to the same warp.";
     }
 
     @Override
@@ -43,7 +43,8 @@ public class LinkSubCommand implements SubCommand {
         sender.sendMessage(Component.text("/warps link <name> [filling] - Links a warp to a portal", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("You must be looking at a gold block when using this command.", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("The gold block must have another gold block placed diagonally from it.", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("Valid filling materials: water, real_water, lava, air, colored glass panes, iron bars, fences, chain", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Multiple portals can be linked to the same warp.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Valid filling materials: water, real_water, lava, air, iron bars, chain", NamedTextColor.YELLOW));
     }
 
     @Override
@@ -96,13 +97,7 @@ public class LinkSubCommand implements SubCommand {
             String partial = args[2].toLowerCase();
             List<String> validFillings = Arrays.asList(
                 "water", "real_water", "lava", "air",
-                "white_glass", "orange_glass", "magenta_glass", "light_blue_glass",
-                "yellow_glass", "lime_glass", "pink_glass", "gray_glass",
-                "light_gray_glass", "cyan_glass", "purple_glass", "blue_glass",
-                "brown_glass", "green_glass", "red_glass", "black_glass",
-                "iron_bars", "oak_fence", "spruce_fence", "birch_fence",
-                "jungle_fence", "acacia_fence", "dark_oak_fence", "crimson_fence",
-                "warped_fence", "chain"
+                "iron_bars", "chain"
             );
 
             for (String material : validFillings) {
