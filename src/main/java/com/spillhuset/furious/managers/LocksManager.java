@@ -77,8 +77,10 @@ public class LocksManager {
             if (locksSection != null) {
                 for (String locationStr : locksSection.getKeys(false)) {
                     Location location = deserializeLocation(locationStr);
-                    UUID owner = UUID.fromString(Objects.requireNonNull(lockConfig.getString("locks." + locationStr)));
-                    lockedBlocks.put(location, owner);
+                    if (location != null) {
+                        UUID owner = UUID.fromString(Objects.requireNonNull(lockConfig.getString("locks." + locationStr)));
+                        lockedBlocks.put(location, owner);
+                    }
                 }
             }
         } else {
@@ -87,8 +89,10 @@ public class LocksManager {
                 if (locationStr.equals("disabled-worlds")) continue;
 
                 Location location = deserializeLocation(locationStr);
-                UUID owner = UUID.fromString(Objects.requireNonNull(lockConfig.getString(locationStr)));
-                lockedBlocks.put(location, owner);
+                if (location != null) {
+                    UUID owner = UUID.fromString(Objects.requireNonNull(lockConfig.getString(locationStr)));
+                    lockedBlocks.put(location, owner);
+                }
             }
         }
 
@@ -459,13 +463,42 @@ public class LocksManager {
     }
 
     private Location deserializeLocation(String str) {
+        // Skip configuration keys that aren't locations
+        if (str.equals("disabled-world-message") || 
+            str.equals("owner-only-unlock") || 
+            str.equals("persistent-locks") || 
+            str.equals("max-locks-per-player") || 
+            str.equals("max-locks") || 
+            str.equals("lock-purchase-cost") || 
+            str.equals("key-cost") || 
+            str.equals("guild-key-min-role") || 
+            str.equals("unlockable-blocks") || 
+            str.equals("auto-remove-locks") || 
+            str.equals("auto-remove-days")) {
+            return null;
+        }
+
         String[] parts = str.split(",");
-        return new Location(
-                org.bukkit.Bukkit.getWorld(parts[0]),
-                Integer.parseInt(parts[1]),
-                Integer.parseInt(parts[2]),
-                Integer.parseInt(parts[3])
-        );
+        if (parts.length < 4) {
+            plugin.getLogger().warning("Invalid location format: " + str + ". Expected format: worldName,x,y,z");
+            return null;
+        }
+        World world = org.bukkit.Bukkit.getWorld(parts[0]);
+        if (world == null) {
+            plugin.getLogger().warning("World not found: " + parts[0]);
+            return null;
+        }
+        try {
+            return new Location(
+                    world,
+                    Integer.parseInt(parts[1]),
+                    Integer.parseInt(parts[2]),
+                    Integer.parseInt(parts[3])
+            );
+        } catch (NumberFormatException e) {
+            plugin.getLogger().warning("Invalid coordinates in location: " + str);
+            return null;
+        }
     }
 
     public List<Location> getLockedBlocksByPlayer(UUID playerUUID) {

@@ -435,16 +435,27 @@ public class WorldManager {
         if (mapWorld == null) {
             File mapFolder = new File(Bukkit.getWorldContainer(), mapName);
             if (!mapFolder.exists()) {
-                plugin.getLogger().severe("Map " + mapName + " does not exist!");
-                return false;
-            }
+                plugin.getLogger().info("Map " + mapName + " does not exist, creating a new map.");
 
-            // Load the map world
-            WorldCreator creator = new WorldCreator(mapName);
-            mapWorld = creator.createWorld();
-            if (mapWorld == null) {
-                plugin.getLogger().severe("Failed to load map " + mapName + "!");
-                return false;
+                // Create a new world with the given name
+                WorldCreator creator = new WorldCreator(mapName);
+                mapWorld = creator.createWorld();
+                if (mapWorld == null) {
+                    plugin.getLogger().severe("Failed to create new map " + mapName + "!");
+                    return false;
+                }
+
+                // Set world border for the new world
+                setWorldBorder(mapWorld);
+                plugin.getLogger().info("Created new map " + mapName + " successfully!");
+            } else {
+                // Load the map world
+                WorldCreator creator = new WorldCreator(mapName);
+                mapWorld = creator.createWorld();
+                if (mapWorld == null) {
+                    plugin.getLogger().severe("Failed to load map " + mapName + "!");
+                    return false;
+                }
             }
         }
 

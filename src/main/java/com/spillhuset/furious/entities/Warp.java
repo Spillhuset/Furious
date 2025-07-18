@@ -22,9 +22,7 @@ public class Warp {
     private float pitch;
     private double cost; // Cost to use this warp
     private String password; // Optional password protection
-    private boolean hasPortal; // Whether this warp has a linked portal
-    private String portalFilling; // The material filling the portal (water, lava, or air)
-    private Location portalLocation; // Location of the portal
+    private Portal portal; // The portal linked to this warp
 
     /**
      * Creates a new warp with the given name and creator at the specified location.
@@ -41,8 +39,7 @@ public class Warp {
         this.creatorId = creatorId;
         this.cost = cost;
         this.password = password;
-        this.hasPortal = false;
-        this.portalFilling = "air";
+        this.portal = null;
         setLocation(location);
     }
 
@@ -81,14 +78,17 @@ public class Warp {
         this.pitch = pitch;
         this.cost = cost;
         this.password = password;
-        this.hasPortal = hasPortal;
-        this.portalFilling = portalFilling;
 
         if (hasPortal && portalWorld != null) {
             World world = Bukkit.getWorld(portalWorld);
             if (world != null) {
-                this.portalLocation = new Location(world, portalX, portalY, portalZ);
+                Location portalLocation = new Location(world, portalX, portalY, portalZ);
+                this.portal = new Portal(portalLocation, portalFilling);
+            } else {
+                this.portal = null;
             }
+        } else {
+            this.portal = null;
         }
     }
 
@@ -113,14 +113,14 @@ public class Warp {
     /**
      * Sets the name of the warp.
      *
-     * @param name The new name for the warp
+     * @param name The new name
      */
     public void setName(String name) {
         this.name = name;
     }
 
     /**
-     * Gets the UUID of the creator.
+     * Gets the UUID of the player who created this warp.
      *
      * @return The creator's UUID
      */
@@ -131,7 +131,7 @@ public class Warp {
     /**
      * Gets the location of the warp.
      *
-     * @return The warp's location, or null if the world doesn't exist
+     * @return The warp's location, or null if world doesn't exist
      */
     public Location getLocation() {
         World world = Bukkit.getWorld(worldId);
@@ -144,7 +144,7 @@ public class Warp {
     /**
      * Sets the location of the warp.
      *
-     * @param location The new location for the warp
+     * @param location The new location
      */
     public void setLocation(Location location) {
         this.worldId = location.getWorld().getUID();
@@ -230,7 +230,7 @@ public class Warp {
     /**
      * Gets the password for this warp.
      *
-     * @return The password, or null if not password-protected
+     * @return The password, or null if no password
      */
     public String getPassword() {
         return password;
@@ -239,7 +239,7 @@ public class Warp {
     /**
      * Sets the password for this warp.
      *
-     * @param password The new password, or null to remove password protection
+     * @param password The new password, or null to remove password
      */
     public void setPassword(String password) {
         this.password = password;
@@ -248,7 +248,7 @@ public class Warp {
     /**
      * Checks if this warp has a password.
      *
-     * @return true if password-protected, false otherwise
+     * @return true if has a password, false otherwise
      */
     public boolean hasPassword() {
         return password != null && !password.isEmpty();
@@ -260,7 +260,7 @@ public class Warp {
      * @return true if has a portal, false otherwise
      */
     public boolean hasPortal() {
-        return hasPortal;
+        return portal != null;
     }
 
     /**
@@ -269,7 +269,12 @@ public class Warp {
      * @param hasPortal true if has a portal, false otherwise
      */
     public void setHasPortal(boolean hasPortal) {
-        this.hasPortal = hasPortal;
+        if (!hasPortal) {
+            this.portal = null;
+        } else if (this.portal == null) {
+            // Create a default portal if setting to true and no portal exists
+            this.portal = new Portal(getLocation(), "air");
+        }
     }
 
     /**
@@ -278,7 +283,7 @@ public class Warp {
      * @return The portal filling (water, lava, or air)
      */
     public String getPortalFilling() {
-        return portalFilling;
+        return portal != null ? portal.getFilling() : "air";
     }
 
     /**
@@ -287,7 +292,12 @@ public class Warp {
      * @param portalFilling The portal filling (water, lava, or air)
      */
     public void setPortalFilling(String portalFilling) {
-        this.portalFilling = portalFilling;
+        if (portal != null) {
+            portal.setFilling(portalFilling);
+        } else if (portalFilling != null && !portalFilling.isEmpty()) {
+            // Create a new portal if setting filling and no portal exists
+            this.portal = new Portal(getLocation(), portalFilling);
+        }
     }
 
     /**
@@ -296,15 +306,38 @@ public class Warp {
      * @return The portal's location, or null if no portal or world doesn't exist
      */
     public Location getPortalLocation() {
-        return portalLocation;
+        return portal != null ? portal.getLocation() : null;
     }
 
     /**
      * Sets the location of the portal.
      *
-     * @param portalLocation The new location for the portal
+     * @param portalLocation The new location
      */
     public void setPortalLocation(Location portalLocation) {
-        this.portalLocation = portalLocation;
+        if (portal != null) {
+            portal.setLocation(portalLocation);
+        } else if (portalLocation != null) {
+            // Create a new portal if setting location and no portal exists
+            this.portal = new Portal(portalLocation, "air");
+        }
+    }
+    
+    /**
+     * Gets the portal linked to this warp.
+     *
+     * @return The portal, or null if no portal is linked
+     */
+    public Portal getPortal() {
+        return portal;
+    }
+    
+    /**
+     * Sets the portal linked to this warp.
+     *
+     * @param portal The new portal, or null to remove the link
+     */
+    public void setPortal(Portal portal) {
+        this.portal = portal;
     }
 }
