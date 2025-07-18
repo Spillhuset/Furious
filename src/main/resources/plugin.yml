@@ -194,13 +194,13 @@ permissions:
     description: Allows claiming chunks for a guild
     default: true
   furious.guild.claim.unmanned:
-    description: Allows claiming chunks for unmanned guilds (SAFE, WAR, WILD)
+    description: Allows claiming chunks for unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
     default: op
   furious.guild.unclaim:
     description: Allows unclaiming chunks from a guild
     default: true
   furious.guild.unclaim.unmanned:
-    description: Allows unclaiming chunks from unmanned guilds (SAFE, WAR, WILD)
+    description: Allows unclaiming chunks from unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
     default: op
   furious.guild.claims:
     description: Allows viewing claimed chunks of a guild

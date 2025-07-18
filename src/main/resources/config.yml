@@ -77,6 +77,43 @@ tombstones:
   # If true, only the owner of the tombstone can access it
   owner-only-access: true
 
+# Database settings
+# These settings control how the plugin stores data
+database:
+  # Storage type: YAML, MYSQL, MARIADB, or SQLITE
+  # YAML: Uses YAML files for storage (default)
+  # MYSQL: Uses MySQL database for storage
+  # MARIADB: Uses MariaDB database for storage
+  # SQLITE: Uses SQLite database for storage
+  storage-type: "YAML"
+
+  # MySQL/MariaDB settings (only used if storage-type is MYSQL or MARIADB)
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "furious"
+    username: "furious"
+    password: "password"
+    use-ssl: false
+
+  # SQLite settings (only used if storage-type is SQLITE)
+  sqlite:
+    # Path to the SQLite database file (relative to plugin folder)
+    file: "database.db"
+
+  # Connection pool settings (HikariCP)
+  connection-pool:
+    # Maximum number of connections in the pool
+    maximum-pool-size: 10
+    # Minimum number of idle connections in the pool
+    minimum-idle: 5
+    # Maximum lifetime of a connection in the pool (in milliseconds)
+    maximum-lifetime: 1800000
+    # Connection timeout (in milliseconds)
+    connection-timeout: 5000
+    # How often to check for idle connections (in milliseconds)
+    idle-timeout: 600000
+
 # Default configuration files
 # These files will be loaded when the plugin starts
 config-files:

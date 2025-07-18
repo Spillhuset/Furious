@@ -20,6 +20,12 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT")
+
+    // Database dependencies
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.3.2")
+    implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("org.xerial:sqlite-jdbc:3.45.1.0")
+    implementation("com.zaxxer:HikariCP:5.1.0")
 }
 
 tasks {

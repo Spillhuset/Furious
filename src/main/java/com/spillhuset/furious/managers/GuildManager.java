@@ -56,47 +56,61 @@ public class GuildManager {
         this.MIN_GUILD_NAME_LENGTH = plugin.getConfig().getInt("guilds.min-name-length", 3);
         this.MAX_PLOTS_PER_GUILD = plugin.getConfig().getInt("guilds.max-plots-per-guild", 16);
 
-        loadConfiguration();
+        // Load guild data from the appropriate storage
+        if (plugin.getDatabaseManager().isUsingYaml()) {
+            // Use YAML storage
+            loadConfiguration();
+        } else {
+            // Use database storage
+            loadFromDatabase();
+
+            // Load disabled worlds from YAML (still stored in YAML for simplicity)
+            loadDisabledWorldsFromYaml();
+        }
 
         // Create unmanned guilds if they don't exist
         createUnmannedGuilds();
     }
 
     /**
-     * Creates the unmanned guilds (SAFE, WAR, WILD) if they don't already exist.
+     * Creates the unmanned guilds (S_A_F_E, WARZONE, WILDLIFE) if they don't already exist.
+     * These special guilds cannot have members and are used to control chunk types:
+     * - S_A_F_E: all chunks claimed to this guild will be of type SAFE
+     * - WARZONE: all chunks claimed to this guild will be of type WAR
+     * - WILDLIFE: for all unclaimed chunks
      */
     private void createUnmannedGuilds() {
         // Create a server UUID to use as the owner for unmanned guilds
         UUID serverUUID = new UUID(0, 0); // Special UUID for server-owned guilds
 
-        // Check if SAFE guild exists, create if not
-        safeGuild = getGuildByName("SAFE");
+        // Check if S_A_F_E guild exists, create if not
+        safeGuild = getGuildByName("S_A_F_E");
         if (safeGuild == null) {
-            safeGuild = new Guild("SAFE", serverUUID, GuildType.SAFE);
+            safeGuild = new Guild("S_A_F_E", serverUUID, GuildType.SAFE);
             guilds.put(safeGuild.getId(), safeGuild);
-            plugin.getLogger().info("Created SAFE zone guild");
+            plugin.getLogger().info("Created S_A_F_E zone guild");
         } else if (safeGuild.getType() != GuildType.SAFE) {
             // Ensure correct type
             safeGuild.setType(GuildType.SAFE);
         }
 
-        // Check if WAR guild exists, create if not
-        warGuild = getGuildByName("WAR");
+        // Check if WARZONE guild exists, create if not
+        warGuild = getGuildByName("WARZONE");
         if (warGuild == null) {
-            warGuild = new Guild("WAR", serverUUID, GuildType.WAR);
+            warGuild = new Guild("WARZONE", serverUUID, GuildType.WAR);
             guilds.put(warGuild.getId(), warGuild);
-            plugin.getLogger().info("Created WAR zone guild");
+            plugin.getLogger().info("Created WARZONE guild");
         } else if (warGuild.getType() != GuildType.WAR) {
             // Ensure correct type
             warGuild.setType(GuildType.WAR);
         }
 
-        // Check if WILD guild exists, create if not
-        wildGuild = getGuildByName("WILD");
+        // Check if WILDLIFE guild exists, create if not
+        wildGuild = getGuildByName("WILDLIFE");
         if (wildGuild == null) {
-            wildGuild = new Guild("WILD", serverUUID, GuildType.WILD);
+            wildGuild = new Guild("WILDLIFE", serverUUID, GuildType.WILD);
             guilds.put(wildGuild.getId(), wildGuild);
-            plugin.getLogger().info("Created WILD zone guild");
+            plugin.getLogger().info("Created WILDLIFE guild for unclaimed chunks");
         } else if (wildGuild.getType() != GuildType.WILD) {
             // Ensure correct type
             wildGuild.setType(GuildType.WILD);
@@ -121,15 +135,7 @@ public class GuildManager {
         config = YamlConfiguration.loadConfiguration(configFile);
 
         // Load disabled worlds
-        List<String> disabledWorldsList = config.getStringList("disabled-worlds");
-        for (String worldUuidStr : disabledWorldsList) {
-            try {
-                UUID worldUuid = UUID.fromString(worldUuidStr);
-                disabledWorlds.add(worldUuid);
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid world UUID in guilds.yml: " + worldUuidStr);
-            }
-        }
+        loadDisabledWorldsFromYaml();
 
         // Load guilds
         ConfigurationSection guildsSection = config.getConfigurationSection("guilds");
@@ -246,9 +252,82 @@ public class GuildManager {
     }
 
     /**
-     * Saves guild data to the configuration file.
+     * Loads disabled worlds from the YAML configuration file.
+     */
+    private void loadDisabledWorldsFromYaml() {
+        if (!configFile.exists()) {
+            try {
+                configFile.createNewFile();
+            } catch (IOException e) {
+                plugin.getLogger().severe("Could not create guilds.yml: " + e.getMessage());
+            }
+        }
+
+        if (config == null) {
+            config = YamlConfiguration.loadConfiguration(configFile);
+        }
+
+        // Load disabled worlds
+        disabledWorlds.clear();
+        List<String> disabledWorldsList = config.getStringList("disabled-worlds");
+        for (String worldUuidStr : disabledWorldsList) {
+            try {
+                UUID worldUuid = UUID.fromString(worldUuidStr);
+                disabledWorlds.add(worldUuid);
+            } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Invalid world UUID in guilds.yml: " + worldUuidStr);
+            }
+        }
+    }
+
+    /**
+     * Loads guild data from the database.
+     */
+    private void loadFromDatabase() {
+        // Clear existing data
+        guilds.clear();
+        playerGuilds.clear();
+
+        // Load guilds from database
+        Map<UUID, Guild> loadedGuilds = plugin.getGuildDAO().loadAllGuilds();
+
+        // Add guilds to our maps
+        for (Map.Entry<UUID, Guild> entry : loadedGuilds.entrySet()) {
+            UUID guildId = entry.getKey();
+            Guild guild = entry.getValue();
+
+            // Add guild to guilds map
+            guilds.put(guildId, guild);
+
+            // Add player-guild associations
+            for (UUID memberId : guild.getMembers()) {
+                playerGuilds.put(memberId, guildId);
+            }
+        }
+
+        plugin.getLogger().info("Loaded " + guilds.size() + " guilds from database.");
+    }
+
+    /**
+     * Saves guild data to the appropriate storage.
      */
     private void saveConfiguration() {
+        if (plugin.getDatabaseManager().isUsingYaml()) {
+            // Save to YAML
+            saveToYaml();
+        } else {
+            // Save to database
+            saveToDatabase();
+
+            // Still save disabled worlds to YAML (for simplicity)
+            saveDisabledWorldsToYaml();
+        }
+    }
+
+    /**
+     * Saves guild data to the YAML configuration file.
+     */
+    private void saveToYaml() {
         // Clear existing data
         config.set("guilds", null);
 
@@ -307,6 +386,46 @@ public class GuildManager {
             config.save(configFile);
         } catch (IOException e) {
             plugin.getLogger().severe("Could not save guilds.yml: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Saves only the disabled worlds to the YAML configuration file.
+     * Used when the main storage is database but we still want to keep
+     * disabled worlds in YAML for simplicity.
+     */
+    private void saveDisabledWorldsToYaml() {
+        if (config == null) {
+            config = YamlConfiguration.loadConfiguration(configFile);
+        }
+
+        // Save disabled worlds
+        List<String> disabledWorldsList = new ArrayList<>();
+        for (UUID worldUuid : disabledWorlds) {
+            disabledWorldsList.add(worldUuid.toString());
+        }
+        config.set("disabled-worlds", disabledWorldsList);
+
+        try {
+            config.save(configFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not save guilds.yml: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Saves guild data to the database.
+     */
+    private void saveToDatabase() {
+        for (Map.Entry<UUID, Guild> entry : guilds.entrySet()) {
+            UUID guildId = entry.getKey();
+            Guild guild = entry.getValue();
+
+            // Save guild to database
+            boolean success = plugin.getGuildDAO().saveGuild(guild);
+            if (!success) {
+                plugin.getLogger().warning("Failed to save guild " + guild.getName() + " to database.");
+            }
         }
     }
 

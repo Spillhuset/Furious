@@ -136,11 +136,12 @@ furious generates several configuration files in the `plugins/furious` directory
   - General plugin settings (debug mode, metrics, language)
   - Rate limiting for commands
   - Tombstone settings
+  - Database settings
   - Default configuration files list
 
 ### Feature-specific Configurations
 - `teleport.yml`: Teleportation settings and saved locations
-- `guilds.yml`: Guild system configuration and guild data
+- `guilds.yml`: Guild system configuration and guild data (when using YAML storage)
 - `homes.yml`: Home locations and settings
 - `locks.yml`: Locks system configuration and lock data
 - `minigames.yml`: Minigame configurations and statistics
@@ -148,6 +149,43 @@ furious generates several configuration files in the `plugins/furious` directory
 - `wallet.yml`: Economy system configuration
 - `tombstones.yml`: Tombstone system settings
 - `security_reviews.yml`: Security review configuration
+
+### Database Configuration
+The plugin supports multiple storage options for guild data:
+- YAML: Stores guild data in the `guilds.yml` file (default)
+- MySQL/MariaDB: Stores guild data in a MySQL or MariaDB database
+- SQLite: Stores guild data in a SQLite database file
+
+To configure the database storage, edit the `database` section in `config.yml`:
+
+```yaml
+# Database settings
+database:
+  # Storage type: YAML, MYSQL, MARIADB, or SQLITE
+  storage-type: "YAML"
+  
+  # MySQL/MariaDB settings (only used if storage-type is MYSQL or MARIADB)
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "furious"
+    username: "furious"
+    password: "password"
+    use-ssl: false
+    
+  # SQLite settings (only used if storage-type is SQLITE)
+  sqlite:
+    # Path to the SQLite database file (relative to plugin folder)
+    file: "database.db"
+    
+  # Connection pool settings (HikariCP)
+  connection-pool:
+    maximum-pool-size: 10
+    minimum-idle: 5
+    maximum-lifetime: 1800000
+    connection-timeout: 5000
+    idle-timeout: 600000
+```
 
 ### Example Configuration
 ```yaml
@@ -401,6 +439,8 @@ Furious uses a permission-based system for access control. Here are the main per
 - `furious.homes.tp`: Allows teleporting to homes
 - `furious.homes.buy`: Allows purchasing additional home slots
 - `furious.homes.limit.<number>`: Sets home limit to <number> (e.g., 1, 2, 3, 5, 10)
+- `furious.homes`: Allows using `/homes world list` command to view world settings for homes
+- `furious.homes.world`: Allows using `/homes world enable/disable [world]` commands to manage homes in specific worlds
 
 #### Admin Permissions
 - `furious.homes.admin`: Allows managing other players' homes
@@ -413,12 +453,14 @@ Furious uses a permission-based system for access control. Here are the main per
 - `furious.guild.leave`: Allows leaving guilds
 - `furious.guild.info`: Allows viewing guild information
 - `furious.guild.list`: Allows listing all guilds
+- `furious.guild`: Allows using `/guild world list` command to view world settings for guilds
+- `furious.guild.world`: Allows using `/guild world enable/disable [world]` commands to manage guilds in specific worlds
 - `furious.guild.kick`: Allows kicking players from guilds
 - `furious.guild.disband`: Allows disbanding guilds
 - `furious.guild.transfer`: Allows transferring guild ownership
 - `furious.guild.description`: Allows setting guild descriptions
 - `furious.guild.claim`: Allows claiming chunks for a guild
-- `furious.guild.claim.unmanned`: Allows claiming chunks for unmanned guilds (SAFE, WAR, WILD)
+- `furious.guild.claim.unmanned`: Allows claiming chunks for unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
 - `furious.guild.unclaim`: Allows unclaiming chunks from a guild
 - `furious.guild.unclaim.unmanned`: Allows unclaiming chunks from unmanned guilds
 - `furious.guild.claims`: Allows viewing claimed chunks of a guild
@@ -433,7 +475,8 @@ Furious uses a permission-based system for access control. Here are the main per
 - `furious.locks.unlock`: Allows creating unlock items
 - `furious.locks.info`: Allows checking lock ownership
 - `furious.locks.key`: Allows creating key items
-- `furious.locks.world`: Allows managing locks world settings
+- `furious.locks`: Allows using `/locks world list` command to view world settings for locks
+- `furious.locks.world`: Allows using `/locks world enable/disable [world]` commands to manage locks in specific worlds
 - `furious.locks.*`: Gives access to all locks commands
 
 ### Security Permissions

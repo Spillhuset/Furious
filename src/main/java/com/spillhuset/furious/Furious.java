@@ -23,7 +23,9 @@ import com.spillhuset.furious.managers.*;
 import com.spillhuset.furious.minigames.hungergames.ContainerRegistry;
 import com.spillhuset.furious.managers.PermissionManager;
 import com.spillhuset.furious.utils.AuditLogger;
+import com.spillhuset.furious.utils.DatabaseManager;
 import com.spillhuset.furious.utils.EncryptionUtil;
+import com.spillhuset.furious.utils.GuildDAO;
 import com.spillhuset.furious.utils.RateLimiter;
 import com.spillhuset.furious.utils.SecurityReviewManager;
 import net.kyori.adventure.text.Component;
@@ -56,6 +58,8 @@ public final class Furious extends JavaPlugin {
     private BankManager bankManager;
     private BankInterestListener bankInterestListener;
     private PermissionManager permissionManager;
+    private DatabaseManager databaseManager;
+    private GuildDAO guildDAO;
     private static Furious instance;
 
     @Override
@@ -66,6 +70,10 @@ public final class Furious extends JavaPlugin {
 
         // Save default configuration files
         saveDefaultConfigFiles();
+
+        // Initialize database manager and DAO
+        databaseManager = new DatabaseManager(this);
+        guildDAO = new GuildDAO(this, databaseManager);
 
         teleportManager = new TeleportManager(this);
         walletManager = new WalletManager(this);
@@ -171,6 +179,9 @@ public final class Furious extends JavaPlugin {
         if (permissionManager != null) {
             permissionManager.shutdown();
         }
+        if (databaseManager != null) {
+            databaseManager.shutdown();
+        }
     }
 
     public TeleportManager getTeleportManager() {
@@ -243,6 +254,14 @@ public final class Furious extends JavaPlugin {
 
     public PermissionManager getPermissionManager() {
         return permissionManager;
+    }
+
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+
+    public GuildDAO getGuildDAO() {
+        return guildDAO;
     }
 
     public ItemStack createScrapItem(double amount) {
