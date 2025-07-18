@@ -7,6 +7,7 @@ import com.spillhuset.furious.minigames.ConfigurableMinigame;
 import com.spillhuset.furious.minigames.Minigame;
 import com.spillhuset.furious.minigames.hungergames.HungerGame;
 import com.spillhuset.furious.minigames.zombiesurvival.ZombieGame;
+// SpleefGame is loaded via reflection to avoid direct dependencies
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
@@ -69,6 +70,19 @@ public class MinigameManager {
         ZombieGame zombieGame = new ZombieGame(plugin, this);
         games.put("zombiesurvival", zombieGame);
         gameQueues.put("zombiesurvival", new LinkedList<>());
+
+        // Register the SpleefGame
+        try {
+            Class<?> spleefGameClass = Class.forName("com.spillhuset.furious.minigames.spleef.SpleefGame");
+            Object spleefGame = spleefGameClass.getConstructor(Furious.class, MinigameManager.class)
+                    .newInstance(plugin, this);
+            games.put("spleef", (Minigame) spleefGame);
+            gameQueues.put("spleef", new LinkedList<>());
+            plugin.getLogger().info("Registered Spleef minigame");
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to register Spleef minigame: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private void loadConfiguration() {
@@ -148,6 +162,62 @@ public class MinigameManager {
     }
 
     /**
+     * Creates a new minigame and puts the player in edit mode
+     *
+     * @param name       The name of the minigame
+     * @param type       The type of the minigame
+     * @param minPlayers The minimum number of players
+     * @param mapName    The name of the map (with _temp suffix)
+     * @param player     The player creating the minigame
+     * @return True if the minigame was created, false otherwise
+     */
+    public boolean createMinigame(String name, MinigameType type, int minPlayers, String mapName, Player player) {
+        // Check if a game with this name already exists
+        if (games.containsKey(name.toLowerCase())) {
+            return false;
+        }
+
+        // Create the minigame
+        ConfigurableMinigame game = new ConfigurableMinigame(plugin, this, name, type, minPlayers, mapName);
+        games.put(name.toLowerCase(), game);
+        gameQueues.put(name.toLowerCase(), new LinkedList<>());
+
+        // Save the configuration
+        saveConfiguration();
+
+        // Store player's inventory and game mode
+        storePlayerInventory(player);
+        previousGameModes.put(player.getUniqueId(), player.getGameMode());
+
+        // Set player to creative mode and give them WorldEdit tools
+        player.setGameMode(GameMode.CREATIVE);
+        ItemStack wand = new ItemStack(Material.WOODEN_AXE);
+        ItemStack compass = new ItemStack(Material.COMPASS);
+        player.getInventory().addItem(wand);
+        player.getInventory().addItem(compass);
+
+        // Create the world and teleport the player
+        if (!plugin.getWorldManager().createMapEditCopy(mapName)) {
+            player.sendMessage(Component.text("Failed to create world for the minigame!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Add the player as an editor of the map
+        if (!plugin.getWorldManager().addMapEditor(player, mapName)) {
+            player.sendMessage(Component.text("Failed to add you as an editor of the map!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Mark player as in edit mode
+        playersInEditMode.put(player.getUniqueId(), name.toLowerCase());
+
+        // Show scoreboard with game details
+        showEditScoreboard(player, game);
+
+        return true;
+    }
+
+    /**
      * Enables a minigame
      *
      * @param name The name of the minigame
@@ -182,6 +252,40 @@ public class MinigameManager {
     }
 
     /**
+     * Enables the queue for a minigame
+     *
+     * @param name The name of the minigame
+     * @return True if the queue was enabled, false otherwise
+     */
+    public boolean enableQueue(String name) {
+        Minigame game = games.get(name.toLowerCase());
+        if (!(game instanceof ConfigurableMinigame configGame)) {
+            return false;
+        }
+
+        configGame.enableQueue();
+        saveConfiguration();
+        return true;
+    }
+
+    /**
+     * Disables the queue for a minigame
+     *
+     * @param name The name of the minigame
+     * @return True if the queue was disabled, false otherwise
+     */
+    public boolean disableQueue(String name) {
+        Minigame game = games.get(name.toLowerCase());
+        if (!(game instanceof ConfigurableMinigame configGame)) {
+            return false;
+        }
+
+        configGame.disableQueue();
+        saveConfiguration();
+        return true;
+    }
+
+    /**
      * Stops a minigame
      *
      * @param name The name of the minigame
@@ -203,6 +307,9 @@ public class MinigameManager {
             queueTimers.get(name.toLowerCase()).cancel();
             queueTimers.remove(name.toLowerCase());
         }
+
+        // Set state to READY since queue is now empty
+        configGame.setState(MinigameState.READY);
 
         saveConfiguration();
         return true;
@@ -238,7 +345,12 @@ public class MinigameManager {
             }
         }
 
-        if (players.isEmpty()) {
+        // Check if we have enough players to start the game
+        if (players.isEmpty() || players.size() < configGame.getMinPlayers()) {
+            // Put players back in the queue
+            for (Player player : players) {
+                queue.add(player.getUniqueId());
+            }
             return false;
         }
 
@@ -278,6 +390,12 @@ public class MinigameManager {
         if (game instanceof ConfigurableMinigame configGame) {
             if (configGame.getState() == MinigameState.DISABLED) {
                 player.sendMessage(Component.text("This minigame is currently disabled!", NamedTextColor.RED));
+                return;
+            }
+
+            // Check if the queue is enabled
+            if (!configGame.isQueueEnabled()) {
+                player.sendMessage(Component.text("The queue for this minigame is currently disabled!", NamedTextColor.RED));
                 return;
             }
 
@@ -342,10 +460,14 @@ public class MinigameManager {
                 if (game instanceof ConfigurableMinigame configGame) {
                     configGame.setInQueue(entry.getValue().size());
 
-                    // If queue size is now less than minimum players, change state back to READY
-                    if (entry.getValue().size() < getMinPlayers(gameName) &&
-                        configGame.getState() == MinigameState.COUNTDOWN) {
+                    // If queue is empty, change state to READY
+                    if (entry.getValue().isEmpty()) {
                         configGame.setState(MinigameState.READY);
+                    }
+                    // If queue size is now less than minimum players but not empty, change state back to QUEUE
+                    else if (entry.getValue().size() < getMinPlayers(gameName) &&
+                        configGame.getState() == MinigameState.COUNTDOWN) {
+                        configGame.setState(MinigameState.QUEUE);
                     }
                 }
 
@@ -402,9 +524,19 @@ public class MinigameManager {
 
         // Update game state if it's a ConfigurableMinigame
         if (game instanceof ConfigurableMinigame configGame) {
-            // Set state to STARTED if it's in COUNTDOWN
+            // Set state to PREPARING if it's in COUNTDOWN
             if (configGame.getState() == MinigameState.COUNTDOWN) {
-                configGame.setState(MinigameState.STARTED);
+                configGame.setState(MinigameState.PREPARING);
+
+                // Start the preparation countdown
+                try {
+                    java.lang.reflect.Method method = ConfigurableMinigame.class.getDeclaredMethod("startPreparationCountdown", List.class);
+                    method.setAccessible(true);
+                    method.invoke(configGame, players);
+                } catch (Exception e) {
+                    plugin.getLogger().severe("Failed to start preparation countdown: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -459,6 +591,9 @@ public class MinigameManager {
         // Store location
         previousLocations.put(player.getUniqueId(), player.getLocation());
 
+        // Store game mode
+        previousGameModes.put(player.getUniqueId(), player.getGameMode());
+
         // Clear inventory
         player.getInventory().clear();
 
@@ -490,6 +625,12 @@ public class MinigameManager {
         if (previousLocations.containsKey(player.getUniqueId())) {
             player.teleport(previousLocations.get(player.getUniqueId()));
             previousLocations.remove(player.getUniqueId());
+        }
+
+        // Restore game mode
+        if (previousGameModes.containsKey(player.getUniqueId())) {
+            player.setGameMode(previousGameModes.get(player.getUniqueId()));
+            previousGameModes.remove(player.getUniqueId());
         }
     }
 
@@ -651,12 +792,39 @@ public class MinigameManager {
         // Set player to creative mode and give them a WorldEdit wand
         player.setGameMode(GameMode.CREATIVE);
         ItemStack wand = new ItemStack(Material.WOODEN_AXE);
+        ItemStack compass = new ItemStack(Material.COMPASS);
         player.getInventory().addItem(wand);
+        player.getInventory().addItem(compass);
+
+        // Create a temporary map name
+        String originalMapName = configGame.getMapName();
+        String tempMapName = originalMapName + "_temp";
+
+        // Update the minigame to use the temporary map name
+        configGame.updateMapName(tempMapName);
+
+        // Create the world and teleport the player
+        if (!plugin.getWorldManager().createMapEditCopy(tempMapName)) {
+            // Restore the original map name if creation fails
+            configGame.updateMapName(originalMapName);
+            player.sendMessage(Component.text("Failed to create temporary world for editing!", NamedTextColor.RED));
+            return false;
+        }
 
         // Use the WorldManager to add the player as an editor of the map
-        if (!plugin.getWorldManager().addMapEditor(player, configGame.getMapName())) {
+        if (!plugin.getWorldManager().addMapEditor(player, tempMapName)) {
+            // Restore the original map name if adding editor fails
+            configGame.updateMapName(originalMapName);
             player.sendMessage(Component.text("Failed to start editing the map!", NamedTextColor.RED));
             return false;
+        }
+
+        // Get the edit world
+        World editWorld = Bukkit.getWorld(plugin.getWorldManager().getMapEditName(tempMapName));
+        if (editWorld != null) {
+            // Place carpet blocks at existing spawn points
+            placeCarpetsAtSpawnPoints(configGame, editWorld);
+            player.sendMessage(Component.text("Placed carpet blocks at existing spawn points. Move them to change spawn locations.", NamedTextColor.YELLOW));
         }
 
         // Mark player as in edit mode
@@ -666,8 +834,9 @@ public class MinigameManager {
         showEditScoreboard(player, configGame);
 
         player.sendMessage(Component.text("You are now editing " + gameName + "!", NamedTextColor.GREEN));
-        player.sendMessage(Component.text("Use /minigame spawn <num> to set spawn points.", NamedTextColor.YELLOW));
-        player.sendMessage(Component.text("Use /minigame save to save your changes.", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Place carpet blocks where you want spawn points to be.", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("You can also use /minigame spawn <num> to set spawn points manually.", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Use /minigame save to save your changes and convert carpets to spawn points.", NamedTextColor.YELLOW));
 
         return true;
     }
@@ -704,6 +873,36 @@ public class MinigameManager {
     }
 
     /**
+     * Sets the lobby spawn point for a minigame
+     *
+     * @param player The player
+     * @return True if the lobby spawn point was set, false otherwise
+     */
+    public boolean setLobbySpawn(Player player) {
+        // Check if the player is in edit mode
+        if (!playersInEditMode.containsKey(player.getUniqueId())) {
+            player.sendMessage(Component.text("You must be in edit mode to set the lobby spawn point!", NamedTextColor.RED));
+            return false;
+        }
+
+        String gameName = playersInEditMode.get(player.getUniqueId());
+        Minigame game = games.get(gameName);
+        if (!(game instanceof ConfigurableMinigame configGame)) {
+            player.sendMessage(Component.text("That minigame doesn't exist!", NamedTextColor.RED));
+            return false;
+        }
+
+        // Set the lobby spawn point
+        configGame.setLobbySpawn(player.getLocation());
+
+        // Update the scoreboard
+        showEditScoreboard(player, configGame);
+
+        player.sendMessage(Component.text("Lobby spawn point set!", NamedTextColor.GREEN));
+        return true;
+    }
+
+    /**
      * Saves changes to a minigame and exits edit mode
      *
      * @param player The player
@@ -729,7 +928,55 @@ public class MinigameManager {
         // Use the WorldManager to remove the player as an editor of the map
         Minigame game = games.get(gameName);
         if (game instanceof ConfigurableMinigame configGame) {
-            plugin.getWorldManager().removeMapEditor(player, true);
+            String mapName = configGame.getMapName();
+            World editWorld = Bukkit.getWorld(plugin.getWorldManager().getMapEditName(mapName));
+
+            if (editWorld != null) {
+                // Find carpet blocks and set them as spawn points
+                List<Location> carpetLocations = findCarpetBlocks(editWorld);
+
+                // Set each carpet location as a spawn point
+                int spawnIndex = 1;
+                for (Location carpetLoc : carpetLocations) {
+                    // Create a spawn point 1 block above the carpet
+                    Location spawnLoc = carpetLoc.clone().add(0, 1, 0);
+                    configGame.setSpawnPoint(spawnIndex, spawnLoc);
+                    spawnIndex++;
+
+                    // Remove the carpet block
+                    carpetLoc.getBlock().setType(Material.AIR);
+                }
+
+                // Update max players based on number of spawn points
+                if (!carpetLocations.isEmpty()) {
+                    player.sendMessage(Component.text("Found " + carpetLocations.size() + " carpet blocks and set them as spawn points.", NamedTextColor.GREEN));
+                } else {
+                    player.sendMessage(Component.text("No carpet blocks found. No spawn points were set.", NamedTextColor.YELLOW));
+                }
+            }
+
+            // Check if this is a temporary map (ends with _temp)
+            if (mapName.endsWith("_temp")) {
+                // Get the final map name (without _temp)
+                String finalMapName = mapName.substring(0, mapName.length() - 5);
+
+                // Remove the player as an editor (this will save the changes to the temp world)
+                plugin.getWorldManager().removeMapEditor(player, true);
+
+                // Copy the temp world to the final world
+                if (plugin.getWorldManager().copyWorldPublic(mapName, finalMapName)) {
+                    // Update the map name in the minigame configuration
+                    configGame.updateMapName(finalMapName);
+
+                    player.sendMessage(Component.text("Map saved as " + finalMapName + "!", NamedTextColor.GREEN));
+                } else {
+                    player.sendMessage(Component.text("Failed to copy map to final destination!", NamedTextColor.RED));
+                    return false;
+                }
+            } else {
+                // Regular save without copying
+                plugin.getWorldManager().removeMapEditor(player, true);
+            }
         }
 
         // Remove the scoreboard
@@ -745,6 +992,48 @@ public class MinigameManager {
         saveConfiguration();
 
         player.sendMessage(Component.text("Changes saved!", NamedTextColor.GREEN));
+        return true;
+    }
+
+    /**
+     * Exits edit mode without saving changes
+     *
+     * @param player The player
+     * @return True if the player was removed from edit mode, false otherwise
+     */
+    public boolean exitEditMode(Player player) {
+        // Check if the player is in edit mode
+        if (!playersInEditMode.containsKey(player.getUniqueId())) {
+            player.sendMessage(Component.text("You are not in edit mode!", NamedTextColor.RED));
+            return false;
+        }
+
+        String gameName = playersInEditMode.get(player.getUniqueId());
+        playersInEditMode.remove(player.getUniqueId());
+
+        // Restore player's inventory and game mode
+        restorePlayerInventory(player);
+        if (previousGameModes.containsKey(player.getUniqueId())) {
+            player.setGameMode(previousGameModes.get(player.getUniqueId()));
+            previousGameModes.remove(player.getUniqueId());
+        }
+
+        // Use the WorldManager to remove the player as an editor of the map without saving changes
+        Minigame game = games.get(gameName);
+        if (game instanceof ConfigurableMinigame) {
+            plugin.getWorldManager().removeMapEditor(player, false);
+        }
+
+        // Remove the scoreboard
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+        Scoreboard newScoreboard = manager.getNewScoreboard();
+        // Ensure no objectives are displayed in the sidebar
+        if (player.getScoreboard().getObjective(DisplaySlot.SIDEBAR) != null) {
+            player.getScoreboard().clearSlot(DisplaySlot.SIDEBAR);
+        }
+        player.setScoreboard(newScoreboard);
+
+        player.sendMessage(Component.text("You have exited edit mode without saving changes.", NamedTextColor.YELLOW));
         return true;
     }
 
@@ -769,5 +1058,69 @@ public class MinigameManager {
         objective.getScore("State: " + game.getState().getName()).setScore(1);
 
         player.setScoreboard(scoreboard);
+    }
+
+    /**
+     * Finds all carpet blocks in a world
+     *
+     * @param world The world to search in
+     * @return A list of locations where carpet blocks are found
+     */
+    private List<Location> findCarpetBlocks(World world) {
+        List<Location> carpetLocations = new ArrayList<>();
+
+        // Get the world border to limit the search area
+        WorldBorder border = world.getWorldBorder();
+        double size = border.getSize() / 2;
+        Location center = border.getCenter();
+
+        // Define the search area
+        int minX = (int) (center.getX() - size);
+        int maxX = (int) (center.getX() + size);
+        int minZ = (int) (center.getZ() - size);
+        int maxZ = (int) (center.getZ() + size);
+
+        // Search for carpet blocks
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                // Get the highest block at this x,z coordinate
+                int y = world.getHighestBlockYAt(x, z);
+
+                // Check a few blocks up and down from the highest block
+                for (int dy = -5; dy <= 5; dy++) {
+                    Location loc = new Location(world, x, y + dy, z);
+                    if (loc.getBlock().getType().name().endsWith("CARPET")) {
+                        carpetLocations.add(loc);
+                    }
+                }
+            }
+        }
+
+        return carpetLocations;
+    }
+
+    /**
+     * Places carpet blocks at spawn points when editing
+     *
+     * @param game The minigame
+     * @param world The world to place carpets in
+     */
+    private void placeCarpetsAtSpawnPoints(ConfigurableMinigame game, World world) {
+        // Place a carpet at each spawn point
+        for (Map.Entry<Integer, Location> entry : game.getSpawnPoints().entrySet()) {
+            Location spawnLoc = entry.getValue();
+
+            // Only place carpets in the same world
+            if (!spawnLoc.getWorld().getName().equals(world.getName())) {
+                continue;
+            }
+
+            // Get the block below the spawn point
+            Location carpetLoc = spawnLoc.clone();
+            carpetLoc.setY(carpetLoc.getY() - 1);
+
+            // Place a carpet block
+            carpetLoc.getBlock().setType(Material.WHITE_CARPET);
+        }
     }
 }

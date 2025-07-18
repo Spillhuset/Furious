@@ -222,6 +222,17 @@ public class WorldManager {
     }
 
     /**
+     * Public method to copy a world directory
+     *
+     * @param sourceName The name of the source world
+     * @param targetName The name of the target world
+     * @return True if copy was successful, false otherwise
+     */
+    public boolean copyWorldPublic(String sourceName, String targetName) {
+        return copyWorld(sourceName, targetName);
+    }
+
+    /**
      * Copies a world directory
      *
      * @param sourceName The name of the source world

@@ -88,11 +88,16 @@ public class CreateSubCommand implements SubCommand {
             return true;
         }
 
-        // Create the minigame
-        boolean success = plugin.getMinigameManager().createMinigame(name, type, minPlayers, mapName);
+        // Create the minigame with a temporary world
+        String tempMapName = mapName + "_temp";
+        boolean success = plugin.getMinigameManager().createMinigame(name, type, minPlayers, tempMapName, player);
         if (success) {
             player.sendMessage(Component.text("Minigame " + name + " created successfully!", NamedTextColor.GREEN));
-            player.sendMessage(Component.text("Use /minigame edit " + name + " to set up spawn points.", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("You are now in edit mode. Use the following commands:", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("/minigame setLobby - Set the lobby spawn point", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("/minigame setSpawn <num> - Set player spawn points", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("/minigame save - Save changes and exit edit mode", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("/minigame exit - Exit edit mode without saving", NamedTextColor.YELLOW));
         } else {
             player.sendMessage(Component.text("A minigame with that name already exists!", NamedTextColor.RED));
         }

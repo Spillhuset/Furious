@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Command to disable a minigame
+ * Command to disable the queue for a minigame
  */
 public class DisableSubCommand implements SubCommand {
     private final Furious plugin;
@@ -33,12 +33,12 @@ public class DisableSubCommand implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Disables a minigame from the READY or QUEUE state";
+        return "Disables the queue for a minigame";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /minigame disable <name>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Usage: /minigame disable <game>", NamedTextColor.YELLOW));
     }
 
     @Override
@@ -54,12 +54,12 @@ public class DisableSubCommand implements SubCommand {
         }
 
         String gameName = args[1];
-        boolean success = plugin.getMinigameManager().disableMinigame(gameName);
+        boolean success = plugin.getMinigameManager().disableQueue(gameName);
 
         if (success) {
-            sender.sendMessage(Component.text("Minigame " + gameName + " has been disabled.", NamedTextColor.GREEN));
+            sender.sendMessage(Component.text("Queue for minigame " + gameName + " has been disabled.", NamedTextColor.GREEN));
         } else {
-            sender.sendMessage(Component.text("Failed to disable minigame " + gameName + ". Make sure it exists and is in READY or QUEUE state.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Failed to disable queue for minigame " + gameName + ". Make sure it exists.", NamedTextColor.RED));
         }
 
         return true;

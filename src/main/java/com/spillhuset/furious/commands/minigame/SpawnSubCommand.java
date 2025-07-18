@@ -33,13 +33,14 @@ public class SpawnSubCommand implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Sets a spawn point for a minigame";
+        return "Sets a spawn point for a minigame (alternative to using carpet blocks)";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage: /minigame spawn <num>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("Example: /minigame spawn 1", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Note: You can also place carpet blocks where you want spawn points to be.", NamedTextColor.AQUA));
     }
 
     @Override

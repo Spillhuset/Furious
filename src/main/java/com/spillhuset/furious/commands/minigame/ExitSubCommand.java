@@ -12,34 +12,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Command to save minigame changes and exit edit mode
+ * Command to exit minigame edit mode without saving changes
  */
-public class SaveSubCommand implements SubCommand {
+public class ExitSubCommand implements SubCommand {
     private final Furious plugin;
 
     /**
-     * Constructor for SaveSubCommand
+     * Constructor for ExitSubCommand
      *
      * @param plugin The plugin instance
      */
-    public SaveSubCommand(Furious plugin) {
+    public ExitSubCommand(Furious plugin) {
         this.plugin = plugin;
     }
 
     @Override
     public String getName() {
-        return "save";
+        return "exit";
     }
 
     @Override
     public String getDescription() {
-        return "Saves minigame changes, converts carpet blocks to spawn points, and exits edit mode";
+        return "Exits minigame edit mode without saving changes";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /minigame save", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("Note: This will convert all carpet blocks to spawn points.", NamedTextColor.AQUA));
+        sender.sendMessage(Component.text("Usage: /minigame exit", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Exits edit mode without saving any changes", NamedTextColor.GRAY));
     }
 
     @Override
@@ -53,10 +53,10 @@ public class SaveSubCommand implements SubCommand {
             return false;
         }
 
-        boolean success = plugin.getMinigameManager().saveMinigameChanges(player);
+        boolean success = plugin.getMinigameManager().exitEditMode(player);
 
         if (!success) {
-            player.sendMessage(Component.text("Failed to save changes. Make sure you are in edit mode.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Failed to exit edit mode. Make sure you are in edit mode.", NamedTextColor.RED));
         }
 
         return true;

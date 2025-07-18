@@ -12,34 +12,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Command to save minigame changes and exit edit mode
+ * Command to set the lobby spawn point for a minigame
  */
-public class SaveSubCommand implements SubCommand {
+public class SetLobbySubCommand implements SubCommand {
     private final Furious plugin;
 
     /**
-     * Constructor for SaveSubCommand
+     * Constructor for SetLobbySubCommand
      *
      * @param plugin The plugin instance
      */
-    public SaveSubCommand(Furious plugin) {
+    public SetLobbySubCommand(Furious plugin) {
         this.plugin = plugin;
     }
 
     @Override
     public String getName() {
-        return "save";
+        return "setLobby";
     }
 
     @Override
     public String getDescription() {
-        return "Saves minigame changes, converts carpet blocks to spawn points, and exits edit mode";
+        return "Sets the lobby spawn point for a minigame";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /minigame save", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("Note: This will convert all carpet blocks to spawn points.", NamedTextColor.AQUA));
+        sender.sendMessage(Component.text("Usage: /minigame setLobby", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Sets the lobby spawn point at your current location", NamedTextColor.GRAY));
     }
 
     @Override
@@ -53,10 +53,10 @@ public class SaveSubCommand implements SubCommand {
             return false;
         }
 
-        boolean success = plugin.getMinigameManager().saveMinigameChanges(player);
+        boolean success = plugin.getMinigameManager().setLobbySpawn(player);
 
         if (!success) {
-            player.sendMessage(Component.text("Failed to save changes. Make sure you are in edit mode.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Failed to set lobby spawn point. Make sure you are in edit mode.", NamedTextColor.RED));
         }
 
         return true;

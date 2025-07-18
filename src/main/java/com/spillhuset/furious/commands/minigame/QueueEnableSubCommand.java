@@ -13,15 +13,15 @@ import java.util.List;
 /**
  * Command to enable the queue for a minigame
  */
-public class EnableSubCommand implements SubCommand {
+public class QueueEnableSubCommand implements SubCommand {
     private final Furious plugin;
 
     /**
-     * Constructor for EnableSubCommand
+     * Constructor for QueueEnableSubCommand
      *
      * @param plugin The plugin instance
      */
-    public EnableSubCommand(Furious plugin) {
+    public QueueEnableSubCommand(Furious plugin) {
         this.plugin = plugin;
     }
 
@@ -82,6 +82,6 @@ public class EnableSubCommand implements SubCommand {
 
     @Override
     public String getPermission() {
-        return "furious.minigame.enable";
+        return "furious.minigame.queue.enable";
     }
 }

@@ -8,7 +8,8 @@ public enum MinigameState {
     READY("Ready", "Game is ready to be joined"),
     QUEUE("Queue", "Someone has joined the queue, waiting to reach minimum players"),
     COUNTDOWN("Countdown", "Minimum number of players reached, final countdown till game starts"),
-    STARTED("Started", "Game has started, players are playing"),
+    PREPARING("Preparing", "Game is preparing, players are teleported to lobby and waiting for the game to start"),
+    STARTED("Started", "Game has started, players are teleported to their spawns and playing"),
     FINAL("Final", "Game is in its final stage");
 
     private final String name;

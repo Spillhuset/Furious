@@ -53,6 +53,10 @@ public class MinigameCommand implements CommandExecutor, TabCompleter {
         subCommands.put("edit", new EditSubCommand(plugin));
         subCommands.put("spawn", new SpawnSubCommand(plugin));
         subCommands.put("save", new SaveSubCommand(plugin));
+
+        // New commands for minigame creation
+        subCommands.put("setLobby", new SetLobbySubCommand(plugin));
+        subCommands.put("exit", new ExitSubCommand(plugin));
     }
 
     @Override

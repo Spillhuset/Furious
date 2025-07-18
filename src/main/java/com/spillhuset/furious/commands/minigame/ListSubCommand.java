@@ -112,6 +112,7 @@ public class ListSubCommand implements SubCommand {
             case READY -> NamedTextColor.GREEN;
             case QUEUE -> NamedTextColor.YELLOW;
             case COUNTDOWN -> NamedTextColor.GOLD;
+            case PREPARING -> NamedTextColor.AQUA;
             case FINAL -> NamedTextColor.DARK_RED;
         };
     }

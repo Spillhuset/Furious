@@ -11,33 +11,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Command to enable the queue for a minigame
+ * Command to disable the queue for a minigame
  */
-public class EnableSubCommand implements SubCommand {
+public class QueueDisableSubCommand implements SubCommand {
     private final Furious plugin;
 
     /**
-     * Constructor for EnableSubCommand
+     * Constructor for QueueDisableSubCommand
      *
      * @param plugin The plugin instance
      */
-    public EnableSubCommand(Furious plugin) {
+    public QueueDisableSubCommand(Furious plugin) {
         this.plugin = plugin;
     }
 
     @Override
     public String getName() {
-        return "enable";
+        return "disable";
     }
 
     @Override
     public String getDescription() {
-        return "Enables the queue for a minigame";
+        return "Disables the queue for a minigame";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /minigame enable <game>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Usage: /minigame disable <game>", NamedTextColor.YELLOW));
     }
 
     @Override
@@ -53,12 +53,12 @@ public class EnableSubCommand implements SubCommand {
         }
 
         String gameName = args[1];
-        boolean success = plugin.getMinigameManager().enableQueue(gameName);
+        boolean success = plugin.getMinigameManager().disableQueue(gameName);
 
         if (success) {
-            sender.sendMessage(Component.text("Queue for minigame " + gameName + " has been enabled.", NamedTextColor.GREEN));
+            sender.sendMessage(Component.text("Queue for minigame " + gameName + " has been disabled.", NamedTextColor.GREEN));
         } else {
-            sender.sendMessage(Component.text("Failed to enable queue for minigame " + gameName + ". Make sure it exists.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Failed to disable queue for minigame " + gameName + ". Make sure it exists.", NamedTextColor.RED));
         }
 
         return true;
@@ -82,6 +82,6 @@ public class EnableSubCommand implements SubCommand {
 
     @Override
     public String getPermission() {
-        return "furious.minigame.enable";
+        return "furious.minigame.queue.disable";
     }
 }

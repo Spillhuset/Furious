@@ -19,12 +19,14 @@ import java.util.Map;
  */
 public class ConfigurableMinigame extends Minigame {
     private final MinigameType type;
-    private final String mapName;
+    private String mapName; // Removed final to allow updating
     private final int minPlayers;
     private int maxPlayers;
     private MinigameState state;
     private final Map<Integer, Location> spawnPoints;
+    private Location lobbySpawn;
     private int inQueue;
+    private boolean queueEnabled;
 
     /**
      * Constructor for a configurable minigame
@@ -45,6 +47,7 @@ public class ConfigurableMinigame extends Minigame {
         this.spawnPoints = new HashMap<>();
         this.maxPlayers = 0;
         this.inQueue = 0;
+        this.queueEnabled = true; // Queue is enabled by default
     }
 
     /**
@@ -63,6 +66,8 @@ public class ConfigurableMinigame extends Minigame {
         this.spawnPoints = new HashMap<>();
         this.maxPlayers = config.getInt("maxPlayers", 0);
         this.inQueue = 0;
+        this.lobbySpawn = null;
+        this.queueEnabled = config.getBoolean("queueEnabled", true); // Queue is enabled by default
 
         // Load spawn points
         ConfigurationSection spawnSection = config.getConfigurationSection("spawnPoints");
@@ -89,6 +94,25 @@ public class ConfigurableMinigame extends Minigame {
                 }
             }
         }
+
+        // Load lobby spawn point
+        ConfigurationSection lobbySection = config.getConfigurationSection("lobbySpawn");
+        if (lobbySection != null) {
+            String worldName = lobbySection.getString("world");
+            if (worldName != null) {
+                World world = Bukkit.getWorld(worldName);
+                if (world != null) {
+                    this.lobbySpawn = new Location(
+                            world,
+                            lobbySection.getDouble("x"),
+                            lobbySection.getDouble("y"),
+                            lobbySection.getDouble("z"),
+                            (float) lobbySection.getDouble("yaw"),
+                            (float) lobbySection.getDouble("pitch")
+                    );
+                }
+            }
+        }
     }
 
     /**
@@ -103,6 +127,7 @@ public class ConfigurableMinigame extends Minigame {
         config.set("maxPlayers", maxPlayers);
         config.set("mapName", mapName);
         config.set("state", state.name());
+        config.set("queueEnabled", queueEnabled);
 
         // Save spawn points
         ConfigurationSection spawnSection = config.createSection("spawnPoints");
@@ -115,6 +140,17 @@ public class ConfigurableMinigame extends Minigame {
             pointSection.set("z", loc.getZ());
             pointSection.set("yaw", loc.getYaw());
             pointSection.set("pitch", loc.getPitch());
+        }
+
+        // Save lobby spawn point
+        if (lobbySpawn != null) {
+            ConfigurationSection lobbySection = config.createSection("lobbySpawn");
+            lobbySection.set("world", lobbySpawn.getWorld().getName());
+            lobbySection.set("x", lobbySpawn.getX());
+            lobbySection.set("y", lobbySpawn.getY());
+            lobbySection.set("z", lobbySpawn.getZ());
+            lobbySection.set("yaw", lobbySpawn.getYaw());
+            lobbySection.set("pitch", lobbySpawn.getPitch());
         }
     }
 
@@ -152,6 +188,28 @@ public class ConfigurableMinigame extends Minigame {
     }
 
     /**
+     * Sets the lobby spawn point for the minigame
+     *
+     * @param location The location of the lobby spawn point
+     */
+    public void setLobbySpawn(Location location) {
+        this.lobbySpawn = location;
+        // Update maxPlayers if this is the first spawn point
+        if (maxPlayers == 0) {
+            maxPlayers = 1;
+        }
+    }
+
+    /**
+     * Gets the lobby spawn point for the minigame
+     *
+     * @return The lobby spawn point, or null if not set
+     */
+    public Location getLobbySpawn() {
+        return lobbySpawn;
+    }
+
+    /**
      * Gets the type of the minigame
      *
      * @return The type
@@ -185,6 +243,15 @@ public class ConfigurableMinigame extends Minigame {
      */
     public String getMapName() {
         return mapName;
+    }
+
+    /**
+     * Updates the map name
+     *
+     * @param newMapName The new map name
+     */
+    public void updateMapName(String newMapName) {
+        this.mapName = newMapName;
     }
 
     /**
@@ -249,7 +316,8 @@ public class ConfigurableMinigame extends Minigame {
      */
     public void stop() {
         if (state == MinigameState.QUEUE || state == MinigameState.COUNTDOWN ||
-                state == MinigameState.STARTED || state == MinigameState.FINAL) {
+                state == MinigameState.PREPARING || state == MinigameState.STARTED ||
+                state == MinigameState.FINAL) {
             state = MinigameState.DISABLED;
             inQueue = 0;
             if (isRunning()) {
@@ -295,19 +363,103 @@ public class ConfigurableMinigame extends Minigame {
 
     @Override
     public void startGame(List<Player> players) {
-        // If the state is COUNTDOWN or QUEUE and we have enough players, start the game
+        // If the state is COUNTDOWN or QUEUE and we have enough players, prepare the game
         if (state == MinigameState.COUNTDOWN || (state == MinigameState.QUEUE && inQueue >= minPlayers)) {
-            state = MinigameState.STARTED;
+            state = MinigameState.PREPARING;
             super.startGame(players);
+        }
+        // If the state is PREPARING, start the game after preparation
+        else if (state == MinigameState.PREPARING) {
+            state = MinigameState.STARTED;
         }
     }
 
     @Override
     public void endGame() {
-        if (state == MinigameState.STARTED || state == MinigameState.FINAL) {
+        if (state == MinigameState.PREPARING || state == MinigameState.STARTED || state == MinigameState.FINAL) {
             state = MinigameState.READY;
             super.endGame();
         }
+    }
+
+    /**
+     * Checks if the queue is enabled for this minigame
+     *
+     * @return True if the queue is enabled, false otherwise
+     */
+    public boolean isQueueEnabled() {
+        return queueEnabled;
+    }
+
+    /**
+     * Enables the queue for this minigame
+     */
+    public void enableQueue() {
+        this.queueEnabled = true;
+    }
+
+    /**
+     * Disables the queue for this minigame
+     */
+    public void disableQueue() {
+        this.queueEnabled = false;
+    }
+
+    /**
+     * Starts the preparation countdown for the game
+     * After 1 minute, transitions from PREPARING to STARTED state
+     *
+     * @param players The players in the game
+     */
+    protected void startPreparationCountdown(List<Player> players) {
+        if (state != MinigameState.PREPARING) {
+            return;
+        }
+
+        // Teleport players to lobby spawn
+        if (lobbySpawn != null) {
+            for (Player player : players) {
+                player.teleport(lobbySpawn.clone());
+                // Set player to adventure mode
+                player.setGameMode(org.bukkit.GameMode.ADVENTURE);
+                player.sendMessage(net.kyori.adventure.text.Component.text("Game is preparing! You will be teleported to your spawn in 1 minute.",
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            }
+        }
+
+        // Start a 1-minute countdown
+        gameTask = org.bukkit.Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+            private int countdown = 60; // 1 minute in seconds
+
+            @Override
+            public void run() {
+                if (countdown <= 0) {
+                    // Time's up, start the game
+                    gameTask.cancel();
+                    gameTask = null;
+
+                    // Transition to STARTED state
+                    setState(MinigameState.STARTED);
+
+                    // Teleport players to their spawn points
+                    teleportPlayersToGame(players);
+
+                    // Call onGameStart to handle game-specific logic
+                    onGameStart(players);
+                    return;
+                }
+
+                // Announce remaining time at certain intervals
+                if (countdown == 60 || countdown == 30 || countdown == 10 || countdown <= 5) {
+                    for (Player player : players) {
+                        player.sendMessage(net.kyori.adventure.text.Component.text("Game starts in " + countdown + " seconds!",
+                            net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+                    }
+                }
+
+                countdown--;
+            }
+        }, 0L, 20L); // Run every second
     }
 
     @Override

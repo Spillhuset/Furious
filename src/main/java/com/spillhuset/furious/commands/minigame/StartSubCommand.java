@@ -32,7 +32,7 @@ public class StartSubCommand implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "Starts a game from the COUNTDOWN state";
+        return "Starts a game from the COUNTDOWN state, transitioning to PREPARING";
     }
 
     @Override
@@ -58,7 +58,7 @@ public class StartSubCommand implements SubCommand {
         if (success) {
             sender.sendMessage(Component.text("Minigame " + gameName + " has been started.", NamedTextColor.GREEN));
         } else {
-            sender.sendMessage(Component.text("Failed to start minigame " + gameName + ". Make sure it exists and is in COUNTDOWN state.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Failed to start minigame " + gameName + ". Make sure it exists, is in COUNTDOWN state, and has enough players to transition to PREPARING state.", NamedTextColor.RED));
         }
 
         return true;
