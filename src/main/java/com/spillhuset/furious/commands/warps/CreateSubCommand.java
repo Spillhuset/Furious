@@ -50,11 +50,7 @@ public class CreateSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is op
-        if (!player.isOp()) {
-            sender.sendMessage(Component.text("Only operators can create warps!", NamedTextColor.RED));
-            return true;
-        }
+        // Permission check is handled by the checkPermission method in the SubCommand interface
 
         // Check if enough arguments
         if (args.length < 2) {

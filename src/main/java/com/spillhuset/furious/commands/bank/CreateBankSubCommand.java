@@ -47,12 +47,12 @@ public class CreateBankSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (args.length < 2) {
+        if (args.length < 1) {
             getUsage(sender);
             return true;
         }
 
-        String bankName = args[1];
+        String bankName = args[0];
 
         // Check if the bank name is valid (alphanumeric)
         if (!bankName.matches("^[a-zA-Z0-9]+$")) {
@@ -80,5 +80,10 @@ public class CreateBankSubCommand implements SubCommand {
     @Override
     public String getPermission() {
         return "furious.bank.create";
+    }
+
+    @Override
+    public boolean denyNonPlayer() {
+        return false; // Allow console execution
     }
 }

@@ -2,6 +2,8 @@ package com.spillhuset.furious.commands.bank;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Bank;
+import com.spillhuset.furious.entities.Guild;
+import com.spillhuset.furious.enums.GuildType;
 import com.spillhuset.furious.managers.BankManager;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
@@ -44,9 +46,9 @@ public class ClaimSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/bank claim [bank]", NamedTextColor.YELLOW)
-                .append(Component.text(" - Claim the current chunk for the specified bank (defaults to RubberBank)", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("Shorthand: /bank c [bank]", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("/bank claim <bank>", NamedTextColor.YELLOW)
+                .append(Component.text(" - Claim the current chunk for the specified bank", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("Shorthand: /bank c <bank>", NamedTextColor.GRAY));
     }
 
     @Override
@@ -56,17 +58,39 @@ public class ClaimSubCommand implements SubCommand {
             return true;
         }
 
-        // Get the bank name from args if provided, otherwise use the default bank
-        String bankName = args.length > 1 ? args[1] : "RubberBank";
+        // Get the chunk the player is standing in
+        Chunk chunk = player.getLocation().getChunk();
+
+        // Check if the chunk is within a SAFE zone before showing usage
+        Guild chunkOwner = plugin.getGuildManager().getChunkOwner(chunk);
+        if (chunkOwner == null || chunkOwner.getType() != GuildType.SAFE) {
+            player.sendMessage(Component.text("Banks can only be claimed within SAFE zones (GuildType.SAFE).", NamedTextColor.RED));
+            return true;
+        }
+
+        // Handle different argument formats
+        String bankName;
+
+        // For op players using "/banks claim <BankName>" directly
+        if (args.length == 1 && player.isOp()) {
+            bankName = args[0];
+        }
+        // For regular command format "/bank claim <bank>"
+        else if (args.length >= 2) {
+            bankName = args[1];
+        }
+        // Not enough arguments
+        else {
+            getUsage(sender);
+            return true;
+        }
+
         Bank bank = bankManager.getBank(bankName);
 
         if (bank == null) {
             player.sendMessage(Component.text("Bank not found: " + bankName, NamedTextColor.RED));
             return true;
         }
-
-        // Get the chunk the player is standing in
-        Chunk chunk = player.getLocation().getChunk();
 
         // Claim the chunk for the bank
         bankManager.claimChunk(bank, chunk, player);

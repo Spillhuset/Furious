@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.warps;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -48,6 +49,7 @@ public class WarpsCommand implements CommandExecutor, TabCompleter {
         subCommands.put("link", new LinkSubCommand(plugin));
         subCommands.put("warp", new WarpSubCommand(plugin));
         subCommands.put("list", new ListSubCommand(plugin));
+        subCommands.put("visibility", new VisibilitySubCommand(plugin));
     }
 
     @Override
@@ -94,25 +96,40 @@ public class WarpsCommand implements CommandExecutor, TabCompleter {
      * @param sender The command sender
      */
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("Warps Commands:", NamedTextColor.GOLD));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Warps");
 
-        // Display commands based on permissions
+        // Display player commands
         for (SubCommand subCommand : subCommands.values()) {
             if (subCommand.checkPermission(sender, false)) {
-                sender.sendMessage(Component.text("/warps " + subCommand.getName() + " - " + subCommand.getDescription(), NamedTextColor.YELLOW));
+                String name = subCommand.getName();
+                // Use admin formatting for admin commands
+                if (name.equals("create") || name.equals("link") || name.equals("visibility")) {
+                    HelpMenuFormatter.formatAdminSubCommand(sender, "/warps", name, subCommand.getDescription());
+                } else {
+                    HelpMenuFormatter.formatPlayerSubCommand(sender, "/warps", name, subCommand.getDescription());
+                }
             }
         }
 
         // Show examples
         sender.sendMessage(Component.text("Examples:", NamedTextColor.GOLD));
-        if (sender.isOp()) {
-            sender.sendMessage(Component.text("/warps create spawn - Create a warp named 'spawn'", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/warps create shop cost=100 - Create a warp with a cost", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/warps create secret passwd=letmein - Create a password-protected warp", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/warps link spawn water - Link a warp to a portal with water filling", NamedTextColor.YELLOW));
+        SubCommand createCommand = subCommands.get("create");
+        SubCommand linkCommand = subCommands.get("link");
+
+        // Show admin command examples
+        if (createCommand != null && createCommand.checkPermission(sender, false)) {
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/warps", "create", "spawn", "", "Create a warp named 'spawn'");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/warps", "create", "shop cost=100", "", "Create a warp with a cost");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/warps", "create", "secret passwd=letmein", "", "Create a password-protected warp");
         }
-        sender.sendMessage(Component.text("/warps warp spawn - Teleport to the 'spawn' warp", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("/warps warp secret letmein - Teleport to a password-protected warp", NamedTextColor.YELLOW));
+
+        if (linkCommand != null && linkCommand.checkPermission(sender, false)) {
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/warps", "link", "spawn water", "", "Link a warp to a portal with water filling");
+        }
+
+        // Show player command examples
+        HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/warps", "warp", "spawn", "", "Teleport to the 'spawn' warp");
+        HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/warps", "warp", "secret letmein", "", "Teleport to a password-protected warp");
     }
 
     @Override

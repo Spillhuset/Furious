@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.locks;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -75,12 +76,12 @@ public class LocksCommand implements CommandExecutor, TabCompleter {
      * @param sender The command sender
      */
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("Locks Commands:", NamedTextColor.GOLD));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Locks");
 
         // Display commands based on permissions
         for (SubCommand subCommand : subCommands.values()) {
             if (subCommand.checkPermission(sender, false)) {
-                sender.sendMessage(Component.text("/locks " + subCommand.getName() + " - " + subCommand.getDescription(), NamedTextColor.YELLOW));
+                HelpMenuFormatter.formatPlayerSubCommand(sender, "/locks", subCommand.getName(), subCommand.getDescription());
             }
         }
     }

@@ -179,6 +179,7 @@ public class DatabaseManager {
             createGuildInvitesTable(connection);
             createGuildJoinRequestsTable(connection);
             createGuildClaimedChunksTable(connection);
+            createWalletsTable(connection);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to initialize database schema: " + e.getMessage(), e);
             throw new RuntimeException("Failed to initialize database schema", e);
@@ -327,6 +328,30 @@ public class DatabaseManager {
                   "chunk_key VARCHAR(100) NOT NULL, " +
                   "PRIMARY KEY (chunk_key), " +
                   "FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE" +
+                  ")";
+        }
+
+        connection.createStatement().execute(sql);
+    }
+
+    /**
+     * Creates the wallets table if it doesn't exist.
+     *
+     * @param connection The database connection
+     * @throws SQLException If an SQL error occurs
+     */
+    private void createWalletsTable(Connection connection) throws SQLException {
+        String sql;
+
+        if (storageType == StorageType.SQLITE) {
+            sql = "CREATE TABLE IF NOT EXISTS wallets (" +
+                  "player_id TEXT PRIMARY KEY, " +
+                  "balance REAL NOT NULL DEFAULT 0.0" +
+                  ")";
+        } else {
+            sql = "CREATE TABLE IF NOT EXISTS wallets (" +
+                  "player_id VARCHAR(36) PRIMARY KEY, " +
+                  "balance DOUBLE NOT NULL DEFAULT 0.0" +
                   ")";
         }
 

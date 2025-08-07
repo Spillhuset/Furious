@@ -33,6 +33,11 @@ public class TpaCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        return requestSubCommand.tabComplete(sender, args);
+        // Create a new args array with "request" as the first argument, similar to onCommand
+        String[] newArgs = new String[args.length + 1];
+        newArgs[0] = "request";
+        System.arraycopy(args, 0, newArgs, 1, args.length);
+
+        return requestSubCommand.tabComplete(sender, newArgs);
     }
 }

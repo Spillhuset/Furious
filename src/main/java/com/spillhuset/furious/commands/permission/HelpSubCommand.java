@@ -42,9 +42,9 @@ public class HelpSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/perm help", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions help", NamedTextColor.YELLOW)
                 .append(Component.text(" - Show help information for permission commands", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("Shorthand: /perm h", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Shorthand: /permissions h", NamedTextColor.GRAY));
     }
 
     @Override
@@ -54,7 +54,7 @@ public class HelpSubCommand implements SubCommand {
         // Display roles subcommand
         SubCommand rolesCommand = subCommands.get("roles");
         if (rolesCommand != null && rolesCommand.checkPermission(sender, false)) {
-            sender.sendMessage(Component.text("/perm roles", NamedTextColor.YELLOW)
+            sender.sendMessage(Component.text("/permissions roles", NamedTextColor.YELLOW)
                     .append(Component.text(" - " + rolesCommand.getDescription(), NamedTextColor.WHITE)));
             rolesCommand.getUsage(sender);
         }
@@ -62,13 +62,13 @@ public class HelpSubCommand implements SubCommand {
         // Display player subcommand
         SubCommand playerCommand = subCommands.get("player");
         if (playerCommand != null && playerCommand.checkPermission(sender, false)) {
-            sender.sendMessage(Component.text("/perm player", NamedTextColor.YELLOW)
+            sender.sendMessage(Component.text("/permissions player", NamedTextColor.YELLOW)
                     .append(Component.text(" - " + playerCommand.getDescription(), NamedTextColor.WHITE)));
             playerCommand.getUsage(sender);
         }
 
         // Show shorthand commands
-        sender.sendMessage(Component.text("Shorthand: /perm r (roles), /perm p (player), /perm h (help)", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Shorthand: /permissions r (roles), /permissions p (player), /permissions h (help)", NamedTextColor.GRAY));
 
         return true;
     }

@@ -1,6 +1,7 @@
 package com.spillhuset.furious.entities;
 
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,6 +19,7 @@ public class Bank {
     private final Map<UUID, Double> accounts = new HashMap<>();
     private final Set<String> claimedChunks = new HashSet<>();
     private double interestRate = 0.0;
+    private Location spawnLocation;
 
     /**
      * Creates a new bank with the specified name.
@@ -185,7 +187,7 @@ public class Bank {
      * @return a set of string representations of claimed chunks
      */
     public Set<String> getClaimedChunks() {
-        return new HashSet<>(claimedChunks);
+        return claimedChunks;
     }
 
     /**
@@ -195,6 +197,24 @@ public class Bank {
      */
     public int getClaimedChunkCount() {
         return claimedChunks.size();
+    }
+
+    /**
+     * Gets the spawn location of the bank.
+     *
+     * @return the spawn location of the bank, or null if not set
+     */
+    public Location getSpawnLocation() {
+        return spawnLocation;
+    }
+
+    /**
+     * Sets the spawn location of the bank.
+     *
+     * @param spawnLocation the new spawn location
+     */
+    public void setSpawnLocation(Location spawnLocation) {
+        this.spawnLocation = spawnLocation;
     }
 
     /**

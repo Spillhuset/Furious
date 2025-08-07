@@ -60,7 +60,7 @@ public class ListSubCommand implements SubCommand {
 
         for (Warp warp : warps) {
             Component warpComponent = Component.text("- ", NamedTextColor.YELLOW)
-                    .append(Component.text(warp.getName(), NamedTextColor.GREEN));
+                    .append(Component.text(warp.getName(), NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true));
 
             // Add cost information if applicable
             if (warp.getCost() > 0) {

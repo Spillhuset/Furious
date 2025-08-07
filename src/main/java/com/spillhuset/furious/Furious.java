@@ -1,14 +1,16 @@
 package com.spillhuset.furious;
 
-import com.spillhuset.furious.commands.BankCommand;
+import com.spillhuset.furious.commands.bank.BankCommand;
 import com.spillhuset.furious.commands.EnderseeCommand;
 import com.spillhuset.furious.commands.FeedCommand;
 import com.spillhuset.furious.commands.HealCommand;
+import com.spillhuset.furious.commands.HideCommand;
 import com.spillhuset.furious.commands.InvseeCommand;
 import com.spillhuset.furious.commands.PermissionCommand;
 import com.spillhuset.furious.commands.SecurityCommand;
 import com.spillhuset.furious.commands.TombstonesCommand;
-import com.spillhuset.furious.commands.WalletCommand;
+import com.spillhuset.furious.commands.wallet.WalletCommand;
+import com.spillhuset.furious.commands.shops.ShopsCommand;
 import com.spillhuset.furious.commands.guild.GuildCommand;
 import com.spillhuset.furious.commands.homes.HomesCommand;
 import com.spillhuset.furious.commands.locks.LocksCommand;
@@ -28,6 +30,7 @@ import com.spillhuset.furious.utils.EncryptionUtil;
 import com.spillhuset.furious.utils.GuildDAO;
 import com.spillhuset.furious.utils.RateLimiter;
 import com.spillhuset.furious.utils.SecurityReviewManager;
+import com.spillhuset.furious.utils.WalletDAO;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
@@ -49,6 +52,7 @@ public final class Furious extends JavaPlugin {
     private WarpsManager warpsManager;
     private ContainerRegistry containerRegistry;
     private PlayerDataManager playerDataManager;
+    private PlayerVisibilityManager playerVisibilityManager;
     private AuditLogger auditLogger;
     private RateLimiter rateLimiter;
     private TombstoneManager tombstoneManager;
@@ -60,6 +64,9 @@ public final class Furious extends JavaPlugin {
     private PermissionManager permissionManager;
     private DatabaseManager databaseManager;
     private GuildDAO guildDAO;
+    private WalletDAO walletDAO;
+    private ShopsManager shopsManager;
+    private SafeZoneProtectionManager safeZoneProtectionManager;
     private static Furious instance;
 
     @Override
@@ -71,9 +78,10 @@ public final class Furious extends JavaPlugin {
         // Save default configuration files
         saveDefaultConfigFiles();
 
-        // Initialize database manager and DAO
+        // Initialize database manager and DAOs
         databaseManager = new DatabaseManager(this);
         guildDAO = new GuildDAO(this, databaseManager);
+        walletDAO = new WalletDAO(this, databaseManager);
 
         teleportManager = new TeleportManager(this);
         walletManager = new WalletManager(this);
@@ -84,6 +92,7 @@ public final class Furious extends JavaPlugin {
         homesManager = new HomesManager(this);
         warpsManager = new WarpsManager(this);
         playerDataManager = new PlayerDataManager(this);
+        playerVisibilityManager = new PlayerVisibilityManager(this);
         auditLogger = new AuditLogger(this);
         rateLimiter = new RateLimiter(this);
         tombstoneManager = new TombstoneManager(this);
@@ -92,6 +101,8 @@ public final class Furious extends JavaPlugin {
         encryptionUtil = new EncryptionUtil(getLogger(), getDataFolder());
         bankManager = new BankManager(this);
         permissionManager = new PermissionManager(this);
+        shopsManager = new ShopsManager(this);
+        safeZoneProtectionManager = new SafeZoneProtectionManager(this);
 
         getCommand("invsee").setExecutor(new InvseeCommand(this));
         getCommand("endersee").setExecutor(new EnderseeCommand(this));
@@ -111,6 +122,8 @@ public final class Furious extends JavaPlugin {
         getCommand("bank").setExecutor(new BankCommand(this));
         getCommand("perm").setExecutor(new PermissionCommand(this));
         getCommand("wallet").setExecutor(new WalletCommand(this));
+        getCommand("hide").setExecutor(new HideCommand(this));
+        getCommand("shops").setExecutor(new ShopsCommand(this));
 
         getServer().getPluginManager().registerEvents(new TeleportListener(this), this);
         getServer().getPluginManager().registerEvents(new WalletListener(this), this);
@@ -121,6 +134,8 @@ public final class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TombstoneListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new MessageListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerVisibilityListener(this), this);
+        getServer().getPluginManager().registerEvents(new BankListener(this), this);
 
         // Register bank interest listener for tracking day cycles and applying interest
         bankInterestListener = new BankInterestListener(this);
@@ -164,6 +179,9 @@ public final class Furious extends JavaPlugin {
         if (containerRegistry != null) {
             containerRegistry.shutdown();
         }
+        if (playerVisibilityManager != null) {
+            playerVisibilityManager.shutdown();
+        }
         if (tombstoneManager != null) {
             tombstoneManager.shutdown();
         }
@@ -178,6 +196,9 @@ public final class Furious extends JavaPlugin {
         }
         if (permissionManager != null) {
             permissionManager.shutdown();
+        }
+        if (safeZoneProtectionManager != null) {
+            safeZoneProtectionManager.shutdown();
         }
         if (databaseManager != null) {
             databaseManager.shutdown();
@@ -224,6 +245,10 @@ public final class Furious extends JavaPlugin {
         return playerDataManager;
     }
 
+    public PlayerVisibilityManager getPlayerVisibilityManager() {
+        return playerVisibilityManager;
+    }
+
     public AuditLogger getAuditLogger() {
         return auditLogger;
     }
@@ -262,6 +287,18 @@ public final class Furious extends JavaPlugin {
 
     public GuildDAO getGuildDAO() {
         return guildDAO;
+    }
+
+    public WalletDAO getWalletDAO() {
+        return walletDAO;
+    }
+
+    public ShopsManager getShopsManager() {
+        return shopsManager;
+    }
+
+    public SafeZoneProtectionManager getSafeZoneProtectionManager() {
+        return safeZoneProtectionManager;
     }
 
     public ItemStack createScrapItem(double amount) {

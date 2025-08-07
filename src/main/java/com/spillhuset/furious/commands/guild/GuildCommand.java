@@ -3,6 +3,7 @@ package com.spillhuset.furious.commands.guild;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.GuildSubCommand;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -46,7 +47,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         subCommands.put("leave", new LeaveSubCommand(plugin));
         subCommands.put("info", new InfoSubCommand(plugin));
         subCommands.put("list", new ListSubCommand(plugin));
-        // These commands are not implemented yet
+        // Core guild management commands
         subCommands.put("kick", new KickSubCommand(plugin));
         subCommands.put("disband", new DisbandSubCommand(plugin));
         subCommands.put("transfer", new TransferSubCommand(plugin));
@@ -116,7 +117,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
      * @param sender The command sender
      */
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("Guild Commands:", NamedTextColor.GOLD));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Guild");
 
         if (sender instanceof Player player) {
             boolean isInGuild = plugin.getGuildManager().isInGuild(player.getUniqueId());
@@ -133,25 +134,26 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
                 }
 
                 if (canUse) {
-                    sender.sendMessage(Component.text("/guild " + subCommand.getName() + " - " + subCommand.getDescription(), NamedTextColor.YELLOW));
+                    HelpMenuFormatter.formatPlayerSubCommand(sender, "/guild", subCommand.getName(), subCommand.getDescription());
                 }
             }
 
             // Show owner-only commands if the player is in a guild and is the owner
             if (isInGuild && isGuildOwner) {
-                // These commands are not implemented yet
-                sender.sendMessage(Component.text("/guild kick <player> - Kick a player from your guild", NamedTextColor.YELLOW));
-                sender.sendMessage(Component.text("/guild disband - Disband your guild", NamedTextColor.YELLOW));
-                sender.sendMessage(Component.text("/guild transfer <player> - Transfer ownership of your guild", NamedTextColor.YELLOW));
-                // sender.sendMessage(Component.text("/guild description <text> - Set your guild's description", NamedTextColor.YELLOW));
+                // Owner-only commands
+                HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/guild", "kick", "<player>", "", "Kick a player from your guild");
+                HelpMenuFormatter.formatPlayerSubCommand(sender, "/guild", "disband", "Disband your guild");
+                HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/guild", "transfer", "<player>", "", "Transfer ownership of your guild");
+                // HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/guild", "description", "<text>", "", "Set your guild's description");
             }
         } else {
             // Console commands
-            sender.sendMessage(Component.text("/guild list - List all guilds", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild info <guild> - Show information about a guild", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild disband <guild> - Disband a guild", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild admintransfer <guild> <player> - Transfer ownership of a guild to a player", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/guild adminunclaim <guild> - Unclaim a chunk from an unmanned guild", NamedTextColor.YELLOW));
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Guild");
+            HelpMenuFormatter.formatAdminSubCommand(sender, "/guild", "list", "List all guilds");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/guild", "info", "<guild>", "", "Show information about a guild");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/guild", "disband", "<guild>", "", "Disband a guild");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/guild", "admintransfer", "<guild> <player>", "", "Transfer ownership of a guild to a player");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/guild", "adminunclaim", "<guild>", "", "Unclaim a chunk from an unmanned guild");
         }
     }
 

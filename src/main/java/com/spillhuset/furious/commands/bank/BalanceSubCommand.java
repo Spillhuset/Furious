@@ -1,24 +1,27 @@
 package com.spillhuset.furious.commands.bank;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.entities.Bank;
 import com.spillhuset.furious.managers.BankManager;
 import com.spillhuset.furious.managers.WalletManager;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Subcommand for checking bank balance.
  */
-public class BalanceSubCommand implements SubCommand {
-    private final Furious plugin;
-    private final BankManager bankManager;
+public class BalanceSubCommand extends BaseBankCommand {
     private final WalletManager walletManager;
 
     /**
@@ -27,8 +30,7 @@ public class BalanceSubCommand implements SubCommand {
      * @param plugin The plugin instance
      */
     public BalanceSubCommand(Furious plugin) {
-        this.plugin = plugin;
-        this.bankManager = plugin.getBankManager();
+        super(plugin, true); // Requires bank chunk
         this.walletManager = plugin.getWalletManager();
     }
 
@@ -39,50 +41,178 @@ public class BalanceSubCommand implements SubCommand {
 
     @Override
     public String getDescription() {
-        return "View your wallet and bank balances";
+        return "View a player's bank balance";
     }
 
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/bank balance", NamedTextColor.YELLOW)
-                .append(Component.text(" - View your wallet and bank balances", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("Shorthand: /bank b", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("/bank balance <playerName>", NamedTextColor.YELLOW)
+                .append(Component.text(" - View the specified player's balance in this bank", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("Shorthand: /bank b <playerName>", NamedTextColor.GRAY));
     }
 
     @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by players.", NamedTextColor.RED));
+    protected boolean executeCommand(Player player, @NotNull String[] args) {
+        if (args.length < 1) {
+            getUsage(player);
             return true;
         }
 
-        double walletBalance = walletManager.getBalance(player);
-        double bankBalance = bankManager.getBalance(player);
+        String playerName = args[0];
 
-        player.sendMessage(Component.text("=== Your Finances ===", NamedTextColor.GOLD));
-        player.sendMessage(Component.text("Wallet: ", NamedTextColor.YELLOW)
-                .append(Component.text(walletManager.formatAmount(walletBalance), NamedTextColor.WHITE)));
-        player.sendMessage(Component.text("Bank (RubberBank): ", NamedTextColor.YELLOW)
-                .append(Component.text(walletManager.formatAmount(bankBalance), NamedTextColor.WHITE)));
-        player.sendMessage(Component.text("Total: ", NamedTextColor.YELLOW)
-                .append(Component.text(walletManager.formatAmount(walletBalance + bankBalance), NamedTextColor.WHITE)));
+        // Get the bank from the chunk the player is standing in
+        Chunk chunk = player.getLocation().getChunk();
+        Bank bank = bankManager.getBankByChunk(chunk);
+
+        if (bank == null) {
+            player.sendMessage(Component.text("No bank found in this chunk.", NamedTextColor.RED));
+            return true;
+        }
+
+        String bankName = bank.getName();
+
+        // Get the target player
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(playerName);
+        if (offlinePlayer == null) {
+            player.sendMessage(Component.text("Player not found: " + playerName, NamedTextColor.RED));
+            return true;
+        }
+
+        UUID playerId = offlinePlayer.getUniqueId();
+
+        // Check if the player has an account in the bank
+        if (!bank.hasAccount(playerId)) {
+            player.sendMessage(Component.text("Player " + playerName + " does not have an account in bank " + bankName + ".", NamedTextColor.RED));
+            return true;
+        }
+
+        // Get the player's balance
+        double balance = bank.getBalance(playerId);
+
+        player.sendMessage(Component.text("=== " + playerName + "'s Balance ===", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("Bank: ", NamedTextColor.YELLOW)
+                .append(Component.text(bankName, NamedTextColor.GOLD)));
+        player.sendMessage(Component.text("Balance: ", NamedTextColor.YELLOW)
+                .append(Component.text(walletManager.formatAmount(balance), NamedTextColor.WHITE)));
+
+        return true;
+    }
+
+    @Override
+    protected boolean executeConsoleCommand(CommandSender sender, String bankName, @NotNull String[] args) {
+        if (args.length < 1) {
+            getUsage(sender);
+            return true;
+        }
+
+        String playerName = args[0];
+
+        // Get the bank
+        Bank bank = bankManager.getBank(bankName);
+        if (bank == null) {
+            sender.sendMessage(Component.text("Bank not found: " + bankName, NamedTextColor.RED));
+            return true;
+        }
+
+        // Get the target player
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(playerName);
+        if (offlinePlayer == null) {
+            sender.sendMessage(Component.text("Player not found: " + playerName, NamedTextColor.RED));
+            return true;
+        }
+
+        UUID playerId = offlinePlayer.getUniqueId();
+
+        // Check if the player has an account in the bank
+        if (!bank.hasAccount(playerId)) {
+            sender.sendMessage(Component.text("Player " + playerName + " does not have an account in bank " + bankName + ".", NamedTextColor.RED));
+            return true;
+        }
+
+        // Get the player's balance
+        double balance = bank.getBalance(playerId);
+
+        sender.sendMessage(Component.text("=== " + playerName + "'s Balance ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("Bank: ", NamedTextColor.YELLOW)
+                .append(Component.text(bankName, NamedTextColor.GOLD)));
+        sender.sendMessage(Component.text("Balance: ", NamedTextColor.YELLOW)
+                .append(Component.text(walletManager.formatAmount(balance), NamedTextColor.WHITE)));
+
+        return true;
+    }
+
+    @Override
+    protected boolean executePlayerCommandWithBank(Player player, String bankName, @NotNull String[] args) {
+        if (args.length < 1) {
+            getUsage(player);
+            return true;
+        }
+
+        String playerName = args[0];
+
+        // Get the bank
+        Bank bank = bankManager.getBank(bankName);
+        if (bank == null) {
+            player.sendMessage(Component.text("Bank not found: " + bankName, NamedTextColor.RED));
+            return true;
+        }
+
+        // Get the target player
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayerIfCached(playerName);
+        if (offlinePlayer == null) {
+            player.sendMessage(Component.text("Player not found: " + playerName, NamedTextColor.RED));
+            return true;
+        }
+
+        UUID playerId = offlinePlayer.getUniqueId();
+
+        // Check if the player has an account in the bank
+        if (!bank.hasAccount(playerId)) {
+            player.sendMessage(Component.text("Player " + playerName + " does not have an account in bank " + bankName + ".", NamedTextColor.RED));
+            return true;
+        }
+
+        // Get the player's balance
+        double balance = bank.getBalance(playerId);
+
+        player.sendMessage(Component.text("=== " + playerName + "'s Balance ===", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("Bank: ", NamedTextColor.YELLOW)
+                .append(Component.text(bankName, NamedTextColor.GOLD)));
+        player.sendMessage(Component.text("Balance: ", NamedTextColor.YELLOW)
+                .append(Component.text(walletManager.formatAmount(balance), NamedTextColor.WHITE)));
 
         return true;
     }
 
     @Override
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
-        return new ArrayList<>(); // No tab completions for balance command
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1 && !(sender instanceof Player)) {
+            // Suggest bank names for console
+            String partialBankName = args[0].toLowerCase();
+            for (String bankName : bankManager.getBanks().keySet()) {
+                if (bankName.toLowerCase().startsWith(partialBankName)) {
+                    completions.add(bankName);
+                }
+            }
+        } else if ((args.length == 1 && sender instanceof Player) ||
+                  (args.length == 2 && !(sender instanceof Player))) {
+            // Suggest player names
+            String partialPlayerName = args[args.length - 1].toLowerCase();
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.getName().toLowerCase().startsWith(partialPlayerName)) {
+                    completions.add(player.getName());
+                }
+            }
+        }
+
+        return completions;
     }
 
     @Override
     public String getPermission() {
         return "furious.bank.balance";
-    }
-
-    @Override
-    public boolean denyNonPlayer() {
-        return true; // Only players can check their balance
     }
 }

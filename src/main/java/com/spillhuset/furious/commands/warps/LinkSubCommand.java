@@ -54,11 +54,7 @@ public class LinkSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is op
-        if (!player.isOp()) {
-            sender.sendMessage(Component.text("Only operators can link warps to portals!", NamedTextColor.RED));
-            return true;
-        }
+        // Permission check is handled by the checkPermission method in the SubCommand interface
 
         // Check if enough arguments
         if (args.length < 2) {
@@ -83,7 +79,7 @@ public class LinkSubCommand implements SubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
-        if (args.length == 2 && sender.isOp()) {
+        if (args.length == 2 && checkPermission(sender, false)) {
             // Suggest warp names
             String partial = args[1].toLowerCase();
             plugin.getWarpsManager().getAllWarps().forEach(warp -> {
@@ -92,7 +88,7 @@ public class LinkSubCommand implements SubCommand {
                     completions.add(warp.getName());
                 }
             });
-        } else if (args.length == 3 && sender.isOp()) {
+        } else if (args.length == 3 && checkPermission(sender, false)) {
             // Suggest filling materials
             String partial = args[2].toLowerCase();
             List<String> validFillings = Arrays.asList(

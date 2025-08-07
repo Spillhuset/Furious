@@ -33,6 +33,11 @@ public class TpdeclineCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        return declineSubCommand.tabComplete(sender, args);
+        // Create a new args array with "decline" as the first argument
+        String[] newArgs = new String[args.length + 1];
+        newArgs[0] = "decline";
+        System.arraycopy(args, 0, newArgs, 1, args.length);
+
+        return declineSubCommand.tabComplete(sender, newArgs);
     }
 }

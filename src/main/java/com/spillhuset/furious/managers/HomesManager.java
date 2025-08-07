@@ -8,9 +8,12 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import java.io.File;
@@ -33,7 +36,7 @@ public class HomesManager {
     private final double BASE_HOME_COST;
     private final double COST_MULTIPLIER;
     private final double GUILD_COST_MULTIPLIER;
-    private List<String> DISABLED_WORLDS;
+    private final List<String> DISABLED_WORLDS;
     private final List<String> DISABLED_WORLD_TYPES;
 
     /**
@@ -87,16 +90,44 @@ public class HomesManager {
                         for (String homeName : playerSection.getKeys(false)) {
                             ConfigurationSection homeSection = playerSection.getConfigurationSection(homeName);
                             if (homeSection != null) {
-                                UUID homeId = UUID.fromString(homeSection.getString("id"));
-                                UUID worldId = UUID.fromString(homeSection.getString("world"));
+                                UUID homeId = UUID.fromString(Objects.requireNonNull(homeSection.getString("id")));
+                                UUID worldId = UUID.fromString(Objects.requireNonNull(homeSection.getString("world")));
                                 double x = homeSection.getDouble("x");
                                 double y = homeSection.getDouble("y");
                                 double z = homeSection.getDouble("z");
                                 float yaw = (float) homeSection.getDouble("yaw");
                                 float pitch = (float) homeSection.getDouble("pitch");
 
-                                Home home = new Home(homeId, homeName, playerId, false, worldId, x, y, z, yaw, pitch);
+                                // Get ArmorStand ID if it exists
+                                UUID armorStandId = null;
+                                if (homeSection.contains("armor-stand-id")) {
+                                    try {
+                                        armorStandId = UUID.fromString(Objects.requireNonNull(homeSection.getString("armor-stand-id")));
+                                    } catch (IllegalArgumentException e) {
+                                        plugin.getLogger().warning("Invalid ArmorStand UUID in homes.yml for home: " + homeName);
+                                    }
+                                }
+
+                                Home home = new Home(homeId, homeName, playerId, false, worldId, x, y, z, yaw, pitch, armorStandId);
                                 homes.put(homeName.toLowerCase(), home);
+
+                                // Try to find the ArmorStand entity if ID exists
+                                if (armorStandId != null) {
+                                    World world = Bukkit.getWorld(worldId);
+                                    if (world != null) {
+                                        for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                                            if (entity instanceof ArmorStand && entity.getUniqueId().equals(armorStandId)) {
+                                                home.setArmorStand((ArmorStand) entity);
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    // If ArmorStand not found, it will be recreated when the home is used
+                                    if (!home.hasArmorStand()) {
+                                        plugin.getLogger().warning("ArmorStand for home " + homeName + " not found. It will be recreated when used.");
+                                    }
+                                }
                             }
                         }
 
@@ -124,16 +155,44 @@ public class HomesManager {
                         for (String homeName : guildSection.getKeys(false)) {
                             ConfigurationSection homeSection = guildSection.getConfigurationSection(homeName);
                             if (homeSection != null) {
-                                UUID homeId = UUID.fromString(homeSection.getString("id"));
-                                UUID worldId = UUID.fromString(homeSection.getString("world"));
+                                UUID homeId = UUID.fromString(Objects.requireNonNull(homeSection.getString("id")));
+                                UUID worldId = UUID.fromString(Objects.requireNonNull(homeSection.getString("world")));
                                 double x = homeSection.getDouble("x");
                                 double y = homeSection.getDouble("y");
                                 double z = homeSection.getDouble("z");
                                 float yaw = (float) homeSection.getDouble("yaw");
                                 float pitch = (float) homeSection.getDouble("pitch");
 
-                                Home home = new Home(homeId, homeName, guildId, true, worldId, x, y, z, yaw, pitch);
+                                // Get ArmorStand ID if it exists
+                                UUID armorStandId = null;
+                                if (homeSection.contains("armor-stand-id")) {
+                                    try {
+                                        armorStandId = UUID.fromString(Objects.requireNonNull(homeSection.getString("armor-stand-id")));
+                                    } catch (IllegalArgumentException e) {
+                                        plugin.getLogger().warning("Invalid ArmorStand UUID in homes.yml for guild home: " + homeName);
+                                    }
+                                }
+
+                                Home home = new Home(homeId, homeName, guildId, true, worldId, x, y, z, yaw, pitch, armorStandId);
                                 homes.put(homeName.toLowerCase(), home);
+
+                                // Try to find the ArmorStand entity if ID exists
+                                if (armorStandId != null) {
+                                    World world = Bukkit.getWorld(worldId);
+                                    if (world != null) {
+                                        for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                                            if (entity instanceof ArmorStand && entity.getUniqueId().equals(armorStandId)) {
+                                                home.setArmorStand((ArmorStand) entity);
+                                                break;
+                                            }
+                                        }
+                                    }
+
+                                    // If ArmorStand not found, it will be recreated when the home is used
+                                    if (!home.hasArmorStand()) {
+                                        plugin.getLogger().warning("ArmorStand for guild home " + homeName + " not found. It will be recreated when used.");
+                                    }
+                                }
                             }
                         }
 
@@ -170,6 +229,11 @@ public class HomesManager {
                 config.set(path + ".z", home.getZ());
                 config.set(path + ".yaw", home.getYaw());
                 config.set(path + ".pitch", home.getPitch());
+
+                // Save ArmorStand ID if it exists
+                if (home.hasArmorStand()) {
+                    config.set(path + ".armor-stand-id", home.getArmorStand().getUniqueId().toString());
+                }
             }
         }
 
@@ -187,6 +251,11 @@ public class HomesManager {
                 config.set(path + ".z", home.getZ());
                 config.set(path + ".yaw", home.getYaw());
                 config.set(path + ".pitch", home.getPitch());
+
+                // Save ArmorStand ID if it exists
+                if (home.hasArmorStand()) {
+                    config.set(path + ".armor-stand-id", home.getArmorStand().getUniqueId().toString());
+                }
             }
         }
 
@@ -238,7 +307,7 @@ public class HomesManager {
      * Sets the number of additional homes a player has purchased.
      *
      * @param playerId The UUID of the player
-     * @param count The number of purchased homes
+     * @param count    The number of purchased homes
      */
     public void setPurchasedHomes(UUID playerId, int count) {
         config.set("purchased-homes." + playerId.toString(), count);
@@ -252,12 +321,11 @@ public class HomesManager {
      * @return The maximum number of homes
      */
     public int getMaxGuildHomes(Guild guild) {
-        int maxHomes = DEFAULT_MAX_GUILD_HOMES;
 
         // Add purchased homes
         int purchasedHomes = getPurchasedGuildHomes(guild.getId());
 
-        return maxHomes + purchasedHomes;
+        return DEFAULT_MAX_GUILD_HOMES + purchasedHomes;
     }
 
     /**
@@ -274,7 +342,7 @@ public class HomesManager {
      * Sets the number of additional homes a guild has purchased.
      *
      * @param guildId The UUID of the guild
-     * @param count The number of purchased homes
+     * @param count   The number of purchased homes
      */
     public void setPurchasedGuildHomes(UUID guildId, int count) {
         config.set("purchased-guild-homes." + guildId.toString(), count);
@@ -331,7 +399,7 @@ public class HomesManager {
      * Purchases an additional home slot for a guild.
      *
      * @param player The player purchasing the home slot (must be guild owner)
-     * @param guild The guild to purchase the home slot for
+     * @param guild  The guild to purchase the home slot for
      * @return true if the purchase was successful, false otherwise
      */
     public boolean purchaseGuildHomeSlot(Player player, Guild guild) {
@@ -429,8 +497,8 @@ public class HomesManager {
         for (World world : plugin.getServer().getWorlds()) {
             // Skip game worlds
             if (world.getName().equals(plugin.getWorldManager().getGameWorldName()) ||
-                world.getName().equals(plugin.getWorldManager().getGameBackupName()) ||
-                world.getName().startsWith("minigame_")) {
+                    world.getName().equals(plugin.getWorldManager().getGameBackupName()) ||
+                    world.getName().startsWith("minigame_")) {
                 continue;
             }
 
@@ -440,10 +508,21 @@ public class HomesManager {
         return worldsStatus;
     }
 
+
+    /**
+     * Gets a list of all worlds and whether homes management is enabled in them.
+     * This is the same as getWorldsStatus() since homes management is enabled when the world is not disabled.
+     *
+     * @return A map of world names to boolean values indicating if homes management is enabled
+     */
+    public Map<String, Boolean> getHomesManagementStatus() {
+        return getWorldsStatus();
+    }
+
     /**
      * Sets a home for a player.
      *
-     * @param player The player setting the home
+     * @param player   The player setting the home
      * @param homeName The name of the home
      * @param location The location of the home
      * @return true if the home was set, false otherwise
@@ -463,6 +542,22 @@ public class HomesManager {
             return false;
         }
 
+
+        // Check if the chunk is claimed by a guild
+        if (plugin.getGuildManager().isChunkClaimed(location.getChunk())) {
+            // Get the guild that owns the chunk
+            Guild chunkOwner = plugin.getGuildManager().getChunkOwner(location.getChunk());
+
+            // If guild management is enabled for this world, prevent setting homes in claimed chunks
+            if (chunkOwner != null && !isWorldDisabled(location.getWorld())) {
+                // Allow if player is in the guild that owns the chunk
+                if (!chunkOwner.isMember(player.getUniqueId())) {
+                    player.sendMessage(Component.text("You cannot set homes in chunks claimed by other guilds!", NamedTextColor.RED));
+                    return false;
+                }
+            }
+        }
+
         // Get player's homes
         Map<String, Home> homes = playerHomes.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>());
 
@@ -479,7 +574,15 @@ public class HomesManager {
             homes.put(homeName, home);
         } else {
             home.setLocation(location);
+
+            // Remove old ArmorStand if it exists
+            if (home.hasArmorStand()) {
+                home.getArmorStand().remove();
+            }
         }
+
+        // Create ArmorStand for the home
+        createHomeArmorStand(home, location, homeName);
 
         saveConfiguration();
         return true;
@@ -488,8 +591,8 @@ public class HomesManager {
     /**
      * Sets a home for a guild.
      *
-     * @param player The player setting the home (must be authorized)
-     * @param guild The guild to set the home for
+     * @param player   The player setting the home (must be authorized)
+     * @param guild    The guild to set the home for
      * @param homeName The name of the home
      * @param location The location of the home
      * @return true if the home was set, false otherwise
@@ -509,6 +612,22 @@ public class HomesManager {
             return false;
         }
 
+        // Check if the chunk is claimed
+        if (plugin.getGuildManager().isChunkClaimed(location.getChunk())) {
+            // Get the guild that owns the chunk
+            Guild chunkOwner = plugin.getGuildManager().getChunkOwner(location.getChunk());
+
+            // Ensure the guild home is only set within the guild's own claims
+            if (chunkOwner == null || !chunkOwner.getId().equals(guild.getId())) {
+                player.sendMessage(Component.text("Guild homes can only be set within the guild's own claims!", NamedTextColor.RED));
+                return false;
+            }
+        } else {
+            // The chunk is not claimed by any guild
+            player.sendMessage(Component.text("Guild homes can only be set within the guild's own claims!", NamedTextColor.RED));
+            return false;
+        }
+
         // Get guild's homes
         Map<String, Home> homes = guildHomes.computeIfAbsent(guild.getId(), k -> new HashMap<>());
 
@@ -525,7 +644,15 @@ public class HomesManager {
             homes.put(homeName, home);
         } else {
             home.setLocation(location);
+
+            // Remove old ArmorStand if it exists
+            if (home.hasArmorStand()) {
+                home.getArmorStand().remove();
+            }
         }
+
+        // Create ArmorStand for the home
+        createHomeArmorStand(home, location, homeName);
 
         saveConfiguration();
         return true;
@@ -557,7 +684,7 @@ public class HomesManager {
     /**
      * Gets a guild's home by name.
      *
-     * @param guildId The UUID of the guild
+     * @param guildId  The UUID of the guild
      * @param homeName The name of the home
      * @return The home, or null if not found
      */
@@ -622,9 +749,18 @@ public class HomesManager {
         homeName = homeName.toLowerCase();
 
         Map<String, Home> homes = playerHomes.get(playerId);
-        if (homes != null && homes.remove(homeName) != null) {
-            saveConfiguration();
-            return true;
+        if (homes != null) {
+            Home home = homes.get(homeName);
+            if (home != null) {
+                // Remove ArmorStand if it exists
+                if (home.hasArmorStand()) {
+                    home.getArmorStand().remove();
+                }
+
+                homes.remove(homeName);
+                saveConfiguration();
+                return true;
+            }
         }
         return false;
     }
@@ -632,11 +768,10 @@ public class HomesManager {
     /**
      * Deletes a guild's home.
      *
-     * @param guildId The UUID of the guild
+     * @param guildId  The UUID of the guild
      * @param homeName The name of the home
-     * @return true if the home was deleted, false otherwise
      */
-    public boolean deleteGuildHome(UUID guildId, String homeName) {
+    public void deleteGuildHome(UUID guildId, String homeName) {
         // Default home name if not provided
         if (homeName == null || homeName.isEmpty()) {
             homeName = "default";
@@ -646,19 +781,26 @@ public class HomesManager {
         homeName = homeName.toLowerCase();
 
         Map<String, Home> homes = guildHomes.get(guildId);
-        if (homes != null && homes.remove(homeName) != null) {
-            saveConfiguration();
-            return true;
+        if (homes != null) {
+            Home home = homes.get(homeName);
+            if (home != null) {
+                // Remove ArmorStand if it exists
+                if (home.hasArmorStand()) {
+                    home.getArmorStand().remove();
+                }
+
+                homes.remove(homeName);
+                saveConfiguration();
+            }
         }
-        return false;
     }
 
     /**
      * Renames a player's home.
      *
      * @param playerId The UUID of the player
-     * @param oldName The current name of the home
-     * @param newName The new name for the home
+     * @param oldName  The current name of the home
+     * @param newName  The new name for the home
      * @return true if the home was renamed, false otherwise
      */
     public boolean renamePlayerHome(UUID playerId, String oldName, String newName) {
@@ -746,7 +888,7 @@ public class HomesManager {
     /**
      * Teleports a player to their home.
      *
-     * @param player The player to teleport
+     * @param player   The player to teleport
      * @param homeName The name of the home
      * @return true if the player was teleported, false otherwise
      */
@@ -763,16 +905,29 @@ public class HomesManager {
             return false;
         }
 
-        player.teleport(location);
-        player.sendMessage(Component.text("Teleported to home " + home.getName() + "!", NamedTextColor.GREEN));
+        // Check if ArmorStand exists, create if missing
+        if (!home.hasArmorStand()) {
+            createHomeArmorStand(home, location, home.getName());
+        }
+
+        // Check if player is op or has bypass permission
+        if (player.isOp() || player.hasPermission("furious.teleport.bypass")) {
+            // Instant teleport for privileged players
+            player.teleport(location);
+            player.sendMessage(Component.text("Teleported to home " + home.getName() + "!", NamedTextColor.GREEN));
+        } else {
+            // Queue teleport for regular players
+            plugin.getTeleportManager().teleportQueue(player, location);
+            // Message is sent by the teleport task
+        }
         return true;
     }
 
     /**
      * Teleports a player to a guild home.
      *
-     * @param player The player to teleport
-     * @param guild The guild whose home to teleport to
+     * @param player   The player to teleport
+     * @param guild    The guild whose home to teleport to
      * @param homeName The name of the home
      * @return true if the player was teleported, false otherwise
      */
@@ -789,8 +944,21 @@ public class HomesManager {
             return false;
         }
 
-        player.teleport(location);
-        player.sendMessage(Component.text("Teleported to guild home " + home.getName() + "!", NamedTextColor.GREEN));
+        // Check if ArmorStand exists, create if missing
+        if (!home.hasArmorStand()) {
+            createHomeArmorStand(home, location, home.getName());
+        }
+
+        // Check if player is op or has bypass permission
+        if (player.isOp() || player.hasPermission("furious.teleport.bypass")) {
+            // Instant teleport for privileged players
+            player.teleport(location);
+            player.sendMessage(Component.text("Teleported to guild home " + home.getName() + "!", NamedTextColor.GREEN));
+        } else {
+            // Queue teleport for regular players
+            plugin.getTeleportManager().teleportQueue(player, location);
+            // Message is sent by the teleport task
+        }
         return true;
     }
 
@@ -822,6 +990,43 @@ public class HomesManager {
     public void removeGuildData(UUID guildId) {
         guildHomes.remove(guildId);
         config.set("purchased-guild-homes." + guildId.toString(), null);
+        saveConfiguration();
+    }
+
+    /**
+     * Creates an ArmorStand entity for a home.
+     *
+     * @param home     The home to create an ArmorStand for
+     * @param location The location to place the ArmorStand
+     * @param homeName The name of the home
+     */
+    private void createHomeArmorStand(Home home, Location location, String homeName) {
+        // Skip if world is null or not loaded
+        if (location.getWorld() == null) {
+            return;
+        }
+
+        // Create the ArmorStand
+        ArmorStand armorStand = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
+
+        // Set ArmorStand properties
+        armorStand.customName(Component.text("Home: " + homeName));
+        armorStand.setCustomNameVisible(false); // Not visible by default
+        armorStand.setVisible(false); // Keep the ArmorStand itself invisible
+        armorStand.setGravity(false);
+        armorStand.setInvulnerable(true);
+        armorStand.setCanPickupItems(false);
+        armorStand.setSmall(true); // Make it smaller
+
+        // Set waypoint range if available
+        if (armorStand.getAttribute(Attribute.WAYPOINT_TRANSMIT_RANGE) != null) {
+            Objects.requireNonNull(armorStand.getAttribute(Attribute.WAYPOINT_TRANSMIT_RANGE)).setBaseValue(500.0);
+        }
+
+        // Set the ArmorStand for the home
+        home.setArmorStand(armorStand);
+
+        // Save the configuration
         saveConfiguration();
     }
 }

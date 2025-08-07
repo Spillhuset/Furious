@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.bank;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
@@ -42,42 +43,37 @@ public class HelpSubCommand implements SubCommand {
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/bank help", NamedTextColor.YELLOW)
-                .append(Component.text(" - Show help information for bank commands", NamedTextColor.WHITE)));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Bank Help");
+        HelpMenuFormatter.formatPlayerSubCommand(sender, "/bank", "help", "Show help information for bank commands");
         sender.sendMessage(Component.text("Shorthand: /bank h", NamedTextColor.GRAY));
     }
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        sender.sendMessage(Component.text("=== Bank Commands ===", NamedTextColor.GOLD));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Bank");
 
         // Display commands based on permissions
         for (SubCommand subCommand : subCommands.values()) {
             if (subCommand.checkPermission(sender, false)) {
-                sender.sendMessage(Component.text("/bank " + subCommand.getName(), NamedTextColor.YELLOW)
-                        .append(Component.text(" - " + subCommand.getDescription(), NamedTextColor.WHITE)));
+                HelpMenuFormatter.formatPlayerSubCommand(sender, "/bank", subCommand.getName(), subCommand.getDescription());
             }
         }
 
         // Show chunk-related commands if player has permission
         if (sender instanceof Player player) {
             if (player.hasPermission("furious.bank.claim") || player.hasPermission("furious.bank.unclaim") || player.hasPermission("furious.bank.info")) {
-                sender.sendMessage(Component.text("=== Bank Territory Commands ===", NamedTextColor.GOLD));
+                HelpMenuFormatter.showPlayerCommandsHeader(sender, "Bank Territory");
 
                 if (player.hasPermission("furious.bank.claim")) {
-                    sender.sendMessage(Component.text("/bank claim [bank]", NamedTextColor.YELLOW)
-                            .append(Component.text(" - Claim the current chunk for a bank", NamedTextColor.WHITE)));
+                    HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/bank", "claim", "[bank]", "", "Claim the current chunk for a bank");
                 }
 
                 if (player.hasPermission("furious.bank.unclaim")) {
-                    sender.sendMessage(Component.text("/bank unclaim", NamedTextColor.YELLOW)
-                            .append(Component.text(" - Unclaim the current chunk from a bank", NamedTextColor.WHITE)));
+                    HelpMenuFormatter.formatPlayerSubCommand(sender, "/bank", "unclaim", "Unclaim the current chunk from a bank");
                 }
 
                 if (player.hasPermission("furious.bank.info")) {
-                    sender.sendMessage(Component.text("/bank info", NamedTextColor.YELLOW)
-                            .append(Component.text(" - Show information about the bank at your location", NamedTextColor.WHITE)));
+                    HelpMenuFormatter.formatPlayerSubCommand(sender, "/bank", "info", "Show information about the bank at your location");
                 }
             }
         }

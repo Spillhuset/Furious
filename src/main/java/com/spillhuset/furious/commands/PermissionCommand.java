@@ -81,7 +81,7 @@ public class PermissionCommand implements CommandExecutor, TabCompleter {
         SubCommand subCommand = subCommands.get(subCommandName);
 
         if (subCommand == null) {
-            sender.sendMessage(Component.text("Unknown permission command. Use /perm help for assistance.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Unknown permission command. Use /permissions help for assistance.", NamedTextColor.RED));
             return false;
         }
 

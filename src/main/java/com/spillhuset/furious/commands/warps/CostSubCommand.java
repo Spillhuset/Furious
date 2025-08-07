@@ -49,9 +49,9 @@ public class CostSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is op
-        if (!player.isOp()) {
-            sender.sendMessage(Component.text("Only operators can set warp costs!", NamedTextColor.RED));
+        // Check if player has permission
+        if (!player.hasPermission(getPermission())) {
+            sender.sendMessage(Component.text("You don't have permission to set warp costs!", NamedTextColor.RED));
             return true;
         }
 
@@ -77,9 +77,8 @@ public class CostSubCommand implements SubCommand {
         }
 
         // Set the cost
-        if (plugin.getWarpsManager().setCost(player, warpName, cost)) {
-            sender.sendMessage(Component.text("Cost for warp '" + warpName + "' set to " + cost + "!", NamedTextColor.GREEN));
-        }
+        // Let WarpsManager.setCost() handle the success message to avoid double notification
+        plugin.getWarpsManager().setCost(player, warpName, cost);
 
         return true;
     }
@@ -88,7 +87,7 @@ public class CostSubCommand implements SubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
-        if (args.length == 2 && sender.isOp()) {
+        if (args.length == 2 && sender.hasPermission(getPermission())) {
             // Suggest warp names
             String partial = args[1].toLowerCase();
             plugin.getWarpsManager().getAllWarps().forEach(warp -> {
@@ -96,7 +95,7 @@ public class CostSubCommand implements SubCommand {
                     completions.add(warp.getName());
                 }
             });
-        } else if (args.length == 3 && sender.isOp()) {
+        } else if (args.length == 3 && sender.hasPermission(getPermission())) {
             // Suggest some common cost values
             String partial = args[2].toLowerCase();
             for (String cost : new String[]{"0", "10", "50", "100", "500", "1000"}) {

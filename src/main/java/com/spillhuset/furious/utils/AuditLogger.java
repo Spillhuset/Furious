@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.logging.Level;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /**
@@ -31,9 +31,9 @@ public class AuditLogger {
     /**
      * Logs an inventory viewing operation.
      *
-     * @param sender The command sender who initiated the operation
+     * @param sender     The command sender who initiated the operation
      * @param targetName The name of the player whose inventory was viewed
-     * @param isOnline Whether the target player is online
+     * @param isOnline   Whether the target player is online
      */
     public void logInventoryView(CommandSender sender, String targetName, boolean isOnline) {
         String senderInfo = getSenderInfo(sender);
@@ -47,9 +47,9 @@ public class AuditLogger {
     /**
      * Logs an enderchest viewing operation.
      *
-     * @param sender The command sender who initiated the operation
+     * @param sender     The command sender who initiated the operation
      * @param targetName The name of the player whose enderchest was viewed
-     * @param isOnline Whether the target player is online
+     * @param isOnline   Whether the target player is online
      */
     public void logEnderchestView(CommandSender sender, String targetName, boolean isOnline) {
         String senderInfo = getSenderInfo(sender);
@@ -63,10 +63,10 @@ public class AuditLogger {
     /**
      * Logs a failed attempt to access player data.
      *
-     * @param sender The command sender who initiated the operation
-     * @param targetName The name of the player whose data was attempted to be accessed
+     * @param sender        The command sender who initiated the operation
+     * @param targetName    The name of the player whose data was attempted to be accessed
      * @param operationType The type of operation that was attempted (e.g., "inventory view", "enderchest view")
-     * @param reason The reason for the failure
+     * @param reason        The reason for the failure
      */
     public void logFailedAccess(CommandSender sender, String targetName, String operationType, String reason) {
         String senderInfo = getSenderInfo(sender);
@@ -79,9 +79,9 @@ public class AuditLogger {
     /**
      * Logs a general sensitive operation.
      *
-     * @param sender The command sender who initiated the operation
+     * @param sender    The command sender who initiated the operation
      * @param operation The operation that was performed
-     * @param details Additional details about the operation
+     * @param details   Additional details about the operation
      */
     public void logSensitiveOperation(CommandSender sender, String operation, String details) {
         String senderInfo = getSenderInfo(sender);
@@ -98,10 +98,11 @@ public class AuditLogger {
      * @return A string containing information about the sender
      */
     private String getSenderInfo(CommandSender sender) {
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
+        if (sender == null) {
+            return "System";
+        } else if (sender instanceof Player player) {
             return String.format("Player '%s' (UUID: %s, IP: %s)",
-                    player.getName(), player.getUniqueId(), player.getAddress().getAddress().getHostAddress());
+                    player.getName(), player.getUniqueId(), Objects.requireNonNull(player.getAddress()).getAddress().getHostAddress());
         } else {
             return String.format("Console '%s'", sender.getName());
         }
@@ -110,10 +111,10 @@ public class AuditLogger {
     /**
      * Logs a teleport operation.
      *
-     * @param sender The command sender who initiated the operation
-     * @param targetName The name of the player who was teleported
+     * @param sender      The command sender who initiated the operation
+     * @param targetName  The name of the player who was teleported
      * @param destination The destination of the teleport (player name, coordinates, or "worldspawn")
-     * @param details Additional details about the teleport operation
+     * @param details     Additional details about the teleport operation
      */
     public void logTeleportOperation(CommandSender sender, String targetName, String destination, String details) {
         String senderInfo = getSenderInfo(sender);
@@ -126,9 +127,9 @@ public class AuditLogger {
     /**
      * Logs a warp operation.
      *
-     * @param sender The command sender who initiated the operation
+     * @param sender   The command sender who initiated the operation
      * @param warpName The name of the warp
-     * @param details Additional details about the warp operation
+     * @param details  Additional details about the warp operation
      */
     public void logWarpOperation(CommandSender sender, String warpName, String details) {
         String senderInfo = getSenderInfo(sender);

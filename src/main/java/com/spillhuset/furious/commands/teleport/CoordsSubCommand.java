@@ -188,11 +188,50 @@ public class CoordsSubCommand implements SubCommand {
         List<String> completions = new ArrayList<>();
 
         // The first argument after "coords" could be player or coordinate
-        if (args.length == 2 && !isNumeric(args[1])) {
+        if (args.length == 2) {
             String partial = args[1].toLowerCase();
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                if (player.getName().toLowerCase().startsWith(partial)) {
-                    completions.add(player.getName());
+            // Suggest player names if input is not numeric
+            if (!isNumeric(partial)) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (player.getName().toLowerCase().startsWith(partial)) {
+                        completions.add(player.getName());
+                    }
+                }
+            }
+
+            // Also suggest coordinates if the sender is a player
+            if (sender instanceof Player player) {
+                // Round to nearest integer for cleaner suggestions
+                int x = (int) Math.round(player.getLocation().getX());
+                String xStr = String.valueOf(x);
+                if (partial.isEmpty() || xStr.startsWith(partial)) {
+                    completions.add(xStr);
+                }
+            }
+        }
+        // X coordinate has been entered, suggest Y coordinate
+        else if ((args.length == 3 && isNumeric(args[1])) ||  // /tp coords x y
+                (args.length == 4 && !isNumeric(args[1]) && isNumeric(args[2]))) {  // /tp coords player x y
+            if (sender instanceof Player player) {
+                String partial = args[args.length - 1].toLowerCase();
+                // Round to nearest integer for cleaner suggestions
+                int y = (int) Math.round(player.getLocation().getY());
+                String yStr = String.valueOf(y);
+                if (partial.isEmpty() || yStr.startsWith(partial)) {
+                    completions.add(yStr);
+                }
+            }
+        }
+        // Y coordinate has been entered, suggest Z coordinate
+        else if ((args.length == 4 && isNumeric(args[1])) ||  // /tp coords x y z
+                (args.length == 5 && !isNumeric(args[1]) && isNumeric(args[2]))) {  // /tp coords player x y z
+            if (sender instanceof Player player) {
+                String partial = args[args.length - 1].toLowerCase();
+                // Round to nearest integer for cleaner suggestions
+                int z = (int) Math.round(player.getLocation().getZ());
+                String zStr = String.valueOf(z);
+                if (partial.isEmpty() || zStr.startsWith(partial)) {
+                    completions.add(zStr);
                 }
             }
         }

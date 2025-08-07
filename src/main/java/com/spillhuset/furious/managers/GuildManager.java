@@ -779,6 +779,39 @@ public class GuildManager {
     }
 
     /**
+     * Checks if a chunk is within 2 chunks of any claimed chunk from other guilds.
+     *
+     * @param chunk The chunk to check
+     * @param excludeGuild The guild to exclude from the check (usually the player's guild)
+     * @return true if the chunk is too close to another guild's territory, false otherwise
+     */
+    public boolean isChunkTooCloseToOtherGuild(Chunk chunk, Guild excludeGuild) {
+        World world = chunk.getWorld();
+        int chunkX = chunk.getX();
+        int chunkZ = chunk.getZ();
+
+        // Check all chunks within a 2-chunk radius
+        for (int x = chunkX - 2; x <= chunkX + 2; x++) {
+            for (int z = chunkZ - 2; z <= chunkZ + 2; z++) {
+                // Skip the chunk itself
+                if (x == chunkX && z == chunkZ) {
+                    continue;
+                }
+
+                Chunk nearbyChunk = world.getChunkAt(x, z);
+                Guild owner = getChunkOwner(nearbyChunk);
+
+                // If the chunk is claimed by another guild, it's too close
+                if (owner != null && owner != excludeGuild) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Gets the guild that has claimed a chunk.
      *
      * @param chunk The chunk to check
@@ -810,6 +843,13 @@ public class GuildManager {
             } else {
                 player.sendMessage(Component.text("This chunk is already claimed by " + owner.getName() + "!", NamedTextColor.RED));
             }
+            return;
+        }
+
+        // Check if the chunk is too close to another guild's territory
+        if (isChunkTooCloseToOtherGuild(chunk, guild)) {
+            player.sendMessage(Component.text("This chunk is too close to another guild's territory!", NamedTextColor.RED));
+            player.sendMessage(Component.text("You must maintain a distance of at least 2 chunks from other guilds.", NamedTextColor.RED));
             return;
         }
 
@@ -1223,6 +1263,14 @@ public class GuildManager {
         if (isChunkClaimed(chunk)) {
             Guild owner = getChunkOwner(chunk);
             admin.sendMessage(Component.text("This chunk is already claimed by " + owner.getName() + "!", NamedTextColor.RED));
+            return;
+        }
+
+        // Check if the chunk is too close to another guild's territory
+        // For unmanned guilds, we still enforce the distance rule for consistency
+        if (isChunkTooCloseToOtherGuild(chunk, guild)) {
+            admin.sendMessage(Component.text("This chunk is too close to another guild's territory!", NamedTextColor.RED));
+            admin.sendMessage(Component.text("You must maintain a distance of at least 2 chunks from other guilds.", NamedTextColor.RED));
             return;
         }
 

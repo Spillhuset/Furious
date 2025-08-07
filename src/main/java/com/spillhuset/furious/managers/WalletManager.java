@@ -17,6 +17,8 @@ public class WalletManager {
     private final File walletFile;
     private final FileConfiguration walletConfig;
     private final Map<UUID, Double> wallets = new HashMap<>();
+    private final boolean usingDatabase;
+    private int autoSaveTaskId = -1;
 
     // Currency configuration
     private String currencyName;
@@ -24,11 +26,15 @@ public class WalletManager {
     private String currencySymbol;
     private String currencyFormat;
     private String currencyMaterial;
+    private double startingBalance;
+    private boolean autoSave;
+    private int autoSaveInterval;
 
     public WalletManager(Furious plugin) {
         this.plugin = plugin;
         this.walletFile = new File(plugin.getDataFolder(), "wallets.yml");
         this.walletConfig = YamlConfiguration.loadConfiguration(walletFile);
+        this.usingDatabase = !plugin.getDatabaseManager().isUsingYaml();
         loadWallets();
         loadCurrencyConfig();
     }
@@ -43,14 +49,64 @@ public class WalletManager {
         currencySymbol = config.getString("economy.currency.symbol", "⚙");
         currencyFormat = config.getString("economy.currency.format", "%symbol%%amount%");
         currencyMaterial = config.getString("economy.currency.material", "IRON_NUGGET");
+
+        // Load wallet configuration
+        File walletConfigFile = new File(plugin.getDataFolder(), "wallet.yml");
+        if (walletConfigFile.exists()) {
+            FileConfiguration walletConfig = YamlConfiguration.loadConfiguration(walletConfigFile);
+            startingBalance = walletConfig.getDouble("starting-balance", 100.0);
+            autoSave = walletConfig.getBoolean("auto-save", true);
+            autoSaveInterval = walletConfig.getInt("auto-save-interval", 5);
+        } else {
+            startingBalance = 100.0; // Default value if wallet.yml doesn't exist
+            autoSave = true;
+            autoSaveInterval = 5;
+        }
+
+        // Setup auto-save task if enabled
+        setupAutoSave();
     }
 
     /**
      * Reloads currency configuration from the config.yml file.
      */
     public void reloadCurrencyConfig() {
+        // Cancel existing auto-save task if it exists
+        if (autoSaveTaskId != -1) {
+            plugin.getServer().getScheduler().cancelTask(autoSaveTaskId);
+            autoSaveTaskId = -1;
+        }
+
         plugin.reloadConfig();
         loadCurrencyConfig();
+    }
+
+    /**
+     * Sets up the auto-save task based on configuration settings.
+     */
+    private void setupAutoSave() {
+        // Cancel existing task if it exists
+        if (autoSaveTaskId != -1) {
+            plugin.getServer().getScheduler().cancelTask(autoSaveTaskId);
+            autoSaveTaskId = -1;
+        }
+
+        // Setup new task if auto-save is enabled
+        if (autoSave && autoSaveInterval > 0) {
+            // Convert minutes to ticks (20 ticks = 1 second, 60 seconds = 1 minute)
+            long intervalTicks = autoSaveInterval * 60 * 20L;
+
+            autoSaveTaskId = plugin.getServer().getScheduler().runTaskTimer(
+                plugin,
+                this::saveWalletData,  // Call saveWalletData method periodically
+                intervalTicks,         // Initial delay
+                intervalTicks          // Repeat interval
+            ).getTaskId();
+
+            plugin.getLogger().info("Wallet auto-save enabled. Interval: " + autoSaveInterval + " minutes");
+        } else {
+            plugin.getLogger().info("Wallet auto-save disabled");
+        }
     }
 
     /**
@@ -157,36 +213,71 @@ public class WalletManager {
     }
 
     /**
-     * Loads wallet data from the wallets.yml file.
+     * Gets the starting balance for new players.
+     *
+     * @return the starting balance for new players
+     */
+    public double getStartingBalance() {
+        return startingBalance;
+    }
+
+    /**
+     * Loads wallet data from the appropriate storage.
      */
     private void loadWallets() {
-        if (!walletFile.exists()) {
-            return;
-        }
-
-        for (String uuidStr : walletConfig.getKeys(false)) {
-            try {
-                UUID uuid = UUID.fromString(uuidStr);
-                double balance = walletConfig.getDouble(uuidStr);
-                wallets.put(uuid, balance);
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid UUID in wallets.yml: " + uuidStr);
+        if (usingDatabase) {
+            // Load from database
+            Map<UUID, Double> loadedWallets = plugin.getWalletDAO().loadAllWallets();
+            wallets.putAll(loadedWallets);
+            plugin.getLogger().info("Loaded " + wallets.size() + " wallets from database.");
+        } else {
+            // Load from YAML file
+            if (!walletFile.exists()) {
+                return;
             }
+
+            for (String uuidStr : walletConfig.getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    double balance = walletConfig.getDouble(uuidStr);
+                    wallets.put(uuid, balance);
+                } catch (IllegalArgumentException e) {
+                    plugin.getLogger().warning("Invalid UUID in wallets.yml: " + uuidStr);
+                }
+            }
+            plugin.getLogger().info("Loaded " + wallets.size() + " wallets from YAML.");
         }
     }
 
     /**
-     * Saves wallet data to the wallets.yml file.
+     * Saves wallet data to the appropriate storage.
      */
     private void saveWallets() {
-        for (Map.Entry<UUID, Double> entry : wallets.entrySet()) {
-            walletConfig.set(entry.getKey().toString(), entry.getValue());
-        }
+        if (usingDatabase) {
+            // Save to database
+            boolean success = true;
+            for (Map.Entry<UUID, Double> entry : wallets.entrySet()) {
+                if (!plugin.getWalletDAO().saveWallet(entry.getKey(), entry.getValue())) {
+                    success = false;
+                }
+            }
+            if (success) {
+                plugin.getLogger().info("Saved " + wallets.size() + " wallets to database.");
+            } else {
+                plugin.getLogger().warning("Some wallets may not have been saved to the database.");
+            }
+        } else {
+            // Save to YAML file
+            for (Map.Entry<UUID, Double> entry : wallets.entrySet()) {
+                walletConfig.set(entry.getKey().toString(), entry.getValue());
+            }
 
-        try {
-            walletConfig.save(walletFile);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save wallet data", e);
+            try {
+                walletConfig.save(walletFile);
+                plugin.getLogger().info("Saved " + wallets.size() + " wallets to YAML.");
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.SEVERE, "Could not save wallet data", e);
+            }
         }
     }
 
@@ -199,6 +290,13 @@ public class WalletManager {
     }
 
     public void shutdown() {
+        // Cancel auto-save task if it exists
+        if (autoSaveTaskId != -1) {
+            plugin.getServer().getScheduler().cancelTask(autoSaveTaskId);
+            autoSaveTaskId = -1;
+        }
+
+        // Save all wallet data
         saveWallets();
         wallets.clear();
     }
@@ -214,7 +312,7 @@ public class WalletManager {
         if (player.isOp()) {
             return 0.0;
         }
-        return wallets.getOrDefault(player.getUniqueId(), 0.0);
+        return wallets.getOrDefault(player.getUniqueId(), startingBalance);
     }
 
     /**
@@ -406,7 +504,7 @@ public class WalletManager {
      * @return the balance of the player's wallet, or 0.0 if the player does not have a wallet
      */
     public double getWallet(UUID playerId) {
-        return wallets.getOrDefault(playerId, 0.0);
+        return wallets.getOrDefault(playerId, startingBalance);
     }
 
     /**

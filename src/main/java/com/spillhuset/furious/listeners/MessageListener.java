@@ -7,7 +7,9 @@ import com.spillhuset.furious.entities.Tombstone;
 import com.spillhuset.furious.enums.GuildRole;
 import com.spillhuset.furious.managers.BankManager;
 import com.spillhuset.furious.managers.GuildManager;
+import com.spillhuset.furious.managers.HomesManager;
 import com.spillhuset.furious.managers.LocksManager;
+import com.spillhuset.furious.managers.PlayerVisibilityManager;
 import com.spillhuset.furious.managers.TombstoneManager;
 import com.spillhuset.furious.managers.WalletManager;
 import net.kyori.adventure.text.Component;
@@ -28,10 +30,12 @@ import java.util.UUID;
 public class MessageListener implements Listener {
     private final Furious plugin;
     private final WalletManager walletManager;
+    private final PlayerVisibilityManager playerVisibilityManager;
 
     public MessageListener(Furious furious) {
         this.plugin = furious;
         this.walletManager = furious.getWalletManager();
+        this.playerVisibilityManager = furious.getPlayerVisibilityManager();
     }
 
     @EventHandler
@@ -39,26 +43,32 @@ public class MessageListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        // Check if player is in a guild
-        if (plugin.getGuildManager().isInGuild(playerId)) {
-            Guild guild = plugin.getGuildManager().getPlayerGuild(playerId);
-            // Format: [✔] <player> - <guild>
-            event.joinMessage(Component.text("[", NamedTextColor.WHITE)
-                    .append(Component.text("✔", NamedTextColor.DARK_GREEN))
-                    .append(Component.text("] " + player.getName() + " - " + guild.getName(), NamedTextColor.WHITE)));
+        // Check if player is hidden - if so, don't show join message
+        if (playerVisibilityManager.isPlayerHiddenFromLocatorBar(player)) {
+            event.joinMessage(null); // Set to null to hide the message
         } else {
-            // Format: [✔] <player>
-            event.joinMessage(Component.text("[", NamedTextColor.WHITE)
-                    .append(Component.text("✔", NamedTextColor.DARK_GREEN))
-                    .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
+            // Check if player is in a guild
+            if (plugin.getGuildManager().isInGuild(playerId)) {
+                Guild guild = plugin.getGuildManager().getPlayerGuild(playerId);
+                // Format: [✔] <player> - <guild>
+                event.joinMessage(Component.text("[", NamedTextColor.WHITE)
+                        .append(Component.text("✔", NamedTextColor.DARK_GREEN))
+                        .append(Component.text("] " + player.getName() + " - " + guild.getName(), NamedTextColor.WHITE)));
+            } else {
+                // Format: [✔] <player>
+                event.joinMessage(Component.text("[", NamedTextColor.WHITE)
+                        .append(Component.text("✔", NamedTextColor.DARK_GREEN))
+                        .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
+            }
         }
 
         // Load wallet from storage if needed
-        // New players start with 50S
+        // New players start with the configured starting balance
         if (player.getFirstPlayed() == 0) {
-            walletManager.init(playerId, 50.0);
+            double startingBalance = walletManager.getStartingBalance();
+            walletManager.init(playerId, startingBalance);
 
-            // Initialize bank account in RubberBank with 100S
+            // Initialize bank account in RubberBank with the same starting balance
             plugin.getBankManager().initPlayer(playerId);
         }
 
@@ -142,7 +152,7 @@ public class MessageListener implements Listener {
                 long creationTime = tombstone.getCreationTime();
                 // Get the timeout from TombstoneManager (default is 1800 seconds = 30 minutes)
                 int timeoutSeconds = plugin.getConfig().getInt("tombstones.timeout-seconds", 1800);
-                long expiryTime = creationTime + (timeoutSeconds * 1000);
+                long expiryTime = creationTime + (timeoutSeconds * 1000L);
                 long timeLeftSeconds = (expiryTime - currentTime) / 1000;
                 long timeLeftMinutes = timeLeftSeconds / 60;
 
@@ -153,8 +163,31 @@ public class MessageListener implements Listener {
             }
         }
 
+        // Homes information
+        HomesManager homesManager = plugin.getHomesManager();
+        int homesSet = homesManager.getPlayerHomes(playerId).size();
+
+        // Display message differently for ops
+        if (player.isOp()) {
+            player.sendMessage(Component.text("Homes: ", NamedTextColor.YELLOW)
+                    .append(Component.text(homesSet + " set, infinite available", NamedTextColor.WHITE)));
+        } else {
+            int maxHomes = homesManager.getMaxPlayerHomes(player);
+            int homesAvailable = maxHomes - homesSet;
+
+            player.sendMessage(Component.text("Homes: ", NamedTextColor.YELLOW)
+                    .append(Component.text(homesSet + " set, " + homesAvailable + " available", NamedTextColor.WHITE)));
+        }
+
         // Online players information
-        int totalOnline = Bukkit.getOnlinePlayers().size();
+        // Count online players excluding hidden players
+        int totalOnline = 0;
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+            if (!playerVisibilityManager.isPlayerHiddenFromLocatorBar(onlinePlayer)) {
+                totalOnline++;
+            }
+        }
+
         int guildMembersOnline = 0;
 
         if (guildManager.isInGuild(playerId)) {
@@ -173,27 +206,38 @@ public class MessageListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        // Check if player is in a guild
-        if (plugin.getGuildManager().isInGuild(playerId)) {
-            Guild guild = plugin.getGuildManager().getPlayerGuild(playerId);
-            // Format: [✘] <player> - <guild>
-            event.quitMessage(Component.text("[", NamedTextColor.WHITE)
-                    .append(Component.text("✘", NamedTextColor.DARK_RED))
-                    .append(Component.text("] " + player.getName() + " - " + guild.getName(), NamedTextColor.WHITE)));
+        // Check if player is hidden - if so, don't show quit message
+        if (playerVisibilityManager.isPlayerHiddenFromLocatorBar(player)) {
+            event.quitMessage(null); // Set to null to hide the message
         } else {
-            // Format: [✘] <player>
-            event.quitMessage(Component.text("[", NamedTextColor.WHITE)
-                    .append(Component.text("✘", NamedTextColor.DARK_RED))
-                    .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
+            // Check if player is in a guild
+            if (plugin.getGuildManager().isInGuild(playerId)) {
+                Guild guild = plugin.getGuildManager().getPlayerGuild(playerId);
+                // Format: [✘] <player> - <guild>
+                event.quitMessage(Component.text("[", NamedTextColor.WHITE)
+                        .append(Component.text("✘", NamedTextColor.DARK_RED))
+                        .append(Component.text("] " + player.getName() + " - " + guild.getName(), NamedTextColor.WHITE)));
+            } else {
+                // Format: [✘] <player>
+                event.quitMessage(Component.text("[", NamedTextColor.WHITE)
+                        .append(Component.text("✘", NamedTextColor.DARK_RED))
+                        .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
+            }
         }
     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
-        // Format: [☠] <player>
-        event.deathMessage(Component.text("[", NamedTextColor.WHITE)
-                .append(Component.text("☠", NamedTextColor.BLACK))
-                .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
+
+        // Check if player is hidden - if so, don't show death message
+        if (playerVisibilityManager.isPlayerHiddenFromLocatorBar(player)) {
+            event.deathMessage(null); // Set to null to hide the message
+        } else {
+            // Format: [☠] <player>
+            event.deathMessage(Component.text("[", NamedTextColor.WHITE)
+                    .append(Component.text("☠", NamedTextColor.BLACK))
+                    .append(Component.text("] " + player.getName(), NamedTextColor.WHITE)));
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.homes;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -52,13 +53,9 @@ public class HomesCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            // Default to teleport to default home if no args provided
-            if (sender instanceof Player player) {
-                return plugin.getHomesManager().teleportToPlayerHome(player, "default");
-            } else {
-                showHelp(sender);
-                return true;
-            }
+            // Show help menu when no arguments are provided
+            showHelp(sender);
+            return true;
         }
 
         String subCommandName = args[0].toLowerCase();
@@ -89,22 +86,23 @@ public class HomesCommand implements CommandExecutor, TabCompleter {
      * @param sender The command sender
      */
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("Homes Commands:", NamedTextColor.GOLD));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Homes");
 
         // Display commands based on permissions
         for (SubCommand subCommand : subCommands.values()) {
             if (subCommand.checkPermission(sender, false)) {
-                sender.sendMessage(Component.text("/homes " + subCommand.getName() + " - " + subCommand.getDescription(), NamedTextColor.YELLOW));
+                HelpMenuFormatter.formatPlayerSubCommand(sender, "/homes", subCommand.getName(), subCommand.getDescription());
             }
         }
 
         // Show admin commands if the sender has permission
         if (sender.hasPermission("furious.homes.admin")) {
-            sender.sendMessage(Component.text("Admin Commands:", NamedTextColor.GOLD));
-            sender.sendMessage(Component.text("/homes set <player> <name> - Set a home for another player", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/homes move <player> <name> - Move a home for another player", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/homes rename <player> <oldname> <newname> - Rename a home for another player", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/homes delete <player> <name> - Delete a home for another player", NamedTextColor.YELLOW));
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Homes");
+
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/homes", "set", "<player> <n>", "", "Set a home for another player");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/homes", "move", "<player> <n>", "", "Move a home for another player");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/homes", "rename", "<player> <oldname> <newname>", "", "Rename a home for another player");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/homes", "delete", "<player> <n>", "", "Delete a home for another player");
         }
     }
 

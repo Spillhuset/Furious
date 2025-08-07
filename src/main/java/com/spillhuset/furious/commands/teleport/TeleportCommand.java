@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.teleport;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -82,29 +83,35 @@ public class TeleportCommand implements CommandExecutor, TabCompleter {
     }
 
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("Teleport Commands:", NamedTextColor.GOLD));
         if (!(sender instanceof ConsoleCommandSender)) {
-            sender.sendMessage(Component.text("/teleport request <player> - Request to teleport to a player", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport accept [player] - Accept teleport request", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport decline [player] - Decline teleport request", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport list [in|out] - List teleport requests", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport abort - Cancel your outgoing request or countdown", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport deny - Toggle auto-decline of requests", NamedTextColor.YELLOW));
-            if (sender.isOp()) {
-                sender.sendMessage(Component.text("/teleport <playerA> [playerB] - Teleports yourself to playerA | Teleport playerA to playerB", NamedTextColor.YELLOW));
-                sender.sendMessage(Component.text("/teleport coords [player] <x> <y> <z> [world] - Teleports you to a given position | Teleports a given player to a specified location", NamedTextColor.YELLOW));
-                sender.sendMessage(Component.text("/teleport worldspawn <player> [world] - Teleport player to world's spawn location", NamedTextColor.YELLOW));
-                sender.sendMessage(Component.text("/teleport setworldspawn [world] - Set the spawn location of a world to your current position", NamedTextColor.YELLOW));
+            // Player commands
+            HelpMenuFormatter.showPlayerCommandsHeader(sender, "Teleport");
+            HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/teleport", "request", "<player>", "", "Request to teleport to a player");
+            HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/teleport", "accept", "", "[player]", "Accept teleport request");
+            HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/teleport", "decline", "", "[player]", "Decline teleport request");
+            HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/teleport", "list", "", "[in|out]", "List teleport requests");
+            HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/teleport", "abort", "", "", "Cancel your outgoing request or countdown");
+            HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/teleport", "deny", "", "", "Toggle auto-decline of requests");
+
+            // Admin commands
+            if (sender.hasPermission("furious.teleport.force") || sender.isOp()) {
+                HelpMenuFormatter.showAdminCommandsHeader(sender, "Teleport");
+                HelpMenuFormatter.formatAdminCommand(sender, "/teleport <playerA> [playerB]", "Teleports yourself to playerA | Teleport playerA to playerB");
+                HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "coords", "[player] <x> <y> <z>", "[world]", "Teleports you to a given position | Teleports a given player to a specified location");
+                HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "worldspawn", "", "[player] [world]", "Teleport yourself or a player to world's spawn location");
+                HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "setworldspawn", "", "[world]", "Set the spawn location of a world to your current position");
             }
         } else {
-            sender.sendMessage(Component.text("/teleport deny <player> - Toggle auto-decline of requests by given player", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport coords <player> <x> <y> <z> [world] - Teleports a given player to a specified location", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport world enable <world> - Enables teleportation request to a given world, if same-world is disabled", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport world disable <world> - Disables teleportation requests to a given world, if same-world is disabled", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport worlds - Shows a list of worlds and their teleportation status", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport <playerA> <playerB> - Teleport playerA to playerB", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport worldspawn <player> <world> - Teleport player to world's spawn location", NamedTextColor.YELLOW));
-            sender.sendMessage(Component.text("/teleport setworldspawn <world> - Set the spawn location of a world", NamedTextColor.YELLOW));
+            // Console commands (all admin)
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Teleport");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "deny", "<player>", "", "Toggle auto-decline of requests by given player");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "coords", "<player> <x> <y> <z>", "[world]", "Teleports a given player to a specified location");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "world", "enable <world>", "", "Enables teleportation request to a given world, if same-world is disabled");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "world", "disable <world>", "", "Disables teleportation requests to a given world, if same-world is disabled");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "worlds", "", "", "Shows a list of worlds and their teleportation status");
+            HelpMenuFormatter.formatAdminCommand(sender, "/teleport <playerA> <playerB>", "Teleport playerA to playerB");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "worldspawn", "<player>", "[world]", "Teleport player to world's spawn location");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/teleport", "setworldspawn", "<world>", "", "Set the spawn location of a world");
         }
     }
 

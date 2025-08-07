@@ -4,6 +4,7 @@ import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -83,11 +84,17 @@ public class RequestSubCommand implements SubCommand {
 
         if (plugin.getTeleportManager().sendRequest(requester, target)) {
             requester.sendMessage(Component.text("Teleport request sent to " + target.getName(), NamedTextColor.GREEN));
+            Component acceptButton = Component.text("[Accept]", NamedTextColor.GREEN)
+                    .clickEvent(ClickEvent.runCommand("/teleport accept " + requester.getName()));
+            Component declineButton = Component.text("[Decline]", NamedTextColor.RED)
+                    .clickEvent(ClickEvent.runCommand("/teleport decline " + requester.getName()));
+
             target.sendMessage(Component.text(requester.getName() + " has requested to teleport to you", NamedTextColor.GOLD)
                     .append(Component.newline())
-                    .append(Component.text("Use /teleport accept " + requester.getName() + " to accept", NamedTextColor.YELLOW))
-                    .append(Component.newline())
-                    .append(Component.text("Use /teleport decline " + requester.getName() + " to decline", NamedTextColor.YELLOW)));
+                    .append(Component.text("Click to respond: ", NamedTextColor.YELLOW))
+                    .append(acceptButton)
+                    .append(Component.text(" "))
+                    .append(declineButton));
         } else {
             sender.sendMessage(Component.text("Could not send teleport request!", NamedTextColor.RED));
         }
@@ -102,7 +109,11 @@ public class RequestSubCommand implements SubCommand {
         if (args.length == 2) {
             String partial = args[1].toLowerCase();
             for (Player player : Bukkit.getOnlinePlayers()) {
-                if (player != sender && player.getName().toLowerCase().startsWith(partial)) {
+                // Skip the sender, hidden players, and players who have enabled auto-deny
+                if (player != sender &&
+                    !plugin.getPlayerVisibilityManager().isPlayerHiddenFromLocatorBar(player) &&
+                    !plugin.getTeleportManager().isDenyingAll(player) &&
+                    player.getName().toLowerCase().startsWith(partial)) {
                     completions.add(player.getName());
                 }
             }

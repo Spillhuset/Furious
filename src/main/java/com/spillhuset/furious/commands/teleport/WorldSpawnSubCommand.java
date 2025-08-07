@@ -22,31 +22,58 @@ public class WorldSpawnSubCommand implements SubCommand {
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (args.length < 2) {
-            getUsage(sender);
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
-        if (target == null) {
-            sender.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
-            return true;
-        }
-
+        Player target;
         World world;
-        if (args.length > 2) {
+
+        // If no arguments, teleport the sender to the current world's spawn
+        if (args.length == 1) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(Component.text("Console must specify a player and/or world!", NamedTextColor.RED));
+                return true;
+            }
+            target = player;
+            world = player.getWorld();
+        }
+        // If one argument, it could be a player or a world
+        else if (args.length == 2) {
+            // Check if the argument is a player
+            target = Bukkit.getPlayer(args[1]);
+
+            // If not a player, it might be a world
+            if (target == null) {
+                world = Bukkit.getWorld(args[1]);
+                if (world == null) {
+                    sender.sendMessage(Component.text("Player or world not found: " + args[1], NamedTextColor.RED));
+                    return true;
+                }
+
+                // If it's a world, the target must be the sender
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(Component.text("Console must specify a player!", NamedTextColor.RED));
+                    return true;
+                }
+                target = player;
+            } else {
+                // If it's a player, use their current world
+                world = target.getWorld();
+            }
+        }
+        // If two arguments, first is player, second is world
+        else if (args.length > 2) {
+            target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage(Component.text("Player not found: " + args[1], NamedTextColor.RED));
+                return true;
+            }
+
             world = Bukkit.getWorld(args[2]);
             if (world == null) {
-                sender.sendMessage(Component.text("World not found!", NamedTextColor.RED));
+                sender.sendMessage(Component.text("World not found: " + args[2], NamedTextColor.RED));
                 return true;
             }
         } else {
-            if (sender instanceof Player) {
-                world = ((Player) sender).getWorld();
-            } else {
-                sender.sendMessage(Component.text("Console must specify a world!", NamedTextColor.RED));
-                return true;
-            }
+            getUsage(sender);
+            return true;
         }
 
         if (plugin.getTeleportManager().forceTeleport(target, world.getSpawnLocation())) {
@@ -98,14 +125,18 @@ public class WorldSpawnSubCommand implements SubCommand {
 
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(Component.text("/teleport worldspawn <player> [world]", NamedTextColor.YELLOW));
-        } else {
+        if (sender instanceof Player) {
+            sender.sendMessage(Component.text("/teleport worldspawn", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("/teleport worldspawn <world>", NamedTextColor.YELLOW));
             sender.sendMessage(Component.text("/teleport worldspawn <player>", NamedTextColor.YELLOW));
+        } else {
+            sender.sendMessage(Component.text("/teleport worldspawn <player> [world]", NamedTextColor.YELLOW));
         }
         sender.sendMessage(Component.text("/teleport worldspawn <player> <world>", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("If no world is specified, the player's current world will be used.", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("If the player is not online, the teleport will be attempted when they log in.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If no arguments are provided, you will be teleported to your current world's spawn.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If only a world is specified, you will be teleported to that world's spawn.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If only a player is specified, they will be teleported to their current world's spawn.", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("If both player and world are specified, the player will be teleported to that world's spawn.", NamedTextColor.YELLOW));
     }
 
     @Override

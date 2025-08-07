@@ -107,23 +107,23 @@ public class RolesSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/perm roles create <name> [description]", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles create <n> [description]", NamedTextColor.YELLOW)
                 .append(Component.text(" - Create a new role", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles delete <name>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles delete <n>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Delete a role", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles list", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles list", NamedTextColor.YELLOW)
                 .append(Component.text(" - List all roles", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles info <role>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles info <role>", NamedTextColor.YELLOW)
                 .append(Component.text(" - View role information", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles set description <role> <description>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles set description <role> <description>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Set role description", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles add permission <role> <permission>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles add permission <role> <permission>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Add permission to role", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles remove permission <role> <permission>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles remove permission <role> <permission>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Remove permission from role", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles add player <role> <player>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles add player <role> <player>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Add role to player", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm roles remove player <role> <player>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions roles remove player <role> <player>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Remove role from player", NamedTextColor.WHITE)));
     }
 
@@ -152,7 +152,7 @@ public class RolesSubCommand implements SubCommand {
         SubCommand subCommand = subCommands.get(subCommandName);
 
         if (subCommand == null) {
-            sender.sendMessage(Component.text("Unknown roles command. Use /perm roles for assistance.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Unknown roles command. Use /permissions roles for assistance.", NamedTextColor.RED));
             return false;
         }
 

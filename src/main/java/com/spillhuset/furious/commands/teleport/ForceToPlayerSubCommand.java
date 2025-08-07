@@ -52,14 +52,14 @@ public class ForceToPlayerSubCommand implements SubCommand {
             }
             sourcePlayer = sender.getName();
             destinationPlayer = args[0];
-            command = "minecraft:teleport " + args[0];
+            command = "minecraft:teleport " + sourcePlayer + " " + args[0];
         } else {
             sourcePlayer = args[0];
             destinationPlayer = args[1];
             command = "minecraft:teleport " + args[0] + " " + args[1];
         }
 
-        boolean success = Bukkit.dispatchCommand(sender, command);
+        boolean success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
 
         // Log the teleport operation
         if (success) {

@@ -42,6 +42,12 @@ public class HomesSubCommand implements GuildSubCommand {
         subCommands.put("teleport", new HomesTeleportSubCommand(plugin));
         // Alias "tp" for "teleport"
         subCommands.put("tp", new HomesTeleportSubCommand(plugin));
+        // Add new subcommands
+        subCommands.put("rename", new HomesRenameSubCommand(plugin));
+        subCommands.put("relocate", new HomesRelocateSubCommand(plugin));
+        subCommands.put("list", new HomesListSubCommand(plugin));
+        // Add buy subcommands
+        subCommands.put("buy", new HomesBuySubCommand(plugin));
     }
 
     @Override
@@ -60,6 +66,11 @@ public class HomesSubCommand implements GuildSubCommand {
         sender.sendMessage(Component.text("/guild homes set <name> - Sets a guild home at your current location", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/guild homes teleport <name> - Teleports you to a guild home", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/guild homes tp <name> - Alias for teleport command", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/guild homes rename <old> <new> - Renames a guild home", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/guild homes relocate <name> - Relocates a guild home to your current location", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/guild homes list - Lists all guild homes", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/guild homes buy - Shows information about buying a guild home slot", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/guild homes buy confirm - Purchases a guild home slot", NamedTextColor.YELLOW));
 
         // Show admin commands if the sender has admin permissions
         if (sender.hasPermission("furious.guild.admin")) {

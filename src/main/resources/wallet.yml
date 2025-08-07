@@ -18,7 +18,7 @@ currency:
   material: "IRON_NUGGET"
 
 # Default starting balance for new players
-starting-balance: 0
+starting-balance: 100
 
 # Maximum amount of currency a player can have (0 for unlimited)
 max-balance: 0

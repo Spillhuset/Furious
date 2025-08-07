@@ -26,36 +26,36 @@ furious is a feature-rich Minecraft plugin designed to enhance server functional
 - **Shop Integration**: Built-in support for player and admin shops
 
 ### Player Utilities
-- **Teleportation**: 
+- **Teleportation**:
   - TPA requests with configurable cooldowns
   - Cross-world teleportation with permission controls
   - Ability to deny all teleport requests
   - Teleport queuing system to prevent conflicts
-- **Homes System**: 
+- **Homes System**:
   - Set and manage multiple home locations
   - Home limits based on permissions
   - Home sharing with other players
-- **Inventory Management**: 
+- **Inventory Management**:
   - View and manage player inventories and enderchests
   - Backup and restore player inventories
-- **Player Commands**: 
+- **Player Commands**:
   - Heal and feed commands with configurable cooldowns
   - Player information lookup
 
 ### Security Features
-- **Locks System**: 
+- **Locks System**:
   - Secure containers, doors, and redstone components
   - Multiple lock types (private, public, guild)
   - Lock sharing with specific players
-- **Permission Management**: 
+- **Permission Management**:
   - Granular permission control
   - Temporary permission grants
   - Permission inheritance
-- **Security Review System**: 
+- **Security Review System**:
   - Scheduled security audits
   - Customizable security checks
   - Detailed reports
-- **Audit Logging**: 
+- **Audit Logging**:
   - Comprehensive logging of sensitive operations
   - Log filtering and search capabilities
   - Automatic log rotation
@@ -126,6 +126,7 @@ furious is a feature-rich Minecraft plugin designed to enhance server functional
 - Minecraft Server: Paper/Spigot 1.21+
 - Java 17 or higher
 - Minimum 512MB of RAM allocated to the plugin
+- WorldEdit plugin (automatically downloaded in test environment)
 
 ## Configuration
 
@@ -146,15 +147,21 @@ furious generates several configuration files in the `plugins/furious` directory
 - `locks.yml`: Locks system configuration and lock data
 - `minigames.yml`: Minigame configurations and statistics
 - `warps.yml`: Warp locations and settings
-- `wallet.yml`: Economy system configuration
+- `wallet.yml`: Economy system configuration including:
+  - Currency name, plural form, and symbol
+  - Currency format for display
+  - Currency material for physical representation
+  - When using YAML storage, player wallet balances are stored in `wallets.yml`
 - `tombstones.yml`: Tombstone system settings
 - `security_reviews.yml`: Security review configuration
 
 ### Database Configuration
-The plugin supports multiple storage options for guild data:
-- YAML: Stores guild data in the `guilds.yml` file (default)
-- MySQL/MariaDB: Stores guild data in a MySQL or MariaDB database
-- SQLite: Stores guild data in a SQLite database file
+The plugin supports multiple storage options for guild and wallet data:
+- YAML: Stores data in the respective YAML files (default)
+  - Guild data in `guilds.yml`
+  - Wallet data in `wallets.yml`
+- MySQL/MariaDB: Stores data in a MySQL or MariaDB database
+- SQLite: Stores data in a SQLite database file
 
 To configure the database storage, edit the `database` section in `config.yml`:
 
@@ -163,7 +170,7 @@ To configure the database storage, edit the `database` section in `config.yml`:
 database:
   # Storage type: YAML, MYSQL, MARIADB, or SQLITE
   storage-type: "YAML"
-  
+
   # MySQL/MariaDB settings (only used if storage-type is MYSQL or MARIADB)
   mysql:
     host: "localhost"
@@ -172,12 +179,12 @@ database:
     username: "furious"
     password: "password"
     use-ssl: false
-    
+
   # SQLite settings (only used if storage-type is SQLITE)
   sqlite:
     # Path to the SQLite database file (relative to plugin folder)
     file: "database.db"
-    
+
   # Connection pool settings (HikariCP)
   connection-pool:
     maximum-pool-size: 10
@@ -208,14 +215,14 @@ rate-limits:
 ### Economy Commands
 
 #### Wallet Commands
-- `/wallet`: View your wallet balance
-- `/wallet [player]`: View another player's wallet balance
-- `/wallet pay <player> <amount>`: Pay another player
+- `/wallet`: Check your wallet balance
+- `/wallet pay <player> <amount>`: Pay scraps to another player (requires `furious.wallet.pay` permission)
 
 #### Admin Wallet Commands
-- `/wallet give <player> <amount>`: Give money to a player
-- `/wallet take <player> <amount>`: Take money from a player
-- `/wallet set <player> <amount>`: Set a player's balance
+- `/wallet balance <player>`: Check a player's wallet balance (requires `furious.wallet.balance.others` permission or OP)
+- `/wallet add <player> <amount>`: Add scraps to a player (requires `furious.wallet.add` permission or OP)
+- `/wallet sub <player> <amount>`: Subtract scraps from a player (requires `furious.wallet.sub` permission or OP)
+- `/wallet set <player> <amount>`: Set a player's wallet balance (requires `furious.wallet.set` permission or OP)
 
 #### Bank Commands
 - `/bank balance`: Check your bank balance
@@ -227,9 +234,9 @@ rate-limits:
 #### Admin Bank Commands
 - `/bank claim`: Claim chunks for banks
 - `/bank unclaim`: Unclaim chunks from banks
-- `/bank create <name>`: Create a new bank
+- `/bank create <n>`: Create a new bank
 - `/bank rename <old> <new>`: Rename a bank
-- `/bank delete <name>`: Delete a bank
+- `/bank delete <n>`: Delete a bank
 - `/bank deleteaccount <bank> <player>`: Delete an account from a bank
 - `/bank createaccount <bank> <player>`: Create an account in a bank
 - `/bank editbalance <bank> <player> <amount>`: Edit a player's balance
@@ -259,36 +266,36 @@ rate-limits:
 
 #### User Commands
 - `/warps list`: List all available warps
-- `/warps warp <name>`: Teleport to a specific warp location
-- `/warp <name>`: Alias for `/warps warp`
+- `/warps warp <n>`: Teleport to a specific warp location
+- `/warp <n>`: Alias for `/warps warp`
 
 #### Admin Commands
-- `/warps create <name>`: Create a new warp at your current location
-- `/setwarp <name>`: Alias for `/warps create`
-- `/warps delete <name>`: Delete an existing warp
-- `/delwarp <name>`: Alias for `/warps delete`
-- `/warps relocate <name>`: Move an existing warp to your current location
-- `/warps cost <name> <amount>`: Set the cost to use a warp
-- `/warps passwd <name> <password>`: Set a password for a warp
+- `/warps create <n>`: Create a new warp at your current location
+- `/setwarp <n>`: Alias for `/warps create`
+- `/warps delete <n>`: Delete an existing warp
+- `/delwarp <n>`: Alias for `/warps delete`
+- `/warps relocate <n>`: Move an existing warp to your current location
+- `/warps cost <n> <amount>`: Set the cost to use a warp
+- `/warps passwd <n> <password>`: Set a password for a warp
 - `/warps rename <old> <new>`: Rename an existing warp
-- `/warps link <name>`: Link a warp to a portal
+- `/warps link <n>`: Link a warp to a portal
 
 ### Home Commands
 
 #### User Commands
 - `/homes list`: List all your set home locations
-- `/homes tp <name>`: Teleport to one of your homes
-- `/home <name>`: Alias for `/homes tp`
-- `/homes set <name>`: Set a new home at your current location
-- `/sethome <name>`: Alias for `/homes set`
-- `/homes delete <name>`: Delete one of your homes
-- `/delhome <name>`: Alias for `/homes delete`
-- `/homes move <name>`: Move an existing home to your current location
+- `/homes tp <n>`: Teleport to one of your homes
+- `/home <n>`: Alias for `/homes tp`
+- `/homes set <n>`: Set a new home at your current location
+- `/sethome <n>`: Alias for `/homes set`
+- `/homes delete <n>`: Delete one of your homes
+- `/delhome <n>`: Alias for `/homes delete`
+- `/homes move <n>`: Move an existing home to your current location
 - `/homes rename <old> <new>`: Rename one of your homes
 - `/homes buy`: Purchase additional home slots
 
 ### Guild Commands
-- `/guild create <name>`: Create a new guild
+- `/guild create <n>`: Create a new guild
 - `/guild info [guild]`: View guild information
 - `/guild list`: List all guilds
 - `/guild invite <player>`: Invite player to guild
@@ -299,6 +306,7 @@ rate-limits:
 - `/guild transfer <player>`: Transfer guild ownership
 - `/guild description <text>`: Set guild description
 - `/guild claim`: Claim current chunk for guild
+- `/guild claim SAFE`: (Admin) Claim all chunks between WorldEdit selection points for SAFE guild
 - `/guild unclaim`: Unclaim current chunk
 - `/guild claims`: View claimed chunks
 - `/guild mobs`: Toggle mob spawning in guild territory
@@ -313,24 +321,14 @@ rate-limits:
 - `/security status`: View security status
 - `/security review`: Manage security reviews
 - `/security help`: Get help with security commands
-- `/perm help`: Get help with permission commands
 
-#### Role Management
-- `/perm roles create <name>`: Create a new role
-- `/perm roles delete <name>`: Delete a role
-- `/perm roles list`: List all roles
-- `/perm roles info <role>`: View role information
-- `/perm roles set description <role> <description>`: Set role description
-- `/perm roles add permission <role> <permission>`: Add permission to role
-- `/perm roles remove permission <role> <permission>`: Remove permission from role
-- `/perm roles add player <role> <player>`: Add role to player
-- `/perm roles remove player <role> <player>`: Remove role from player
+#### Permission Management
+- `/permissions`: Manage permissions, roles, and player permissions
+- `/permissions help`: Get help with permission commands
+- `/permissions roles`: Manage roles (create, delete, list, etc.)
+- `/permissions player`: Manage player permissions
 
-#### Player Management
-- `/perm player list roles <player>`: List player's roles
-- `/perm player add permission <player> <permission>`: Add permission to player
-- `/perm player remove permission <player> <permission>`: Remove permission from player
-- `/perm player list permissions <player>`: List player's permissions
+For a comprehensive guide on using the permissions system, see the [Admin Permissions Guide](ADMIN/ADMIN_PERMISSIONS_GUIDE.md). Players can refer to the [Player Permissions Guide](PLAYER/PLAYER_PERMISSIONS_GUIDE.md) to understand how permissions affect them.
 
 
 ### Minigame Commands
@@ -342,14 +340,14 @@ rate-limits:
 - `/minigame leave`: Leave the current queue
 
 #### Admin Commands
-- `/minigame create <name> <type>`: Create a new minigame
-- `/minigame disable <name>`: Disable a minigame
-- `/minigame enable <name>`: Enable a minigame
-- `/minigame start <name>`: Force start a minigame
-- `/minigame stop <name>`: Force stop a minigame
-- `/minigame edit <name>`: Edit a minigame
-- `/minigame spawn <name> <type>`: Set spawn point for a minigame
-- `/minigame save <name>`: Save minigame configuration
+- `/minigame create <n> <type>`: Create a new minigame
+- `/minigame disable <n>`: Disable a minigame
+- `/minigame enable <n>`: Enable a minigame
+- `/minigame start <n>`: Force start a minigame
+- `/minigame stop <n>`: Force stop a minigame
+- `/minigame edit <n>`: Edit a minigame
+- `/minigame spawn <n> <type>`: Set spawn point for a minigame
+- `/minigame save <n>`: Save minigame configuration
 - `/minigame tp`: Teleport to the GameWorld
 
 ### Tombstone Commands
@@ -363,7 +361,27 @@ rate-limits:
 
 ## Permissions
 
-Furious uses a permission-based system for access control. Here are the main permission nodes:
+Furious uses a comprehensive permission-based system for access control. The system features a structured permission inheritance model where higher-level permissions automatically grant related lower-level permissions.
+
+### Permission Inheritance System
+
+The permission system follows these principles:
+
+1. **Wildcard Permissions**: Permissions ending with `.*` grant all child permissions
+   - Example: `furious.guild.*` grants all guild-related permissions
+   - Example: `furious.bank.admin.*` grants all administrative bank permissions
+
+2. **Hierarchical Structure**: Permissions are organized in a hierarchical structure
+   - Top level: Feature category (e.g., `furious.guild`, `furious.bank`)
+   - Second level: Operation type (e.g., `furious.guild.admin`, `furious.bank.add`)
+   - Third level: Target specification (e.g., `furious.bank.add.others`)
+
+3. **Permission-Based Features**: Many features now have behavior that varies based on permission level
+   - Cooldowns may be shorter or non-existent for higher permission levels
+   - Costs may be reduced or waived for certain permission levels
+   - Limits (homes, guild claims, etc.) are often determined by specific permissions
+
+Here are the main permission nodes:
 
 ### General Permissions
 - `furious.*`: Gives access to all furious plugin permissions
@@ -374,27 +392,69 @@ Furious uses a permission-based system for access control. Here are the main per
 ### Economy Permissions
 
 #### Wallet Permissions
-- `furious.wallet`: Allows basic wallet operations (check balance, pay)
-- `furious.wallet.admin`: Allows administrative wallet operations (give, take, set)
-- `furious.wallet.*`: Gives access to all wallet commands
+- `furious.wallet`: Allows checking your own wallet balance
+- `furious.wallet.pay`: Allows paying scraps to other players
+- `furious.wallet.balance.others`: Allows checking other players' wallet balances
+- `furious.wallet.add`: Allows adding scraps to players' wallets
+- `furious.wallet.sub`: Allows subtracting scraps from players' wallets
+- `furious.wallet.set`: Allows setting players' wallet balances
+- `furious.wallet.bypass.cost`: Allows bypassing costs for wallet-integrated features
+- `furious.wallet.bypass.limit`: Allows bypassing transaction limits
+
+##### Wallet Permission Inheritance
+- `furious.wallet.*`: Grants all wallet permissions
+- `furious.wallet.admin.*`: Grants all administrative wallet permissions (balance.others, add, sub, set)
+
+##### Wallet Feature Limitations
+- `furious.wallet.limit.X`: Sets maximum transaction amount to X
+- `furious.wallet.cooldown.X`: Sets transaction cooldown to X seconds
 
 #### Bank Permissions
+
+##### Basic Bank Permissions
 - `furious.bank.balance`: Allows checking bank balance
 - `furious.bank.deposit`: Allows depositing to bank
 - `furious.bank.withdraw`: Allows withdrawing from bank
 - `furious.bank.transfer`: Allows transferring funds between bank accounts
 - `furious.bank.info`: Allows viewing bank information at current location
+- `furious.bank.createaccount`: Allows creating your own account in banks
+- `furious.bank.deleteaccount`: Allows deleting your own account from banks
+
+##### Bank Management Permissions
 - `furious.bank.claim`: Allows claiming chunks for banks
 - `furious.bank.unclaim`: Allows unclaiming chunks from banks
 - `furious.bank.create`: Allows creating banks
 - `furious.bank.rename`: Allows renaming banks
 - `furious.bank.delete`: Allows deleting banks
-- `furious.bank.deleteaccount`: Allows deleting accounts from banks
-- `furious.bank.createaccount`: Allows creating accounts in banks
-- `furious.bank.editbalance`: Allows editing player balances in banks
-- `furious.bank.editinterest`: Allows editing bank interest rates
+
+##### Granular Balance Management Permissions
+- `furious.bank.add`: Allows adding to account balances
+- `furious.bank.subtract`: Allows subtracting from account balances
+- `furious.bank.set`: Allows setting account balances to specific values
+- `furious.bank.add.others`: Allows adding to other players' account balances
+- `furious.bank.subtract.others`: Allows subtracting from other players' account balances
+- `furious.bank.set.others`: Allows setting other players' account balances
+
+##### Other Administrative Permissions
+- `furious.bank.createaccount.others`: Allows creating accounts for other players
+- `furious.bank.deleteaccount.others`: Allows deleting other players' accounts from banks
+- `furious.bank.interest`: Allows editing bank interest rates
+- `furious.bank.withdraw.auto`: Allows automatic withdrawals from bank when making purchases
+
+##### Legacy Permissions
+- `furious.bank.editbalance`: Grants all balance editing permissions for your own accounts
+- `furious.bank.editbalance.others`: Grants all balance editing permissions for other players' accounts
 - `furious.bank.admin`: Allows administrative bank operations
-- `furious.bank.*`: Gives access to all bank commands
+
+##### Bank Permission Inheritance
+- `furious.bank.*`: Grants all bank permissions
+- `furious.bank.admin.*`: Grants all administrative bank permissions
+- Higher-level permissions automatically grant related lower-level permissions
+
+##### Bank Feature Limitations
+- `furious.bank.accounts.limit.X`: Sets maximum number of accounts to X
+- `furious.bank.interest.rate.X`: Sets interest rate multiplier to X
+- `furious.bank.transfer.limit.X`: Sets maximum transfer amount to X
 
 ### Teleport Permissions
 

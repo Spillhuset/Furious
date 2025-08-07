@@ -18,6 +18,7 @@ public class TeleportTask {
     private BukkitTask countdownTask;
     private final Location startLocation;
     private final PotionEffect nauseaEffect;
+    private final PotionEffect blindnessEffect;
 
     public TeleportTask(Player player, Location destination, int delay, Furious plugin) {
         this.player = player;
@@ -26,7 +27,8 @@ public class TeleportTask {
         this.plugin = plugin;
         this.startLocation = player.getLocation();
         // Create a nausea effect that lasts for the duration of the countdown plus 1 second
-        this.nauseaEffect = new PotionEffect(PotionEffectType.NAUSEA, (delay + 1) * 20, 0);
+        this.nauseaEffect = new PotionEffect(PotionEffectType.NAUSEA, (delay + 5) * 20, 0);
+        this.blindnessEffect = new PotionEffect(PotionEffectType.BLINDNESS,(delay+2)*20,3);
     }
 
     public void start() {
@@ -35,6 +37,7 @@ public class TeleportTask {
 
         // Apply nausea effect
         player.addPotionEffect(nauseaEffect);
+        player.addPotionEffect(blindnessEffect);
 
         // Display initial countdown in action bar
         updateActionBar(delay);
@@ -52,7 +55,9 @@ public class TeleportTask {
                 // Check if player moved
                 if (hasPlayerMoved()) {
                     cancel();
-                    plugin.getTeleportManager().cancelTeleportTask(player);
+                    // We don't need to call cancelTeleportTask here as it would show the message twice
+                    // The task is already being removed in the TeleportManager
+                    player.sendMessage(Component.text("Teleport cancelled due to movement!", NamedTextColor.RED));
                     return;
                 }
 
@@ -84,12 +89,17 @@ public class TeleportTask {
 
         // Remove nausea effect
         player.removePotionEffect(PotionEffectType.NAUSEA);
+        player.removePotionEffect(PotionEffectType.BLINDNESS);
 
         // Clear action bar
         clearActionBar();
 
         player.sendMessage(Component.text("Teleporting...", NamedTextColor.GREEN));
         player.teleport(destination);
+
+        // Remove player from teleport tasks to reset their teleporting state
+        // Use false to not show a message about cancellation
+        plugin.getTeleportManager().cancelTeleportTask(player, false);
     }
 
     public void cancel() {

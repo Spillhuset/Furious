@@ -49,9 +49,9 @@ public class RenameSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is op
-        if (!player.isOp()) {
-            sender.sendMessage(Component.text("Only operators can rename warps!", NamedTextColor.RED));
+        // Check if player has permission
+        if (!player.hasPermission(getPermission())) {
+            sender.sendMessage(Component.text("You don't have permission to rename warps!", NamedTextColor.RED));
             return true;
         }
 
@@ -65,9 +65,8 @@ public class RenameSubCommand implements SubCommand {
         String newName = args[2];
 
         // Rename the warp
-        if (plugin.getWarpsManager().renameWarp(player, oldName, newName)) {
-            sender.sendMessage(Component.text("Warp renamed from '" + oldName + "' to '" + newName + "'!", NamedTextColor.GREEN));
-        }
+        // Let WarpsManager.renameWarp() handle the success message to avoid double notification
+        plugin.getWarpsManager().renameWarp(player, oldName, newName);
 
         return true;
     }
@@ -76,7 +75,7 @@ public class RenameSubCommand implements SubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
-        if (args.length == 2 && sender.isOp()) {
+        if (args.length == 2 && sender.hasPermission(getPermission())) {
             // Suggest warp names for the old name
             String partial = args[1].toLowerCase();
             plugin.getWarpsManager().getAllWarps().forEach(warp -> {

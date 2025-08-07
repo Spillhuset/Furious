@@ -2,6 +2,7 @@ package com.spillhuset.furious.listeners;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Guild;
+import com.spillhuset.furious.entities.Shop;
 import com.spillhuset.furious.enums.GuildRole;
 import com.spillhuset.furious.enums.GuildType;
 import net.kyori.adventure.text.Component;
@@ -88,20 +89,65 @@ public class GuildListener implements Listener {
         // Get the UUID of the guild the player is moving to
         UUID toGuildUUID = toGuild != null ? toGuild.getId() : null;
 
-        // Check if the player has moved to a different guild's territory
-        if (toGuildUUID != null && (lastGuildUUID == null || !lastGuildUUID.equals(toGuildUUID))) {
-            // Player has moved to a different guild's territory, show title-screen
+        // Check if the chunk is claimed by a shop
+        Shop shop = plugin.getShopsManager().getShopByChunk(toChunk);
+
+        // Check if the player has moved to a different guild's territory or a shop
+        if ((toGuildUUID != null && (lastGuildUUID == null || !lastGuildUUID.equals(toGuildUUID))) || shop != null) {
+            Component titleComponent;
+            Component subtitleComponent;
+
+            if (shop != null) {
+                // Chunk is claimed by a shop
+                if (toGuild != null) {
+                    // Shop is within a guild's territory
+                    titleComponent = Component.text(toGuild.getName());
+                    subtitleComponent = Component.text("Shop: " + shop.getName());
+                } else {
+                    // Shop is independent (not in a guild's territory)
+                    // Use the guild name as the title for consistency
+                    titleComponent = Component.text("Guild");
+                    subtitleComponent = Component.text("Shop: " + shop.getName());
+                }
+            } else if (toGuild != null && toGuild.isUnmanned()) {
+                // Chunk is claimed by an unmanned guild
+                titleComponent = Component.text(toGuild.getName());
+                subtitleComponent = Component.text(toGuild.getDescription());
+            } else if (toGuild != null) {
+                // Chunk is claimed by a regular guild
+                titleComponent = Component.text("Guild");
+                subtitleComponent = Component.text("owned by " + toGuild.getName());
+            } else {
+                // This should not happen, but handle it just in case
+                return;
+            }
+
+            // Show title-screen
             Title title = Title.title(
-                Component.text(toGuild.getName()),
-                Component.text("You have entered this guild's territory"),
+                titleComponent,
+                subtitleComponent,
                 Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000))
             );
             player.showTitle(title);
 
-            // Update the last guild the player was in
-            lastPlayerGuild.put(playerUUID, toGuildUUID);
-        } else if (toGuildUUID == null && lastGuildUUID != null) {
-            // Player has moved out of any guild's territory
+            // Update the last guild the player was in if moving to a guild territory
+            if (toGuildUUID != null) {
+                lastPlayerGuild.put(playerUUID, toGuildUUID);
+            }
+        } else if (toGuildUUID == null && lastGuildUUID != null && shop == null) {
+            // Player has moved out of any guild's territory and not into a shop
+            // Use the Wildlife guild info
+            Guild wildlifeGuild = plugin.getGuildManager().getWildGuild();
+
+            if (wildlifeGuild != null) {
+                Title title = Title.title(
+                    Component.text(wildlifeGuild.getName()),
+                    Component.text(wildlifeGuild.getDescription()),
+                    Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3500), Duration.ofMillis(1000))
+                );
+                player.showTitle(title);
+            }
+
             lastPlayerGuild.remove(playerUUID);
         }
     }

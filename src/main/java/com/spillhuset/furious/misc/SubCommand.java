@@ -33,15 +33,15 @@ public interface SubCommand {
 
     boolean execute(@NotNull CommandSender sender, @NotNull String[] args);
 
-    List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args);
+    List<String> tabComplete(CommandSender sender, @NotNull String[] args);
 
     String getPermission();
 
-    default boolean checkPermission(@NotNull CommandSender sender) {
+    default boolean checkPermission(CommandSender sender) {
         return checkPermission(sender, true);
     }
 
-    default boolean checkPermission(@NotNull CommandSender sender, boolean feedback) {
+    default boolean checkPermission(CommandSender sender, boolean feedback) {
         if (sender.isOp() && denyOp() && (sender instanceof Player)) {
             if (feedback) {
                 sender.sendMessage(Component.text("Op players cannot use this command! ")

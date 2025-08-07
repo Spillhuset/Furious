@@ -3,6 +3,7 @@ package com.spillhuset.furious.entities;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.ArmorStand;
 
 import java.util.UUID;
 
@@ -21,6 +22,7 @@ public class Home {
     private double z;
     private float yaw;
     private float pitch;
+    private ArmorStand armorStand; // ArmorStand entity for this home
 
     /**
      * Creates a new home with the given name and owner at the specified location.
@@ -53,6 +55,25 @@ public class Home {
      * @param pitch      The pitch angle
      */
     public Home(UUID id, String name, UUID ownerId, boolean isGuildHome, UUID worldId, double x, double y, double z, float yaw, float pitch) {
+        this(id, name, ownerId, isGuildHome, worldId, x, y, z, yaw, pitch, null);
+    }
+
+    /**
+     * Creates a new home from saved data with ArmorStand support.
+     *
+     * @param id         The UUID of the home
+     * @param name       The name of the home
+     * @param ownerId    The UUID of the owner (player or guild)
+     * @param isGuildHome Whether this is a guild home
+     * @param worldId    The UUID of the world
+     * @param x          The x coordinate
+     * @param y          The y coordinate
+     * @param z          The z coordinate
+     * @param yaw        The yaw angle
+     * @param pitch      The pitch angle
+     * @param armorStandId The UUID of the ArmorStand entity (can be null)
+     */
+    public Home(UUID id, String name, UUID ownerId, boolean isGuildHome, UUID worldId, double x, double y, double z, float yaw, float pitch, UUID armorStandId) {
         this.id = id;
         this.name = name;
         this.ownerId = ownerId;
@@ -63,6 +84,8 @@ public class Home {
         this.z = z;
         this.yaw = yaw;
         this.pitch = pitch;
+
+        // ArmorStand will be set later if armorStandId is not null
     }
 
     /**
@@ -189,5 +212,32 @@ public class Home {
      */
     public float getPitch() {
         return pitch;
+    }
+
+    /**
+     * Gets the ArmorStand entity for this home.
+     *
+     * @return The ArmorStand entity, or null if not set
+     */
+    public ArmorStand getArmorStand() {
+        return armorStand;
+    }
+
+    /**
+     * Sets the ArmorStand entity for this home.
+     *
+     * @param armorStand The ArmorStand entity
+     */
+    public void setArmorStand(ArmorStand armorStand) {
+        this.armorStand = armorStand;
+    }
+
+    /**
+     * Checks if this home has an ArmorStand entity.
+     *
+     * @return true if this home has an ArmorStand, false otherwise
+     */
+    public boolean hasArmorStand() {
+        return armorStand != null;
     }
 }

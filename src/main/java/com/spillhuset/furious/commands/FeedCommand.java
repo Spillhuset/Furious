@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.StandaloneCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import com.spillhuset.furious.utils.InputSanitizer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -32,7 +33,14 @@ public class FeedCommand extends StandaloneCommand {
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /feed [player]", NamedTextColor.YELLOW));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Feed");
+        HelpMenuFormatter.formatPlayerCommand(sender, "/feed", "Feed yourself to full hunger");
+
+        if (sender.hasPermission("furious.feed.others") || sender.isOp()) {
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Feed");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/feed", "", "<player>", "", "Feed another player to full hunger");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/feed", "", "<selector>", "", "Feed multiple players using a selector (@a, @p, @r, @s)");
+        }
     }
 
     @Override

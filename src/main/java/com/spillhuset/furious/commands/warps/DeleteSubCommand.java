@@ -49,9 +49,9 @@ public class DeleteSubCommand implements SubCommand {
             return true;
         }
 
-        // Check if player is op
-        if (!player.isOp()) {
-            sender.sendMessage(Component.text("Only operators can delete warps!", NamedTextColor.RED));
+        // Check if player has permission
+        if (!player.hasPermission(getPermission())) {
+            sender.sendMessage(Component.text("You don't have permission to delete warps!", NamedTextColor.RED));
             return true;
         }
 
@@ -64,9 +64,8 @@ public class DeleteSubCommand implements SubCommand {
         String warpName = args[1];
 
         // Delete the warp
-        if (plugin.getWarpsManager().deleteWarp(player, warpName)) {
-            sender.sendMessage(Component.text("Warp '" + warpName + "' deleted successfully!", NamedTextColor.GREEN));
-        }
+        // Let WarpsManager.deleteWarp() handle the success message to avoid double notification
+        plugin.getWarpsManager().deleteWarp(player, warpName);
 
         return true;
     }
@@ -75,7 +74,7 @@ public class DeleteSubCommand implements SubCommand {
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
         List<String> completions = new ArrayList<>();
 
-        if (args.length == 2 && sender.isOp()) {
+        if (args.length == 2 && sender.hasPermission(getPermission())) {
             // Suggest warp names
             String partial = args[1].toLowerCase();
             plugin.getWarpsManager().getAllWarps().forEach(warp -> {

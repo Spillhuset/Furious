@@ -92,13 +92,13 @@ public class PlayerSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/perm player add permission <player> <permission>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions player add permission <player> <permission>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Add permission to player", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm player remove permission <player> <permission>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions player remove permission <player> <permission>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Remove permission from player", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm player list permissions <player>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions player list permissions <player>", NamedTextColor.YELLOW)
                 .append(Component.text(" - List player's permissions", NamedTextColor.WHITE)));
-        sender.sendMessage(Component.text("/perm player list roles <player>", NamedTextColor.YELLOW)
+        sender.sendMessage(Component.text("/permissions player list roles <player>", NamedTextColor.YELLOW)
                 .append(Component.text(" - List player's roles", NamedTextColor.WHITE)));
     }
 
@@ -127,7 +127,7 @@ public class PlayerSubCommand implements SubCommand {
         SubCommand subCommand = subCommands.get(subCommandName);
 
         if (subCommand == null) {
-            sender.sendMessage(Component.text("Unknown player command. Use /perm player for assistance.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Unknown player command. Use /permissions player for assistance.", NamedTextColor.RED));
             return false;
         }
 

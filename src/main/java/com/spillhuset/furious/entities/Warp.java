@@ -3,6 +3,7 @@ package com.spillhuset.furious.entities;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.ArmorStand;
 
 import java.util.UUID;
 
@@ -23,6 +24,7 @@ public class Warp {
     private double cost; // Cost to use this warp
     private String password; // Optional password protection
     private Portal portal; // The portal linked to this warp
+    private ArmorStand armorStand; // The armor stand representing this warp
 
     /**
      * Creates a new warp with the given name and creator at the specified location.
@@ -40,6 +42,7 @@ public class Warp {
         this.cost = cost;
         this.password = password;
         this.portal = null;
+        this.armorStand = null;
         setLocation(location);
     }
 
@@ -63,10 +66,11 @@ public class Warp {
      * @param portalX      The x coordinate of the portal
      * @param portalY      The y coordinate of the portal
      * @param portalZ      The z coordinate of the portal
+     * @param armorStandId The UUID of the armor stand entity (can be null)
      */
     public Warp(UUID id, String name, UUID creatorId, UUID worldId, double x, double y, double z, float yaw, float pitch,
                 double cost, String password, boolean hasPortal, String portalFilling,
-                UUID portalWorld, double portalX, double portalY, double portalZ) {
+                UUID portalWorld, double portalX, double portalY, double portalZ, UUID armorStandId) {
         this.id = id;
         this.name = name;
         this.creatorId = creatorId;
@@ -78,6 +82,7 @@ public class Warp {
         this.pitch = pitch;
         this.cost = cost;
         this.password = password;
+        this.armorStand = null; // Will be set later when the entity is loaded
 
         if (hasPortal && portalWorld != null) {
             World world = Bukkit.getWorld(portalWorld);
@@ -322,7 +327,7 @@ public class Warp {
             this.portal = new Portal(portalLocation, "air");
         }
     }
-    
+
     /**
      * Gets the portal linked to this warp.
      *
@@ -331,7 +336,7 @@ public class Warp {
     public Portal getPortal() {
         return portal;
     }
-    
+
     /**
      * Sets the portal linked to this warp.
      *
@@ -339,5 +344,32 @@ public class Warp {
      */
     public void setPortal(Portal portal) {
         this.portal = portal;
+    }
+
+    /**
+     * Gets the armor stand representing this warp.
+     *
+     * @return The armor stand, or null if no armor stand is linked
+     */
+    public ArmorStand getArmorStand() {
+        return armorStand;
+    }
+
+    /**
+     * Sets the armor stand representing this warp.
+     *
+     * @param armorStand The new armor stand, or null to remove the link
+     */
+    public void setArmorStand(ArmorStand armorStand) {
+        this.armorStand = armorStand;
+    }
+
+    /**
+     * Checks if this warp has a linked armor stand.
+     *
+     * @return true if has an armor stand, false otherwise
+     */
+    public boolean hasArmorStand() {
+        return armorStand != null;
     }
 }

@@ -2,11 +2,12 @@ name: furious
 version: '1.0-SNAPSHOT'
 main: com.spillhuset.furious.Furious
 api-version: '1.21'
+depend: [WorldEdit]
 commands:
   teleport:
     description: Teleport command for requesting and managing teleports
     aliases: [tp]
-    usage: /<command> [request|accept|decline|list|abort|deny|world]
+    usage: /<command> [request|accept|decline|list|abort|deny|world|worldspawn|setworldspawn|<player>]
   tpa:
     description: Alias for /teleport request
     usage: /<command> <player>
@@ -54,26 +55,40 @@ commands:
   security:
     description: Manage security reviews and other security-related tasks
     usage: /<command> [status|review|help]
-  bank:
+  banks:
     description: Manage your bank account
     usage: /<command> [balance|deposit|withdraw|transfer|claim|unclaim|info|create|rename|delete|deleteaccount|createaccount|editbalance|editinterest|help]
-    aliases: [b]
+    aliases: [b, bank]
   perm:
     description: Manage permissions, roles, and player permissions
     usage: /<command> [roles|player|help] or /<command> roles [create|delete|list|info|set|add|remove] or /<command> player [add|remove|list]
   wallet:
     description: Manage your wallet and trade scraps
-    usage: /<command> [pay|give|take|set]
+  hide:
+    description: Toggle your visibility in the locator bar
+    usage: /<command>
+  shops:
+    description: Buy and sell items for scraps
+    usage: /<command> [buy <item> [count]|sell]
 
 permissions:
   furious.invsee:
     description: Allows viewing other players' inventories
+    default: op
+  furious.invsee.offline:
+    description: Allows viewing offline players' inventories
+    default: op
+  furious.invsee.edit:
+    description: Allows editing other players' inventories
     default: op
   furious.endersee:
     description: Allows viewing other players' enderchests
     default: op
   furious.endersee.offline:
     description: Allows viewing offline players' enderchests
+    default: op
+  furious.endersee.edit:
+    description: Allows editing other players' enderchests
     default: op
 
   furious.teleport.*:
@@ -88,6 +103,10 @@ permissions:
       furious.teleport.worldconfig: true
       furious.teleport.coords: true
       furious.teleport.force: true
+      furious.teleport.worldspawn: true
+      furious.teleport.setworldspawn: true
+      furious.teleport.bypass: true
+      furious.teleport.admin: true
   furious.teleport.request:
     description: Allows requesting teleports to other players
     default: true
@@ -114,6 +133,18 @@ permissions:
     default: op
   furious.teleport.force:
     description: Allows using force teleport commands
+    default: op
+  furious.teleport.worldspawn:
+    description: Allows teleporting to world spawn locations
+    default: op
+  furious.teleport.setworldspawn:
+    description: Allows setting world spawn locations
+    default: op
+  furious.teleport.bypass:
+    description: Allows bypassing teleport queue for instant teleportation
+    default: op
+  furious.teleport.admin:
+    description: Allows bypassing teleport queue and effects for warps
     default: op
   furious.heal.*:
     description: Gives access to all heal commands
@@ -353,8 +384,10 @@ permissions:
       furious.warps.rename: true
       furious.warps.delete: true
       furious.warps.link: true
+      furious.warps.unlink: true
       furious.warps.warp: true
       furious.warps.list: true
+      furious.warps.visibility: true
   furious.warps.create:
     description: Allows creating warps
     default: op
@@ -376,12 +409,18 @@ permissions:
   furious.warps.link:
     description: Allows linking warps to portals
     default: op
+  furious.warps.unlink:
+    description: Allows removing warp portals
+    default: op
   furious.warps.warp:
     description: Allows teleporting to warps
     default: true
   furious.warps.list:
     description: Allows listing warps
     default: true
+  furious.warps.visibility:
+    description: Allows toggling visibility of warp armor stands
+    default: op
 
   furious.tombstones.*:
     description: Gives access to all tombstone commands
@@ -417,6 +456,9 @@ permissions:
       furious.bank.editbalance: true
       furious.bank.editinterest: true
       furious.bank.admin: true
+      furious.bank.createaccount.others: true
+      furious.bank.deleteaccount.others: true
+      furious.bank.editbalance.others: true
   furious.bank.balance:
     description: Allows checking bank balance
     default: true
@@ -449,15 +491,24 @@ permissions:
     default: op
   furious.bank.deleteaccount:
     description: Allows deleting accounts from banks
-    default: op
+    default: true
   furious.bank.createaccount:
     description: Allows creating accounts in banks
-    default: op
+    default: true
   furious.bank.editbalance:
     description: Allows editing player balances in banks
     default: op
   furious.bank.editinterest:
     description: Allows editing bank interest rates
+    default: op
+  furious.bank.createaccount.others:
+    description: Allows creating bank accounts for other players
+    default: op
+  furious.bank.deleteaccount.others:
+    description: Allows deleting bank accounts of other players
+    default: op
+  furious.bank.editbalance.others:
+    description: Allows editing bank balances of other players
     default: op
   furious.bank.admin:
     description: Allows administrative bank operations
@@ -470,19 +521,100 @@ permissions:
     description: Gives access to all wallet commands
     children:
       furious.wallet: true
-      furious.wallet.admin: true
+      furious.wallet.pay: true
+      furious.wallet.balance.others: true
+      furious.wallet.add: true
+      furious.wallet.sub: true
+      furious.wallet.set: true
   furious.wallet:
-    description: Allows basic wallet operations (check balance, pay)
+    description: Allows to have a wallet (check own balance)
     default: true
-  furious.wallet.admin:
-    description: Allows administrative wallet operations (give, take, set)
+  furious.wallet.pay:
+    description: Allows basic wallet operations (pay)
+    default: true
+  furious.wallet.balance.others:
+    description: Allows checking other players' wallet balances
+    default: op
+  furious.wallet.add:
+    description: Allows adding scraps to players' wallets
+    default: op
+  furious.wallet.sub:
+    description: Allows subtracting scraps from players' wallets
+    default: op
+  furious.wallet.set:
+    description: Allows setting players' wallet balances
+    default: op
+  furious.hide:
+    description: Allows toggling visibility in the locator bar
+    default: true
+  furious.shops.*:
+    description: Gives access to all shops commands
+    children:
+      furious.shops.buy: true
+      furious.shops.sell: true
+      furious.shops.info: true
+      furious.shops.create: true
+      furious.shops.claim: true
+      furious.shops.unclaim: true
+      furious.shops.spawn: true
+      furious.shops.teleport: true
+      furious.shops.add: true
+      furious.shops.remove: true
+      furious.shops.stock: true
+      furious.shops.price: true
+      furious.shops.restock: true
+      furious.shops.toggle: true
+  furious.shops.buy:
+    description: Allows buying items from the shop
+    default: true
+  furious.shops.sell:
+    description: Allows selling items to the shop
+    default: true
+  furious.shops.info:
+    description: Allows viewing shop information including pricing and stock
+    default: true
+  furious.shops.create:
+    description: Allows creating shops
+    default: op
+  furious.shops.claim:
+    description: Allows claiming chunks for shops
+    default: op
+  furious.shops.unclaim:
+    description: Allows unclaiming chunks from shops
+    default: op
+  furious.shops.spawn:
+    description: Allows setting spawn locations for shops
+    default: op
+  furious.shops.teleport:
+    description: Allows teleporting to shops
+    default: true
+  furious.shops.add:
+    description: Allows adding items to shops
+    default: op
+  furious.shops.remove:
+    description: Allows removing items from shops
+    default: op
+  furious.shops.stock:
+    description: Allows setting stock for shop items
+    default: op
+  furious.shops.price:
+    description: Allows setting prices for shop items
+    default: op
+  furious.shops.restock:
+    description: Allows restocking all items in a shop
+    default: op
+  furious.shops.toggle:
+    description: Allows toggling whether items can be bought from or sold to a shop
     default: op
   furious.*:
     description: Gives access to all furious plugin permissions
     children:
       furious.invsee: true
+      furious.invsee.offline: true
+      furious.invsee.edit: true
       furious.endersee: true
       furious.endersee.offline: true
+      furious.endersee.edit: true
       furious.teleport.*: true
       furious.heal.*: true
       furious.feed.*: true
@@ -496,6 +628,8 @@ permissions:
       furious.bank.*: true
       furious.permission.*: true
       furious.wallet.*: true
+      furious.shops.*: true
+      furious.hide: true
       furious.ratelimit.exempt: true
   furious.ratelimit.exempt:
     description: Exempts a player from all rate limits

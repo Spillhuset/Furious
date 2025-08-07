@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.StandaloneCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import com.spillhuset.furious.utils.SecurityReviewManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -177,11 +178,15 @@ public class SecurityCommand extends StandaloneCommand {
      * @param sender The command sender
      */
     private void showHelp(CommandSender sender) {
-        sender.sendMessage("§e===== Security Command Help =====");
-        sender.sendMessage("§f/security status §7- §fShow the status of security reviews");
-        sender.sendMessage("§f/security review complete [notes] §7- §fMark a security review as completed");
-        sender.sendMessage("§f/security review interval <days> §7- §fSet the interval between security reviews");
-        sender.sendMessage("§f/security help §7- §fShow this help message");
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Security");
+        HelpMenuFormatter.formatPlayerSubCommand(sender, "/security", "status", "Show the status of security reviews");
+        HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/security", "help", "", "", "Show this help message");
+
+        if (sender.hasPermission("furious.security.admin") || sender.isOp()) {
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Security");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/security", "review complete", "[notes]", "", "Mark a security review as completed");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/security", "review interval", "<days>", "", "Set the interval between security reviews");
+        }
     }
 
     @Override

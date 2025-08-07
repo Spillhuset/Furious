@@ -1,12 +1,14 @@
 package com.spillhuset.furious.commands.bank;
 
 import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.entities.Bank;
 import com.spillhuset.furious.managers.BankManager;
 import com.spillhuset.furious.managers.WalletManager;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -19,9 +21,7 @@ import java.util.stream.Collectors;
 /**
  * Subcommand for transferring money between bank accounts.
  */
-public class TransferSubCommand implements SubCommand {
-    private final Furious plugin;
-    private final BankManager bankManager;
+public class TransferSubCommand extends BaseBankCommand {
     private final WalletManager walletManager;
 
     /**
@@ -30,8 +30,7 @@ public class TransferSubCommand implements SubCommand {
      * @param plugin The plugin instance
      */
     public TransferSubCommand(Furious plugin) {
-        this.plugin = plugin;
-        this.bankManager = plugin.getBankManager();
+        super(plugin, true); // Requires bank chunk
         this.walletManager = plugin.getWalletManager();
     }
 
@@ -54,18 +53,13 @@ public class TransferSubCommand implements SubCommand {
     }
 
     @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by players.", NamedTextColor.RED));
+    protected boolean executeCommand(Player player, @NotNull String[] args) {
+        if (args.length < 2) {
+            getUsage(player);
             return true;
         }
 
-        if (args.length < 3) {
-            getUsage(sender);
-            return true;
-        }
-
-        Player target = Bukkit.getPlayer(args[1]);
+        Player target = Bukkit.getPlayer(args[0]);
         if (target == null) {
             player.sendMessage(Component.text("Player not found or not online.", NamedTextColor.RED));
             return true;
@@ -77,20 +71,43 @@ public class TransferSubCommand implements SubCommand {
         }
 
         try {
-            double amount = Double.parseDouble(args[2]);
+            double amount = Double.parseDouble(args[1]);
             if (amount <= 0) {
                 player.sendMessage(Component.text("Amount must be positive.", NamedTextColor.RED));
                 return true;
             }
 
+            // Get the bank from the chunk the player is standing in
+            Chunk chunk = player.getLocation().getChunk();
+            Bank bank = bankManager.getBankByChunk(chunk);
+
+            if (bank == null) {
+                player.sendMessage(Component.text("No bank found in this chunk.", NamedTextColor.RED));
+                return true;
+            }
+
+            String bankName = bank.getName();
+
+            // Check if player has an account in this bank
+            if (!bank.hasAccount(player.getUniqueId())) {
+                player.sendMessage(Component.text("You don't have an account in this bank.", NamedTextColor.RED));
+                return true;
+            }
+
+            // Check if target player has an account in this bank
+            if (!bank.hasAccount(target.getUniqueId())) {
+                player.sendMessage(Component.text("Player " + target.getName() + " does not have an account in this bank.", NamedTextColor.RED));
+                return true;
+            }
+
             // Check if player has enough in bank
-            if (!bankManager.getBank("RubberBank").hasAmount(player.getUniqueId(), amount)) {
+            if (!bank.hasAmount(player.getUniqueId(), amount)) {
                 player.sendMessage(Component.text("You don't have enough in your bank account.", NamedTextColor.RED));
                 return true;
             }
 
             // Transfer between bank accounts
-            if (!bankManager.transfer(player, target, amount)) {
+            if (!bankManager.transfer(player, target, bankName, amount)) {
                 player.sendMessage(Component.text("Failed to transfer funds.", NamedTextColor.RED));
                 return true;
             }
@@ -99,12 +116,16 @@ public class TransferSubCommand implements SubCommand {
                     .append(Component.text(walletManager.formatAmount(amount), NamedTextColor.GOLD))
                     .append(Component.text(" to ", NamedTextColor.GREEN))
                     .append(Component.text(target.getName(), NamedTextColor.AQUA))
+                    .append(Component.text(" at ", NamedTextColor.GREEN))
+                    .append(Component.text(bankName, NamedTextColor.GOLD))
                     .append(Component.text(".", NamedTextColor.GREEN)));
 
             target.sendMessage(Component.text("You received ", NamedTextColor.GREEN)
                     .append(Component.text(walletManager.formatAmount(amount), NamedTextColor.GOLD))
                     .append(Component.text(" from ", NamedTextColor.GREEN))
                     .append(Component.text(player.getName(), NamedTextColor.AQUA))
+                    .append(Component.text(" at ", NamedTextColor.GREEN))
+                    .append(Component.text(bankName, NamedTextColor.GOLD))
                     .append(Component.text(".", NamedTextColor.GREEN)));
 
         } catch (NumberFormatException e) {
@@ -116,16 +137,16 @@ public class TransferSubCommand implements SubCommand {
 
     @Override
     public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (args.length == 2) {
+        if (args.length == 1) {
             // Player names for transfer command
-            String partialPlayerName = args[1].toLowerCase();
+            String partialPlayerName = args[0].toLowerCase();
             return Bukkit.getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(partialPlayerName))
                     .collect(Collectors.toList());
-        } else if (args.length == 3) {
+        } else if (args.length == 2) {
             // Suggest some common amounts for transfer
-            String partialAmount = args[2].toLowerCase();
+            String partialAmount = args[1].toLowerCase();
             List<String> amounts = Arrays.asList("10", "50", "100", "500", "1000");
             List<String> completions = new ArrayList<>();
 

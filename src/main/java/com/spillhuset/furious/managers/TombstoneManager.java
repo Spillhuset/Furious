@@ -245,8 +245,14 @@ public class TombstoneManager {
         armorStand.setInvulnerable(true);
         armorStand.setCanPickupItems(false);
 
-        // Set armor stand equipment to make it look like a tombstone
-        armorStand.getEquipment().setHelmet(new ItemStack(Material.PLAYER_HEAD));
+        // Set armor stand equipment to make it look like a tombstone with player's head
+        ItemStack armorStandHead = new ItemStack(Material.PLAYER_HEAD);
+        org.bukkit.inventory.meta.SkullMeta armorStandSkullMeta = (org.bukkit.inventory.meta.SkullMeta) armorStandHead.getItemMeta();
+        if (armorStandSkullMeta != null) {
+            armorStandSkullMeta.setOwningPlayer(player);
+            armorStandHead.setItemMeta(armorStandSkullMeta);
+        }
+        armorStand.getEquipment().setHelmet(armorStandHead);
 
         // Create the tombstone object
         UUID tombstoneId = UUID.randomUUID();
@@ -286,8 +292,13 @@ public class TombstoneManager {
             playerInventory.setItemInOffHand(new ItemStack(Material.AIR));
         }
 
-        // Add player head
+        // Add player head with player's name
         ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD);
+        org.bukkit.inventory.meta.SkullMeta skullMeta = (org.bukkit.inventory.meta.SkullMeta) playerHead.getItemMeta();
+        if (skullMeta != null) {
+            skullMeta.setOwningPlayer(player);
+            playerHead.setItemMeta(skullMeta);
+        }
         tombstone.getInventory().setItem(41, playerHead);
 
         // Add wallet with scraps

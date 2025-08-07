@@ -7,22 +7,22 @@ import com.spillhuset.furious.entities.Warp;
 import com.spillhuset.furious.utils.EncryptionUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.util.RayTraceResult;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.ArrayList;
 
 /**
  * Manages warps in the game.
@@ -34,6 +34,7 @@ public class WarpsManager {
     private final File configFile;
     private FileConfiguration config;
     private final EncryptionUtil encryptionUtil;
+    private final Set<UUID> adminWarpVisibility; // Tracks which admins have warp visibility enabled
 
     // Configuration values
     private final double DEFAULT_WARP_COST;
@@ -51,6 +52,7 @@ public class WarpsManager {
         this.portalLocations = new HashMap<>();
         this.configFile = new File(plugin.getDataFolder(), "warps.yml");
         this.encryptionUtil = plugin.getEncryptionUtil();
+        this.adminWarpVisibility = new HashSet<>();
 
         // Load configuration values
         this.DEFAULT_WARP_COST = plugin.getConfig().getDouble("warps.default-cost", 0.0);
@@ -141,12 +143,12 @@ public class WarpsManager {
                                 portalZ = warpSection.getDouble("portal-z");
 
                                 // Check if gold block locations are defined
-                                if (warpSection.contains("portal-gold1-x") && 
-                                    warpSection.contains("portal-gold1-y") && 
-                                    warpSection.contains("portal-gold1-z") && 
-                                    warpSection.contains("portal-gold2-x") && 
-                                    warpSection.contains("portal-gold2-y") && 
-                                    warpSection.contains("portal-gold2-z")) {
+                                if (warpSection.contains("portal-gold1-x") &&
+                                        warpSection.contains("portal-gold1-y") &&
+                                        warpSection.contains("portal-gold1-z") &&
+                                        warpSection.contains("portal-gold2-x") &&
+                                        warpSection.contains("portal-gold2-y") &&
+                                        warpSection.contains("portal-gold2-z")) {
 
                                     gold1X = warpSection.getDouble("portal-gold1-x");
                                     gold1Y = warpSection.getDouble("portal-gold1-y");
@@ -159,8 +161,37 @@ public class WarpsManager {
                             }
                         }
 
+                        // Check if there's an armor stand ID
+                        UUID armorStandId = null;
+                        if (warpSection.contains("armor-stand-id")) {
+                            try {
+                                armorStandId = UUID.fromString(Objects.requireNonNull(warpSection.getString("armor-stand-id")));
+                            } catch (IllegalArgumentException e) {
+                                plugin.getLogger().warning("Invalid armor stand ID for warp " + warpName);
+                            }
+                        }
+
                         Warp warp = new Warp(warpId, warpName, creatorId, worldId, x, y, z, yaw, pitch,
-                                cost, password, hasPortal, portalFilling, portalWorldId, portalX, portalY, portalZ);
+                                cost, password, hasPortal, portalFilling, portalWorldId, portalX, portalY, portalZ, armorStandId);
+
+                        // Load the armor stand entity if it exists
+                        if (armorStandId != null) {
+                            World world = Bukkit.getWorld(worldId);
+                            if (world != null) {
+                                for (Entity entity : world.getEntities()) {
+                                    if (entity instanceof ArmorStand && entity.getUniqueId().equals(armorStandId)) {
+                                        warp.setArmorStand((ArmorStand) entity);
+                                        break;
+                                    }
+                                }
+
+                                // If armor stand not found, it might have been removed
+                                if (!warp.hasArmorStand()) {
+                                    plugin.getLogger().warning("ArmorStand for warp " + warpName + " not found. It will be recreated.");
+                                    // We'll recreate it when the warp is used
+                                }
+                            }
+                        }
 
                         // Set gold block locations if they exist
                         if (hasPortal && hasGoldBlockLocations && warp.hasPortal()) {
@@ -171,7 +202,6 @@ public class WarpsManager {
                                 Location gold2Location = new Location(portalWorld, gold2X, gold2Y, gold2Z);
                                 portal.setGoldBlock1(gold1Location);
                                 portal.setGoldBlock2(gold2Location);
-                                plugin.getLogger().info("[DEBUG] Loaded gold block locations for portal in warp: " + warpName);
                             }
                         }
 
@@ -243,12 +273,12 @@ public class WarpsManager {
                         Portal portal = new Portal(portalLocation, filling);
 
                         // Check if gold block locations are defined
-                        if (portalSection.contains("gold1-x") && 
-                            portalSection.contains("gold1-y") && 
-                            portalSection.contains("gold1-z") && 
-                            portalSection.contains("gold2-x") && 
-                            portalSection.contains("gold2-y") && 
-                            portalSection.contains("gold2-z")) {
+                        if (portalSection.contains("gold1-x") &&
+                                portalSection.contains("gold1-y") &&
+                                portalSection.contains("gold1-z") &&
+                                portalSection.contains("gold2-x") &&
+                                portalSection.contains("gold2-y") &&
+                                portalSection.contains("gold2-z")) {
 
                             double gold1X = portalSection.getDouble("gold1-x");
                             double gold1Y = portalSection.getDouble("gold1-y");
@@ -266,8 +296,6 @@ public class WarpsManager {
 
                         // Add the portal to the map
                         portalLocations.put(portalLocation, warp);
-
-                        plugin.getLogger().info("[DEBUG] Loaded additional portal for warp: " + warp.getName());
                     } catch (IllegalArgumentException e) {
                         plugin.getLogger().warning("Invalid UUID in warps.yml for portal: " + portalKey);
                     }
@@ -312,6 +340,11 @@ public class WarpsManager {
                 }
 
                 config.set(path + ".password", encryptedPassword);
+            }
+
+            // Save armor stand ID if it exists
+            if (warp.hasArmorStand()) {
+                config.set(path + ".armor-stand-id", warp.getArmorStand().getUniqueId().toString());
             }
 
             // For backward compatibility, still save the main portal in the warp section
@@ -364,10 +397,10 @@ public class WarpsManager {
             // First check if this is the main portal stored in the warp
             boolean goldBlocksFound = false;
             if (warp.hasPortal() && warp.getPortalLocation() != null &&
-                warp.getPortalLocation().getWorld().equals(portalLoc.getWorld()) &&
-                warp.getPortalLocation().getBlockX() == portalLoc.getBlockX() &&
-                warp.getPortalLocation().getBlockY() == portalLoc.getBlockY() &&
-                warp.getPortalLocation().getBlockZ() == portalLoc.getBlockZ()) {
+                    warp.getPortalLocation().getWorld().equals(portalLoc.getWorld()) &&
+                    warp.getPortalLocation().getBlockX() == portalLoc.getBlockX() &&
+                    warp.getPortalLocation().getBlockY() == portalLoc.getBlockY() &&
+                    warp.getPortalLocation().getBlockZ() == portalLoc.getBlockZ()) {
 
                 Portal portal = warp.getPortal();
                 if (portal != null && portal.hasGoldBlockLocations()) {
@@ -429,9 +462,9 @@ public class WarpsManager {
      * @return true if the warp was created, false otherwise
      */
     public boolean createWarp(Player player, String warpName, double cost, String password) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can create warps!", NamedTextColor.RED));
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.create"))) {
+            player.sendMessage(Component.text("You don't have permission to create warps!", NamedTextColor.RED));
             return false;
         }
 
@@ -439,6 +472,19 @@ public class WarpsManager {
         if (isWorldDisabled(player.getWorld())) {
             player.sendMessage(Component.text("You cannot create warps in this world!", NamedTextColor.RED));
             return false;
+        }
+
+        // Check if guild management is enabled for this world
+        if (Furious.getInstance().getGuildManager().isWorldEnabled(player.getWorld())) {
+            // Check if the warp location is within the SAFE guild territory
+            Chunk chunk = player.getLocation().getChunk();
+            Guild chunkOwner = Furious.getInstance().getGuildManager().getChunkOwner(chunk);
+            Guild safeGuild = Furious.getInstance().getGuildManager().getSafeGuild();
+
+            if (chunkOwner == null || !chunkOwner.equals(safeGuild)) {
+                player.sendMessage(Component.text("Warps can only be created within the SAFE guild territory!", NamedTextColor.RED));
+                return false;
+            }
         }
 
         // Convert to lowercase for case-insensitive comparison
@@ -452,6 +498,33 @@ public class WarpsManager {
 
         // Create the warp
         Warp warp = new Warp(warpName, player.getUniqueId(), player.getLocation(), cost, password);
+
+        // Create an armor stand at the warp location
+        Location location = player.getLocation();
+        ArmorStand armorStand = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
+
+        // Configure the armor stand as a waypoint - only visible to ops/admins
+        armorStand.customName(Component.text("Warp: " + warpName));
+        armorStand.setCustomNameVisible(false); // Not visible by default
+        armorStand.setVisible(false); // Keep the ArmorStand itself invisible
+        armorStand.setGravity(false);
+        armorStand.setInvulnerable(true);
+        armorStand.setCanPickupItems(false);
+        armorStand.setSmall(true); // Make it smaller
+
+        Objects.requireNonNull(armorStand.getAttribute(Attribute.WAYPOINT_TRANSMIT_RANGE)).setBaseValue(500.0);
+
+        // Make the armor stand visible to this admin if they have visibility enabled
+        if (adminWarpVisibility.contains(player.getUniqueId())) {
+            // Only this player will see the change
+            armorStand.setCustomNameVisible(true);
+            armorStand.setVisible(true);
+        }
+
+        // Set the armor stand for the warp
+        warp.setArmorStand(armorStand);
+
+        // Add the warp to the map
         warps.put(warpName, warp);
         saveConfiguration();
 
@@ -464,19 +537,31 @@ public class WarpsManager {
      *
      * @param player   The player relocating the warp (must be op)
      * @param warpName The name of the warp
-     * @return true if the warp was relocated, false otherwise
      */
-    public boolean relocateWarp(Player player, String warpName) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can relocate warps!", NamedTextColor.RED));
-            return false;
+    public void relocateWarp(Player player, String warpName) {
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.relocate"))) {
+            player.sendMessage(Component.text("You don't have permission to relocate warps!", NamedTextColor.RED));
+            return;
         }
 
         // Check if world is disabled
         if (isWorldDisabled(player.getWorld())) {
             player.sendMessage(Component.text("You cannot relocate warps to this world!", NamedTextColor.RED));
-            return false;
+            return;
+        }
+
+        // Check if guild management is enabled for this world
+        if (Furious.getInstance().getGuildManager().isWorldEnabled(player.getWorld())) {
+            // Check if the new warp location is within the SAFE guild territory
+            Chunk chunk = player.getLocation().getChunk();
+            Guild chunkOwner = Furious.getInstance().getGuildManager().getChunkOwner(chunk);
+            Guild safeGuild = Furious.getInstance().getGuildManager().getSafeGuild();
+
+            if (chunkOwner == null || !chunkOwner.equals(safeGuild)) {
+                player.sendMessage(Component.text("Warps can only be relocated within the SAFE guild territory!", NamedTextColor.RED));
+                return;
+            }
         }
 
         // Convert to lowercase for case-insensitive comparison
@@ -485,16 +570,51 @@ public class WarpsManager {
         // Check if warp exists
         Warp warp = warps.get(warpName);
         if (warp == null) {
-            player.sendMessage(Component.text("Warp '" + warpName + "' does not exist!", NamedTextColor.RED));
-            return false;
+            player.sendMessage(Component.text("Warp '", NamedTextColor.RED)
+                    .append(Component.text(warpName, NamedTextColor.RED).decoration(TextDecoration.BOLD, true))
+                    .append(Component.text("' does not exist!", NamedTextColor.RED)));
+            return;
         }
 
         // Update warp location
-        warp.setLocation(player.getLocation());
+        Location newLocation = player.getLocation();
+        warp.setLocation(newLocation);
+
+        // Update armor stand location or create a new one if it doesn't exist
+        if (warp.hasArmorStand()) {
+            // Move the existing armor stand
+            warp.getArmorStand().teleport(newLocation);
+        } else {
+            // Create a new armor stand
+            ArmorStand armorStand = (ArmorStand) newLocation.getWorld().spawnEntity(newLocation, EntityType.ARMOR_STAND);
+
+            // Configure the armor stand as a waypoint - only visible to ops/admins
+            armorStand.customName(Component.text("Warp: " + warpName));
+            armorStand.setCustomNameVisible(false); // Not visible by default
+            armorStand.setVisible(false); // Keep the ArmorStand itself invisible
+            armorStand.setGravity(false);
+            armorStand.setInvulnerable(true);
+            armorStand.setCanPickupItems(false);
+            armorStand.setSmall(true); // Make it smaller
+
+            Objects.requireNonNull(armorStand.getAttribute(Attribute.WAYPOINT_TRANSMIT_RANGE)).setBaseValue(500.0);
+
+            // Make the armor stand visible to this admin if they have visibility enabled
+            if (adminWarpVisibility.contains(player.getUniqueId())) {
+                // Only this player will see the change
+                armorStand.setCustomNameVisible(true);
+                armorStand.setVisible(true);
+            }
+
+            // Set the armor stand for the warp
+            warp.setArmorStand(armorStand);
+        }
+
         saveConfiguration();
 
-        player.sendMessage(Component.text("Warp '" + warpName + "' relocated successfully!", NamedTextColor.GREEN));
-        return true;
+        player.sendMessage(Component.text("Warp '", NamedTextColor.GREEN)
+                .append(Component.text(warpName, NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
+                .append(Component.text("' relocated successfully!", NamedTextColor.GREEN)));
     }
 
     /**
@@ -503,13 +623,12 @@ public class WarpsManager {
      * @param player   The player updating the cost (must be op)
      * @param warpName The name of the warp
      * @param cost     The new cost
-     * @return true if the cost was updated, false otherwise
      */
-    public boolean setCost(Player player, String warpName, double cost) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can change warp costs!", NamedTextColor.RED));
-            return false;
+    public void setCost(Player player, String warpName, double cost) {
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.cost"))) {
+            player.sendMessage(Component.text("You don't have permission to change warp costs!", NamedTextColor.RED));
+            return;
         }
 
         // Convert to lowercase for case-insensitive comparison
@@ -519,7 +638,7 @@ public class WarpsManager {
         Warp warp = warps.get(warpName);
         if (warp == null) {
             player.sendMessage(Component.text("Warp '" + warpName + "' does not exist!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Update warp cost
@@ -527,7 +646,6 @@ public class WarpsManager {
         saveConfiguration();
 
         player.sendMessage(Component.text("Cost for warp '" + warpName + "' set to " + cost + "!", NamedTextColor.GREEN));
-        return true;
     }
 
     /**
@@ -536,13 +654,12 @@ public class WarpsManager {
      * @param player   The player updating the password (must be op)
      * @param warpName The name of the warp
      * @param password The new password (null to remove)
-     * @return true if the password was updated, false otherwise
      */
-    public boolean setPassword(Player player, String warpName, String password) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can change warp passwords!", NamedTextColor.RED));
-            return false;
+    public void setPassword(Player player, String warpName, String password) {
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.passwd"))) {
+            player.sendMessage(Component.text("You don't have permission to change warp passwords!", NamedTextColor.RED));
+            return;
         }
 
         // Convert to lowercase for case-insensitive comparison
@@ -552,7 +669,7 @@ public class WarpsManager {
         Warp warp = warps.get(warpName);
         if (warp == null) {
             player.sendMessage(Component.text("Warp '" + warpName + "' does not exist!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Update warp password
@@ -568,7 +685,6 @@ public class WarpsManager {
         } else {
             player.sendMessage(Component.text("Password for warp '" + warpName + "' updated!", NamedTextColor.GREEN));
         }
-        return true;
     }
 
     /**
@@ -577,13 +693,12 @@ public class WarpsManager {
      * @param player  The player renaming the warp (must be op)
      * @param oldName The current name of the warp
      * @param newName The new name for the warp
-     * @return true if the warp was renamed, false otherwise
      */
-    public boolean renameWarp(Player player, String oldName, String newName) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can rename warps!", NamedTextColor.RED));
-            return false;
+    public void renameWarp(Player player, String oldName, String newName) {
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.rename"))) {
+            player.sendMessage(Component.text("You don't have permission to rename warps!", NamedTextColor.RED));
+            return;
         }
 
         // Convert to lowercase for case-insensitive comparison
@@ -592,21 +707,21 @@ public class WarpsManager {
 
         // Check if names are the same
         if (oldName.equals(newName)) {
-            return true;
+            return;
         }
 
         // Check if old warp exists
         Warp warp = warps.remove(oldName);
         if (warp == null) {
             player.sendMessage(Component.text("Warp '" + oldName + "' does not exist!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Check if new name already exists
         if (warps.containsKey(newName)) {
             warps.put(oldName, warp); // Put the old warp back
             player.sendMessage(Component.text("A warp with the name '" + newName + "' already exists!", NamedTextColor.RED));
-            return false;
+            return;
         }
 
         // Update warp name and add to map
@@ -615,7 +730,6 @@ public class WarpsManager {
         saveConfiguration();
 
         player.sendMessage(Component.text("Warp renamed from '" + oldName + "' to '" + newName + "'!", NamedTextColor.GREEN));
-        return true;
     }
 
     /**
@@ -623,13 +737,12 @@ public class WarpsManager {
      *
      * @param player   The player deleting the warp (must be op)
      * @param warpName The name of the warp
-     * @return true if the warp was deleted, false otherwise
      */
-    public boolean deleteWarp(Player player, String warpName) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can delete warps!", NamedTextColor.RED));
-            return false;
+    public void deleteWarp(Player player, String warpName) {
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.delete"))) {
+            player.sendMessage(Component.text("You don't have permission to delete warps!", NamedTextColor.RED));
+            return;
         }
 
         // Convert to lowercase for case-insensitive comparison
@@ -639,7 +752,12 @@ public class WarpsManager {
         Warp warp = warps.remove(warpName);
         if (warp == null) {
             player.sendMessage(Component.text("Warp '" + warpName + "' does not exist!", NamedTextColor.RED));
-            return false;
+            return;
+        }
+
+        // Remove the armor stand if it exists
+        if (warp.hasArmorStand()) {
+            warp.getArmorStand().remove();
         }
 
         // Remove all portals associated with this warp
@@ -665,7 +783,6 @@ public class WarpsManager {
         saveConfiguration();
 
         player.sendMessage(Component.text("Warp '" + warpName + "' deleted successfully!", NamedTextColor.GREEN));
-        return true;
     }
 
     /**
@@ -677,9 +794,9 @@ public class WarpsManager {
      * @return true if the warp was linked, false otherwise
      */
     public boolean linkWarp(Player player, String warpName, String filling) {
-        // Check if player is op
-        if (!player.isOp()) {
-            player.sendMessage(Component.text("Only operators can link warps to portals!", NamedTextColor.RED));
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.link"))) {
+            player.sendMessage(Component.text("You don't have permission to link warps to portals!", NamedTextColor.RED));
             return false;
         }
 
@@ -741,8 +858,8 @@ public class WarpsManager {
             filling = filling.toLowerCase();
             // Check if filling is a valid option
             List<String> validFillings = Arrays.asList(
-                "water", "real_water", "lava", "air",
-                "iron_bars", "chain"
+                    "water", "real_water", "lava", "air",
+                    "iron_bars", "chain"
             );
 
             if (!validFillings.contains(filling)) {
@@ -1008,14 +1125,11 @@ public class WarpsManager {
         if (type == Material.BLUE_STAINED_GLASS) return true;
 
         // The following materials block movement and are not walkable
-        if (type == Material.WATER || type == Material.LAVA ||
-            type == Material.IRON_BARS ||
-            type == Material.CHAIN) {
-            return false;
-        }
+        return type != Material.WATER && type != Material.LAVA &&
+                type != Material.IRON_BARS &&
+                type != Material.CHAIN;
 
         // Default to true for any other materials
-        return true;
     }
 
     /**
@@ -1074,9 +1188,6 @@ public class WarpsManager {
                 }
             }
 
-            plugin.getLogger().info("[DEBUG] Removed portal using gold block locations: " + 
-                                   gold1.getBlockX() + "," + gold1.getBlockY() + "," + gold1.getBlockZ() + " to " +
-                                   gold2.getBlockX() + "," + gold2.getBlockY() + "," + gold2.getBlockZ());
         } else {
             // Fallback to the old method if we don't have gold block locations
             removePortalByLocation(location);
@@ -1087,8 +1198,6 @@ public class WarpsManager {
         for (Block block : portalBlocks) {
             block.setType(Material.AIR);
         }
-
-        plugin.getLogger().info("[DEBUG] Removed " + portalBlocks.size() + " portal blocks");
     }
 
     /**
@@ -1143,10 +1252,10 @@ public class WarpsManager {
                             Block neighbor = currentBlock.getRelative(dx, dy, dz);
 
                             // Only add to queue if we haven't checked it yet and it's within our search radius
-                            if (!checkedBlocks.contains(neighbor) && 
-                                Math.abs(neighbor.getX() - centerX) <= radius &&
-                                Math.abs(neighbor.getY() - centerY) <= radius &&
-                                Math.abs(neighbor.getZ() - centerZ) <= radius) {
+                            if (!checkedBlocks.contains(neighbor) &&
+                                    Math.abs(neighbor.getX() - centerX) <= radius &&
+                                    Math.abs(neighbor.getY() - centerY) <= radius &&
+                                    Math.abs(neighbor.getZ() - centerZ) <= radius) {
                                 blocksToCheck.add(neighbor);
                             }
                         }
@@ -1171,8 +1280,6 @@ public class WarpsManager {
         for (Block block : portalBlocks) {
             block.setType(Material.AIR);
         }
-
-        plugin.getLogger().info("[DEBUG] Removed " + portalBlocks.size() + " portal blocks using legacy method");
     }
 
     /**
@@ -1190,21 +1297,25 @@ public class WarpsManager {
         // Check if warp exists
         Warp warp = warps.get(warpName);
         if (warp == null) {
-            player.sendMessage(Component.text("Warp '" + warpName + "' does not exist!", NamedTextColor.RED));
+            player.sendMessage(Component.text("Warp '", NamedTextColor.RED)
+                    .append(Component.text(warpName, NamedTextColor.RED).decoration(TextDecoration.BOLD, true))
+                    .append(Component.text("' does not exist!", NamedTextColor.RED)));
             return false;
         }
 
         // Check password if required (ops bypass password check)
-        if (warp.hasPassword() && !player.isOp()) {
+        if (warp.hasPassword() && !(player.isOp() || player.hasPermission("furious.teleport.admin"))) {
             if (password == null || !password.equals(warp.getPassword())) {
-                player.sendMessage(Component.text("Incorrect password for warp '" + warpName + "'!", NamedTextColor.RED));
+                player.sendMessage(Component.text("Incorrect password for warp '", NamedTextColor.RED)
+                        .append(Component.text(warpName, NamedTextColor.RED).decoration(TextDecoration.BOLD, true))
+                        .append(Component.text("'!", NamedTextColor.RED)));
                 return false;
             }
         }
 
         // Check if player has enough money
         double cost = warp.getCost();
-        if (cost > 0 && !player.isOp()) {
+        if (cost > 0 && !(player.isOp() || player.hasPermission("furious.teleport.admin"))) {
             if (!plugin.getWalletManager().has(player, cost)) {
                 player.sendMessage(Component.text("You don't have enough money to use this warp! Cost: " + cost, NamedTextColor.RED));
                 return false;
@@ -1212,14 +1323,50 @@ public class WarpsManager {
 
             // Deduct money
             plugin.getWalletManager().withdraw(player, cost);
-            player.sendMessage(Component.text("You paid " + cost + " to use warp '" + warpName + "'.", NamedTextColor.YELLOW));
+            // Don't display cost notification here to avoid double notification
         }
 
-        // Get the warp location
-        Location location = warp.getLocation();
-        if (location == null) {
-            player.sendMessage(Component.text("Warp world doesn't exist!", NamedTextColor.RED));
-            return false;
+        // Get the warp location - prefer ArmorStand location if available
+        Location location;
+        if (warp.hasArmorStand()) {
+            location = warp.getArmorStand().getLocation();
+        } else {
+            location = warp.getLocation();
+            if (location == null) {
+                player.sendMessage(Component.text("Warp world doesn't exist!", NamedTextColor.RED));
+                return false;
+            }
+
+            // Create an armor stand at the warp location if it doesn't exist
+            ArmorStand armorStand = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
+
+            // Configure the armor stand as a waypoint - only visible to ops/admins
+            armorStand.customName(Component.text("Warp: " + warpName));
+            armorStand.setCustomNameVisible(false); // Not visible by default
+            armorStand.setVisible(false); // Keep the ArmorStand itself invisible
+            armorStand.setGravity(false);
+            armorStand.setInvulnerable(true);
+            armorStand.setCanPickupItems(false);
+            armorStand.setSmall(true); // Make it smaller
+
+            Objects.requireNonNull(armorStand.getAttribute(Attribute.WAYPOINT_TRANSMIT_RANGE)).setBaseValue(500.0);
+
+            // Set the armor stand for the warp
+            warp.setArmorStand(armorStand);
+
+            // Make it visible to admins who have visibility enabled
+            for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+                if (hasWarpVisibility(onlinePlayer)) {
+                    // This player has visibility enabled, show the armor stand to them
+                    // Note: In Minecraft, entity visibility is controlled per-player through packets
+                    // The current implementation shows/hides for all players, but only ops with visibility enabled will see it
+                    armorStand.setCustomNameVisible(true);
+                    armorStand.setVisible(true);
+                }
+            }
+
+            // Save the updated warp
+            saveConfiguration();
         }
 
         // Check if player is an op or has the admin permission
@@ -1228,15 +1375,21 @@ public class WarpsManager {
             // Teleport immediately
             success = player.teleport(location);
             if (success) {
-                player.sendMessage(Component.text("Teleported to warp '" + warpName + "'!", NamedTextColor.GREEN));
+                player.sendMessage(Component.text("Teleported to warp '", NamedTextColor.GREEN)
+                        .append(Component.text(warpName, NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
+                        .append(Component.text("'!", NamedTextColor.GREEN)));
             } else {
-                player.sendMessage(Component.text("Failed to teleport to warp '" + warpName + "'!", NamedTextColor.RED));
+                player.sendMessage(Component.text("Failed to teleport to warp '", NamedTextColor.RED)
+                        .append(Component.text(warpName, NamedTextColor.RED).decoration(TextDecoration.BOLD, true))
+                        .append(Component.text("'!", NamedTextColor.RED)));
             }
         } else {
             // Start teleport sequence with countdown and nausea effect
             plugin.getTeleportManager().teleportQueue(player, location);
             // teleportQueue doesn't return a success value, but it will always queue the teleport
-            player.sendMessage(Component.text("Starting teleport to warp '" + warpName + "'...", NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Starting teleport to warp '", NamedTextColor.YELLOW)
+                    .append(Component.text(warpName, NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
+                    .append(Component.text("'...", NamedTextColor.YELLOW)));
             success = true; // Assume success since teleportQueue doesn't return a value
         }
 
@@ -1251,42 +1404,23 @@ public class WarpsManager {
      * @return The warp linked to this portal, or null if not found
      */
     public Warp getWarpByPortal(Location location) {
-        plugin.getLogger().info("[DEBUG] getWarpByPortal called for location: " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
-        plugin.getLogger().info("[DEBUG] portalLocations size: " + portalLocations.size());
-
-        // If portalLocations is empty, log a warning but continue with other checks
-        if (portalLocations.isEmpty()) {
-            plugin.getLogger().warning("[DEBUG] portalLocations map is empty! No portals have been created yet.");
-            // Don't return null here, continue with other checks
-        }
+        // If portalLocations is empty, continue with other checks
+        // Don't return null here, continue with other checks
 
         // Check if the exact location is a portal center (by block coordinates, not by reference)
         Warp warp = findWarpByBlockCoordinates(location);
         if (warp != null) {
-            plugin.getLogger().info("[DEBUG] Found exact portal center match for warp: " + warp.getName());
             return warp;
-        }
-
-        // Log some portal locations for debugging
-        int count = 0;
-        for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
-            Location portalLoc = entry.getKey();
-            Warp portalWarp = entry.getValue();
-            plugin.getLogger().info("[DEBUG] Portal #" + count + ": " + portalLoc.getBlockX() + ", " + portalLoc.getBlockY() + ", " + portalLoc.getBlockZ() + " -> " + portalWarp.getName());
-            count++;
-            if (count >= 5) break; // Only log the first 5 portals to avoid spam
         }
 
         // Check nearby blocks (portal might be larger than 1 block)
         // Use a larger search radius to better detect when a player is inside a portal
-        plugin.getLogger().info("[DEBUG] Checking nearby blocks with radius 2");
         for (int x = -2; x <= 2; x++) {
             for (int y = -2; y <= 2; y++) {
                 for (int z = -2; z <= 2; z++) {
                     Location checkLoc = location.clone().add(x, y, z);
                     warp = findWarpByBlockCoordinates(checkLoc);
                     if (warp != null) {
-                        plugin.getLogger().info("[DEBUG] Found portal center match at offset " + x + ", " + y + ", " + z + " for warp: " + warp.getName());
                         return warp;
                     }
                 }
@@ -1297,46 +1431,33 @@ public class WarpsManager {
         // or if they're standing in AIR within a portal area
         Block block = location.getBlock();
         Material blockType = block.getType();
-        plugin.getLogger().info("[DEBUG] Player is standing on block type: " + blockType.name());
-        plugin.getLogger().info("[DEBUG] isPortalBlock result: " + isPortalBlock(blockType));
-        plugin.getLogger().info("[DEBUG] isWalkablePortalBlock result: " + isWalkablePortalBlock(blockType));
 
         // Check if player is standing on a walkable portal block
         // This ensures we only detect portals with fillings that players can walk through
         if (isWalkablePortalBlock(blockType)) {
             // Search for a portal center in a larger area
-            plugin.getLogger().info("[DEBUG] Player is standing on a walkable portal block, checking larger area with radius 5");
             for (int x = -5; x <= 5; x++) {
                 for (int y = -5; y <= 5; y++) {
                     for (int z = -5; z <= 5; z++) {
                         Location checkLoc = location.clone().add(x, y, z);
                         warp = findWarpByBlockCoordinates(checkLoc);
                         if (warp != null) {
-                            plugin.getLogger().info("[DEBUG] Found portal center match in larger area at offset " + x + ", " + y + ", " + z + " for warp: " + warp.getName());
                             return warp;
                         }
                     }
                 }
             }
-            plugin.getLogger().info("[DEBUG] No portal center found in larger area");
         }
 
         // As a last resort, check if any warp has a portal with gold block locations that contain the player's location
-        plugin.getLogger().info("[DEBUG] Checking if player is between gold blocks of any portal");
-        int warpCount = 0;
         for (Warp w : warps.values()) {
-            warpCount++;
             if (w.hasPortal()) {
-                plugin.getLogger().info("[DEBUG] Checking warp " + w.getName() + " (has portal)");
                 if (isPlayerBetweenGoldBlocks(location, w)) {
-                    plugin.getLogger().info("[DEBUG] Player is between gold blocks for warp: " + w.getName());
                     return w;
                 }
             }
         }
-        plugin.getLogger().info("[DEBUG] Checked " + warpCount + " warps, none had the player between gold blocks");
 
-        plugin.getLogger().info("[DEBUG] No portal found for location: " + location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
         return null;
     }
 
@@ -1344,41 +1465,32 @@ public class WarpsManager {
      * Checks if a player is between the gold blocks that define a portal.
      *
      * @param location The player's location
-     * @param warp The warp to check
+     * @param warp     The warp to check
      * @return true if the player is between the gold blocks, false otherwise
      */
     public boolean isPlayerBetweenGoldBlocks(Location location, Warp warp) {
         if (warp == null) {
-            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: warp is null");
             return false;
         }
 
         if (!warp.hasPortal()) {
-            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: warp " + warp.getName() + " has no portal");
             return false;
         }
 
         Portal portal = warp.getPortal();
         if (portal == null) {
-            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: portal is null for warp " + warp.getName());
             return false;
         }
 
         if (!portal.hasGoldBlockLocations()) {
-            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: portal for warp " + warp.getName() + " has no gold block locations");
             return false;
         }
 
         Location gold1 = portal.getGoldBlock1();
         Location gold2 = portal.getGoldBlock2();
 
-        plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: checking for warp " + warp.getName() + 
-                               " with gold blocks at " + gold1.getBlockX() + "," + gold1.getBlockY() + "," + gold1.getBlockZ() + 
-                               " and " + gold2.getBlockX() + "," + gold2.getBlockY() + "," + gold2.getBlockZ());
-
         // Check if the player is in the same world as the portal
         if (!location.getWorld().equals(gold1.getWorld())) {
-            plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: player is in a different world");
             return false;
         }
 
@@ -1395,21 +1507,11 @@ public class WarpsManager {
         int playerY = location.getBlockY();
         int playerZ = location.getBlockZ();
 
-        plugin.getLogger().info("[DEBUG] isPlayerBetweenGoldBlocks: player at " + playerX + "," + playerY + "," + playerZ + 
-                               " checking box " + minX + "," + minY + "," + minZ + " to " + maxX + "," + maxY + "," + maxZ);
-
         // Use exact frame boundaries for more precise portal detection
-        boolean isInBox = (playerX >= minX && playerX <= maxX &&
-                           playerY >= minY && playerY <= maxY &&
-                           playerZ >= minZ && playerZ <= maxZ);
 
-        if (isInBox) {
-            plugin.getLogger().info("[DEBUG] Player is between gold blocks for warp: " + warp.getName());
-        } else {
-            plugin.getLogger().info("[DEBUG] Player is NOT between gold blocks for warp: " + warp.getName());
-        }
-
-        return isInBox;
+        return (playerX >= minX && playerX <= maxX &&
+                playerY >= minY && playerY <= maxY &&
+                playerZ >= minZ && playerZ <= maxZ);
     }
 
     /**
@@ -1424,15 +1526,12 @@ public class WarpsManager {
         int z = location.getBlockZ();
         World world = location.getWorld();
 
-        plugin.getLogger().info("[DEBUG] findWarpByBlockCoordinates checking location: " + x + ", " + y + ", " + z + " in world: " + world.getName());
-
         for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
             Location portalLoc = entry.getKey();
             if (portalLoc.getWorld().equals(world) &&
-                portalLoc.getBlockX() == x &&
-                portalLoc.getBlockY() == y &&
-                portalLoc.getBlockZ() == z) {
-                plugin.getLogger().info("[DEBUG] Found exact match for portal at: " + x + ", " + y + ", " + z);
+                    portalLoc.getBlockX() == x &&
+                    portalLoc.getBlockY() == y &&
+                    portalLoc.getBlockZ() == z) {
                 return entry.getValue();
             }
         }
@@ -1442,10 +1541,9 @@ public class WarpsManager {
         for (Map.Entry<Location, Warp> entry : portalLocations.entrySet()) {
             Location portalLoc = entry.getKey();
             if (portalLoc.getWorld().equals(world) &&
-                Math.abs(portalLoc.getBlockX() - x) <= 1 &&
-                Math.abs(portalLoc.getBlockY() - y) <= 1 &&
-                Math.abs(portalLoc.getBlockZ() - z) <= 1) {
-                plugin.getLogger().info("[DEBUG] Found nearby portal at: " + portalLoc.getBlockX() + ", " + portalLoc.getBlockY() + ", " + portalLoc.getBlockZ());
+                    Math.abs(portalLoc.getBlockX() - x) <= 1 &&
+                    Math.abs(portalLoc.getBlockY() - y) <= 1 &&
+                    Math.abs(portalLoc.getBlockZ() - z) <= 1) {
                 return entry.getValue();
             }
         }
@@ -1480,8 +1578,8 @@ public class WarpsManager {
      * @return true if a portal was removed, false otherwise
      */
     public boolean removePortalByPunch(Player player, Block block) {
-        // Check if player is op
-        if (!player.isOp()) {
+        // Check if player has permission
+        if (!(player.isOp() || player.hasPermission("furious.warps.unlink"))) {
             return false;
         }
 
@@ -1502,11 +1600,11 @@ public class WarpsManager {
                         removePortal(checkLoc);
 
                         // Check if this was the portal stored in the Warp object
-                        if (warp.hasPortal() && warp.getPortalLocation() != null && 
-                            warp.getPortalLocation().getWorld().equals(checkLoc.getWorld()) &&
-                            warp.getPortalLocation().getBlockX() == checkLoc.getBlockX() &&
-                            warp.getPortalLocation().getBlockY() == checkLoc.getBlockY() &&
-                            warp.getPortalLocation().getBlockZ() == checkLoc.getBlockZ()) {
+                        if (warp.hasPortal() && warp.getPortalLocation() != null &&
+                                warp.getPortalLocation().getWorld().equals(checkLoc.getWorld()) &&
+                                warp.getPortalLocation().getBlockX() == checkLoc.getBlockX() &&
+                                warp.getPortalLocation().getBlockY() == checkLoc.getBlockY() &&
+                                warp.getPortalLocation().getBlockZ() == checkLoc.getBlockZ()) {
 
                             // This was the portal stored in the Warp object
                             // Check if there are any other portals for this warp
@@ -1562,13 +1660,13 @@ public class WarpsManager {
 
                     // Check if this block matches either gold block location
                     if ((gold1.getWorld().equals(block.getWorld()) &&
-                         gold1.getBlockX() == block.getX() &&
-                         gold1.getBlockY() == block.getY() &&
-                         gold1.getBlockZ() == block.getZ()) ||
-                        (gold2.getWorld().equals(block.getWorld()) &&
-                         gold2.getBlockX() == block.getX() &&
-                         gold2.getBlockY() == block.getY() &&
-                         gold2.getBlockZ() == block.getZ())) {
+                            gold1.getBlockX() == block.getX() &&
+                            gold1.getBlockY() == block.getY() &&
+                            gold1.getBlockZ() == block.getZ()) ||
+                            (gold2.getWorld().equals(block.getWorld()) &&
+                                    gold2.getBlockX() == block.getX() &&
+                                    gold2.getBlockY() == block.getY() &&
+                                    gold2.getBlockZ() == block.getZ())) {
                         return true;
                     }
                 }
@@ -1597,9 +1695,9 @@ public class WarpsManager {
 
                     // Check if the block is within the portal bounds
                     if (block.getWorld().equals(gold1.getWorld()) &&
-                        block.getX() >= minX && block.getX() <= maxX &&
-                        block.getY() >= minY && block.getY() <= maxY &&
-                        block.getZ() >= minZ && block.getZ() <= maxZ) {
+                            block.getX() >= minX && block.getX() <= maxX &&
+                            block.getY() >= minY && block.getY() <= maxY &&
+                            block.getZ() >= minZ && block.getZ() <= maxZ) {
                         return true;
                     }
                 }
@@ -1616,5 +1714,66 @@ public class WarpsManager {
         saveConfiguration();
         warps.clear();
         portalLocations.clear();
+    }
+
+    /**
+     * Toggles warp visibility for an admin.
+     *
+     * @param player The admin player
+     */
+    public void toggleWarpVisibility(Player player) {
+        // Only players with the visibility permission can toggle warp visibility
+        if (!player.hasPermission("furious.warps.visibility")) {
+            player.sendMessage(Component.text("You don't have permission to toggle warp visibility!", NamedTextColor.RED));
+            return;
+        }
+
+        UUID playerId = player.getUniqueId();
+        boolean isVisible;
+
+        if (adminWarpVisibility.contains(playerId)) {
+            // Disable visibility
+            adminWarpVisibility.remove(playerId);
+            isVisible = false;
+
+            // Hide all warp armor stands from this player
+            for (Warp warp : warps.values()) {
+                if (warp.hasArmorStand()) {
+                    ArmorStand armorStand = warp.getArmorStand();
+                    // Hide the armor stand from this player
+                    armorStand.setCustomNameVisible(false);
+                    armorStand.setVisible(false);
+                }
+            }
+
+            player.sendMessage(Component.text("Warp visibility disabled!", NamedTextColor.RED));
+        } else {
+            // Enable visibility
+            adminWarpVisibility.add(playerId);
+            isVisible = true;
+
+            // Show all warp armor stands to this player
+            for (Warp warp : warps.values()) {
+                if (warp.hasArmorStand()) {
+                    ArmorStand armorStand = warp.getArmorStand();
+                    // Show the armor stand to this player
+                    armorStand.setCustomNameVisible(true);
+                    armorStand.setVisible(true);
+                }
+            }
+
+            player.sendMessage(Component.text("Warp visibility enabled!", NamedTextColor.GREEN));
+        }
+
+    }
+
+    /**
+     * Checks if a player has warp visibility enabled.
+     *
+     * @param player The player to check
+     * @return true if the player has warp visibility enabled, false otherwise
+     */
+    public boolean hasWarpVisibility(Player player) {
+        return player.hasPermission("furious.warps.visibility") && adminWarpVisibility.contains(player.getUniqueId());
     }
 }

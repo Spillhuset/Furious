@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.StandaloneCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -31,7 +32,14 @@ public class HealCommand extends StandaloneCommand {
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /heal [player]", NamedTextColor.YELLOW));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Heal");
+        HelpMenuFormatter.formatPlayerCommand(sender, "/heal", "Heal yourself to full health");
+
+        if (sender.hasPermission("furious.heal.others") || sender.isOp()) {
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Heal");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/heal", "", "<player>", "", "Heal another player to full health");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/heal", "", "<selector>", "", "Heal multiple players using a selector (@a, @p)");
+        }
     }
 
     @Override

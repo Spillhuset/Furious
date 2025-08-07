@@ -4,6 +4,7 @@ import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.managers.PlayerDataManager;
 import com.spillhuset.furious.misc.StandaloneCommand;
 import com.spillhuset.furious.utils.AuditLogger;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import com.spillhuset.furious.utils.InputSanitizer;
 import com.spillhuset.furious.utils.RateLimiter;
 import net.kyori.adventure.text.Component;
@@ -44,7 +45,13 @@ public class EnderseeCommand extends StandaloneCommand {
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /endersee <player>", NamedTextColor.YELLOW));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Endersee");
+        HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/endersee", "", "<player>", "", "View another player's enderchest");
+
+        if (sender.hasPermission("furious.endersee.offline") || sender.isOp()) {
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Endersee");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/endersee", "", "<player>", "", "View offline player's enderchest");
+        }
     }
 
     @Override
@@ -56,6 +63,11 @@ public class EnderseeCommand extends StandaloneCommand {
     public boolean denyNonPlayer() {
         return true;
     }
+
+    /**
+     * This command uses PlayerDataManager for enderchest viewing functionality.
+     * It handles both online and offline players with appropriate permissions.
+     */
 
     /**
      * Checks if the sender has permission to view offline players' enderchests.
@@ -143,6 +155,7 @@ public class EnderseeCommand extends StandaloneCommand {
 
         // Open the enderchest to the viewer
         viewer.openInventory(enderchest);
+
         return true;
     }
 
@@ -161,6 +174,31 @@ public class EnderseeCommand extends StandaloneCommand {
                 }
                 if (playerName.toLowerCase().startsWith(partialName)) {
                     completions.add(playerName);
+                }
+            }
+
+            // Add offline players if the sender has permission
+            if (sender.hasPermission("furious.endersee.offline")) {
+                // Get offline players (limit to a reasonable number to avoid performance issues)
+                OfflinePlayer[] offlinePlayers = Bukkit.getOfflinePlayers();
+                int count = 0;
+                for (OfflinePlayer offlinePlayer : offlinePlayers) {
+                    // Skip if already online or is the sender
+                    if (offlinePlayer.isOnline() ||
+                        (sender instanceof Player && offlinePlayer.getUniqueId().equals(((Player) sender).getUniqueId()))) {
+                        continue;
+                    }
+
+                    String offlinePlayerName = offlinePlayer.getName();
+                    if (offlinePlayerName != null && offlinePlayerName.toLowerCase().startsWith(partialName)) {
+                        completions.add(offlinePlayerName);
+                        count++;
+
+                        // Limit to 20 offline players to avoid performance issues
+                        if (count >= 20) {
+                            break;
+                        }
+                    }
                 }
             }
         }

@@ -5,6 +5,7 @@ import com.spillhuset.furious.misc.SubCommand;
 import com.spillhuset.furious.utils.AuditLogger;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -70,6 +71,24 @@ public class WarpSubCommand implements SubCommand {
 
         // Log the warp operation
         if (success) {
+            // Display cost notification if applicable
+            // The cost notification was removed from WarpsManager.teleportToWarp() to avoid double notifications
+            // We need to display it here instead
+            if (!player.hasPermission("furious.teleport.admin")) {
+                // Get the warp from the manager to access its cost
+                for (com.spillhuset.furious.entities.Warp warp : plugin.getWarpsManager().getAllWarps()) {
+                    if (warp.getName().equalsIgnoreCase(warpName)) {
+                        double cost = warp.getCost();
+                        if (cost > 0) {
+                            player.sendMessage(Component.text("You paid " + cost + " to use warp '", NamedTextColor.YELLOW)
+                                    .append(Component.text(warpName, NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
+                                    .append(Component.text("'.", NamedTextColor.YELLOW)));
+                        }
+                        break;
+                    }
+                }
+            }
+
             auditLogger.logWarpOperation(
                 sender,
                 warpName,

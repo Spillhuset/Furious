@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands.minigame;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.misc.SubCommand;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -88,11 +89,60 @@ public class MinigameCommand implements CommandExecutor, TabCompleter {
      * @param sender The command sender
      */
     private void showHelp(CommandSender sender) {
-        sender.sendMessage(Component.text("Minigame Commands:", NamedTextColor.GOLD));
+        // Separate player and admin commands
+        boolean hasPlayerCommands = false;
+        boolean hasAdminCommands = false;
 
+        // Check if there are player and admin commands
         for (SubCommand subCommand : subCommands.values()) {
             if (subCommand.checkPermission(sender, false)) {
-                sender.sendMessage(Component.text("/minigame " + subCommand.getName() + " - " + subCommand.getDescription(), NamedTextColor.YELLOW));
+                if (subCommand.getPermission().contains(".admin") ||
+                    subCommand.getPermission().contains(".create") ||
+                    subCommand.getPermission().contains(".disable") ||
+                    subCommand.getPermission().contains(".enable") ||
+                    subCommand.getPermission().contains(".edit")) {
+                    hasAdminCommands = true;
+                } else {
+                    hasPlayerCommands = true;
+                }
+            }
+        }
+
+        // Display player commands
+        if (hasPlayerCommands) {
+            HelpMenuFormatter.showPlayerCommandsHeader(sender, "Minigame");
+
+            for (SubCommand subCommand : subCommands.values()) {
+                if (subCommand.checkPermission(sender, false) &&
+                    !(subCommand.getPermission().contains(".admin") ||
+                      subCommand.getPermission().contains(".create") ||
+                      subCommand.getPermission().contains(".disable") ||
+                      subCommand.getPermission().contains(".enable") ||
+                      subCommand.getPermission().contains(".edit"))) {
+
+                    HelpMenuFormatter.formatPlayerSubCommand(sender, "/minigame",
+                                                           subCommand.getName(),
+                                                           subCommand.getDescription());
+                }
+            }
+        }
+
+        // Display admin commands
+        if (hasAdminCommands) {
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Minigame");
+
+            for (SubCommand subCommand : subCommands.values()) {
+                if (subCommand.checkPermission(sender, false) &&
+                    (subCommand.getPermission().contains(".admin") ||
+                     subCommand.getPermission().contains(".create") ||
+                     subCommand.getPermission().contains(".disable") ||
+                     subCommand.getPermission().contains(".enable") ||
+                     subCommand.getPermission().contains(".edit"))) {
+
+                    HelpMenuFormatter.formatAdminSubCommand(sender, "/minigame",
+                                                          subCommand.getName(),
+                                                          subCommand.getDescription());
+                }
             }
         }
     }

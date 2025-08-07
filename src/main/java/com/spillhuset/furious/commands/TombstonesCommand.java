@@ -5,6 +5,7 @@ import com.spillhuset.furious.entities.Tombstone;
 import com.spillhuset.furious.managers.TombstoneManager;
 import com.spillhuset.furious.misc.StandaloneCommand;
 import com.spillhuset.furious.utils.AuditLogger;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
@@ -46,8 +47,8 @@ public class TombstonesCommand extends StandaloneCommand {
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage:", NamedTextColor.YELLOW));
-        sender.sendMessage(Component.text("/tombstones purge - Remove all tombstones", NamedTextColor.YELLOW));
+        HelpMenuFormatter.showAdminCommandsHeader(sender, "Tombstones");
+        HelpMenuFormatter.formatAdminSubCommand(sender, "/tombstones", "purge", "Remove all tombstones");
     }
 
     @Override

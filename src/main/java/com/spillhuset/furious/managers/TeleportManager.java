@@ -39,8 +39,8 @@ public class TeleportManager {
     }
 
     public void teleportQueue(Player player, Location destination) {
-        // Cancel any existing teleport task
-        cancelTeleportTask(player);
+        // Cancel any existing teleport task without showing a message
+        cancelTeleportTask(player, false);
 
         // Create a new teleport task
         TeleportTask task = new TeleportTask(player, destination, TELEPORT_DELAY, plugin);
@@ -49,10 +49,16 @@ public class TeleportManager {
     }
 
     public void cancelTeleportTask(Player player) {
+        cancelTeleportTask(player, true);
+    }
+
+    public void cancelTeleportTask(Player player, boolean showMessage) {
         TeleportTask task = teleportTasks.remove(player.getUniqueId());
         if (task != null) {
             task.cancel();
-            player.sendMessage(Component.text("Teleport cancelled!", NamedTextColor.RED));
+            if (showMessage) {
+                player.sendMessage(Component.text("Teleport cancelled!", NamedTextColor.RED));
+            }
         }
     }
 
@@ -313,8 +319,20 @@ public class TeleportManager {
         // Add request expiry (e.g., 60 seconds)
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             if (hasOutgoingRequest(requester)) {
+                // Store target UUID before canceling the request
+                UUID targetUUID = outgoingRequests.get(requester.getUniqueId());
+                Player targetPlayer = plugin.getServer().getPlayer(targetUUID);
+
+                // Cancel the request
                 cancelRequest(requester);
+
+                // Notify requester
                 requester.sendMessage(Component.text("Your teleport request has expired.", NamedTextColor.YELLOW));
+
+                // Notify target if they're online
+                if (targetPlayer != null && targetPlayer.isOnline()) {
+                    targetPlayer.sendMessage(Component.text("Teleport request from " + requester.getName() + " has expired.", NamedTextColor.YELLOW));
+                }
             }
         }, 20 * 60);
 
@@ -332,8 +350,7 @@ public class TeleportManager {
             // Remove request from incoming map
             removeRequest(requester, target);
 
-            // Notify the requester that their request has been accepted and they have 5 seconds to prepare
-            requester.sendMessage(Component.text("Your teleport request to " + target.getName() + " has been accepted!", NamedTextColor.GREEN));
+            // Notify the requester that they have time to prepare (acceptance message is handled in AcceptSubCommand)
             requester.sendMessage(Component.text("You have " + PRE_TELEPORT_DELAY + " seconds to prepare. Don't move to avoid cancellation.", NamedTextColor.YELLOW));
 
             // Notify the target that the requester will be teleported to them
@@ -368,8 +385,7 @@ public class TeleportManager {
         // Also cancel any pre-teleport task
         cancelPreTeleportTask(requester);
 
-        // Notify the requester that their request was declined
-        requester.sendMessage(Component.text(target.getName() + " declined your teleport request.", NamedTextColor.RED));
+        // Feedback messages are now handled in DeclineSubCommand
     }
 
     /**

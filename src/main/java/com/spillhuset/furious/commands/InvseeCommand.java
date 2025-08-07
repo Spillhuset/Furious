@@ -4,11 +4,13 @@ import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.managers.PlayerDataManager;
 import com.spillhuset.furious.misc.StandaloneCommand;
 import com.spillhuset.furious.utils.AuditLogger;
+import com.spillhuset.furious.utils.HelpMenuFormatter;
 import com.spillhuset.furious.utils.InputSanitizer;
 import com.spillhuset.furious.utils.RateLimiter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -43,7 +45,13 @@ public class InvseeCommand extends StandaloneCommand {
 
     @Override
     public void getUsage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /invsee <player>", NamedTextColor.YELLOW));
+        HelpMenuFormatter.showPlayerCommandsHeader(sender, "Invsee");
+        HelpMenuFormatter.formatPlayerSubCommandWithParams(sender, "/invsee", "", "<player>", "", "View another player's inventory");
+
+        if (sender.hasPermission("furious.invsee.offline") || sender.isOp()) {
+            HelpMenuFormatter.showAdminCommandsHeader(sender, "Invsee");
+            HelpMenuFormatter.formatAdminSubCommandWithParams(sender, "/invsee", "", "<player>", "", "View offline player's inventory");
+        }
     }
 
     @Override
@@ -54,6 +62,26 @@ public class InvseeCommand extends StandaloneCommand {
     @Override
     public boolean denyNonPlayer() {
         return true;
+    }
+
+    /**
+     * This command uses PlayerDataManager for inventory viewing functionality.
+     * It handles both online and offline players with appropriate permissions.
+     */
+
+    /**
+     * Checks if the sender has permission to view offline players' inventories.
+     *
+     * @param sender The command sender
+     * @return true if the sender has permission, false otherwise
+     */
+    private boolean checkOfflinePermission(CommandSender sender) {
+        if (sender.hasPermission("furious.invsee.offline")) {
+            return true;
+        } else {
+            sender.sendMessage(Component.text("You don't have permission to view offline players' inventories!", NamedTextColor.RED));
+            return false;
+        }
     }
 
     @Override
@@ -98,23 +126,37 @@ public class InvseeCommand extends StandaloneCommand {
             return true;
         }
 
-        // Try to get the player's inventory (works for both online and offline players)
-        Inventory inventory = playerDataManager.getPlayerInventory(targetName);
+        // Try to get an online player first
+        Player onlineTarget = Bukkit.getPlayer(targetName);
 
-        if (inventory == null) {
-            sender.sendMessage(Component.text("Player not found or has never played on this server!", NamedTextColor.RED));
-            auditLogger.logFailedAccess(sender, targetName, "view inventory", "Player not found or has never played on this server");
+        if (onlineTarget != null) {
+            // Log the successful inventory view for online player
+            auditLogger.logInventoryView(sender, targetName, true);
+            viewer.openInventory(onlineTarget.getInventory());
             return true;
         }
 
-        // Check if the player is online
-        boolean isOnline = Bukkit.getPlayer(targetName) != null;
+        // Check if player has permission to view offline players' inventories
+        if (!checkOfflinePermission(sender)) {
+            auditLogger.logFailedAccess(sender, targetName, "view offline inventory", "No permission for offline access");
+            return true;
+        }
 
-        // Log the successful inventory view
-        auditLogger.logInventoryView(sender, targetName, isOnline);
+        // Try to get the player's inventory using PlayerDataManager
+        Inventory inventory = playerDataManager.getPlayerInventory(targetName);
+
+        if (inventory == null) {
+            sender.sendMessage(Component.text("Player has never played on this server!", NamedTextColor.RED));
+            auditLogger.logFailedAccess(sender, targetName, "view inventory", "Player has never played on this server");
+            return true;
+        }
+
+        // Log the inventory view attempt for offline player
+        auditLogger.logInventoryView(sender, targetName, false);
 
         // Open the inventory to the viewer
         viewer.openInventory(inventory);
+
         return true;
     }
     @Override
@@ -124,6 +166,7 @@ public class InvseeCommand extends StandaloneCommand {
         // Only provide suggestions for the first argument
         if (args.length == 1) {
             String partialName = args[0].toLowerCase();
+
             // Get all online players
             for (Player player : Bukkit.getOnlinePlayers()) {
                 String playerName = player.getName();
@@ -134,6 +177,31 @@ public class InvseeCommand extends StandaloneCommand {
                 // Add names that match what the player has typed so far
                 if (playerName.toLowerCase().startsWith(partialName)) {
                     completions.add(playerName);
+                }
+            }
+
+            // Add offline players if the sender has permission
+            if (sender.hasPermission("furious.invsee.offline")) {
+                // Get offline players (limit to a reasonable number to avoid performance issues)
+                OfflinePlayer[] offlinePlayers = Bukkit.getOfflinePlayers();
+                int count = 0;
+                for (OfflinePlayer offlinePlayer : offlinePlayers) {
+                    // Skip if already online or is the sender
+                    if (offlinePlayer.isOnline() ||
+                        (sender instanceof Player && offlinePlayer.getUniqueId().equals(((Player) sender).getUniqueId()))) {
+                        continue;
+                    }
+
+                    String offlinePlayerName = offlinePlayer.getName();
+                    if (offlinePlayerName != null && offlinePlayerName.toLowerCase().startsWith(partialName)) {
+                        completions.add(offlinePlayerName);
+                        count++;
+
+                        // Limit to 20 offline players to avoid performance issues
+                        if (count >= 20) {
+                            break;
+                        }
+                    }
                 }
             }
         }

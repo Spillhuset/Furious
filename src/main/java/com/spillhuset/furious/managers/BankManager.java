@@ -2,17 +2,27 @@ package com.spillhuset.furious.managers;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.entities.Bank;
+import com.spillhuset.furious.entities.Guild;
+import com.spillhuset.furious.enums.GuildType;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -24,8 +34,10 @@ public class BankManager {
     private final File banksFile;
     private final FileConfiguration banksConfig;
     private final Map<String, Bank> banks = new HashMap<>();
-    private final String DEFAULT_BANK_NAME = "RubberBank";
     private final double DEFAULT_INITIAL_BALANCE = 100.0;
+    private final Set<UUID> adminBankVisibility = new HashSet<>(); // Tracks which admins have bank visibility enabled
+    private final GuildManager guildManager;
+    private final TeleportManager teleportManager;
 
     /**
      * Creates a new BankManager.
@@ -37,10 +49,9 @@ public class BankManager {
         this.banksFile = new File(plugin.getDataFolder(), "banks.yml");
         this.banksConfig = YamlConfiguration.loadConfiguration(banksFile);
 
-        // Create the default bank if it doesn't exist
-        if (!banks.containsKey(DEFAULT_BANK_NAME)) {
-            banks.put(DEFAULT_BANK_NAME, new Bank(DEFAULT_BANK_NAME));
-        }
+        // Initialize managers
+        this.guildManager = plugin.getGuildManager();
+        this.teleportManager = plugin.getTeleportManager();
 
         loadBanks();
     }
@@ -55,14 +66,14 @@ public class BankManager {
 
         // Load bank names
         if (banksConfig.contains("banks")) {
-            for (String bankName : banksConfig.getConfigurationSection("banks").getKeys(false)) {
+            for (String bankName : Objects.requireNonNull(banksConfig.getConfigurationSection("banks")).getKeys(false)) {
                 Bank bank = new Bank(bankName);
                 banks.put(bankName, bank);
 
                 // Load accounts for this bank
                 String accountsPath = "banks." + bankName + ".accounts";
                 if (banksConfig.contains(accountsPath)) {
-                    for (String uuidStr : banksConfig.getConfigurationSection(accountsPath).getKeys(false)) {
+                    for (String uuidStr : Objects.requireNonNull(banksConfig.getConfigurationSection(accountsPath)).getKeys(false)) {
                         try {
                             UUID uuid = UUID.fromString(uuidStr);
                             double balance = banksConfig.getDouble(accountsPath + "." + uuidStr);
@@ -149,12 +160,42 @@ public class BankManager {
     }
 
     /**
-     * Gets the default bank (RubberBank).
+     * Gets the first available bank.
      *
-     * @return the default bank
+     * @return the first bank in the collection, or null if no banks exist
      */
     public Bank getDefaultBank() {
-        return banks.get(DEFAULT_BANK_NAME);
+        if (banks.isEmpty()) {
+            return null;
+        }
+        return banks.values().iterator().next();
+    }
+
+    /**
+     * Gets the bank associated with the chunk a player is standing in.
+     * If no bank is associated with the chunk, returns the first available bank.
+     *
+     * @param player the player
+     * @return the bank associated with the player's location, or the first available bank,
+     *         or null if no banks exist
+     */
+    public Bank getBankByPlayerLocation(Player player) {
+        if (player == null) {
+            return getDefaultBank();
+        }
+
+        Chunk chunk = player.getLocation().getChunk();
+        String chunkKey = chunk.getWorld().getName() + ":" + chunk.getX() + ":" + chunk.getZ();
+
+        // Check if any bank has claimed this chunk
+        for (Bank bank : banks.values()) {
+            if (bank.getClaimedChunks().contains(chunkKey)) {
+                return bank;
+            }
+        }
+
+        // If no bank is associated with this chunk, return the first available bank
+        return getDefaultBank();
     }
 
     /**
@@ -193,13 +234,17 @@ public class BankManager {
     }
 
     /**
-     * Gets the balance of a player's account in the default bank.
+     * Gets the balance of a player's account in the bank associated with their current location.
      *
      * @param player the player
-     * @return the balance, or 0.0 if the player doesn't have an account in the default bank or the player is an op
+     * @return the balance, or 0.0 if the player doesn't have an account in the bank, no bank exists, or the player is an op
      */
     public double getBalance(Player player) {
-        return getBalance(player, DEFAULT_BANK_NAME);
+        Bank bank = getBankByPlayerLocation(player);
+        if (bank == null) {
+            return 0.0;
+        }
+        return getBalance(player, bank.getName());
     }
 
     /**
@@ -223,13 +268,17 @@ public class BankManager {
     }
 
     /**
-     * Checks if a player has an account in the default bank.
+     * Checks if a player has an account in the bank associated with their current location.
      *
      * @param player the player
-     * @return true if the player has an account in the default bank, false otherwise or if the player is an op
+     * @return true if the player has an account in the bank, false otherwise, if no bank exists, or if the player is an op
      */
     public boolean hasAccount(Player player) {
-        return hasAccount(player, DEFAULT_BANK_NAME);
+        Bank bank = getBankByPlayerLocation(player);
+        if (bank == null) {
+            return false;
+        }
+        return hasAccount(player, bank.getName());
     }
 
     /**
@@ -260,26 +309,34 @@ public class BankManager {
     }
 
     /**
-     * Creates an account for a player in the default bank with the given initial balance.
+     * Creates an account for a player in the bank associated with their current location with the given initial balance.
      *
      * @param player the player
      * @param initialBalance the initial balance
-     * @return true if the account was created successfully, false if the player already has an account in the default bank,
-     *         the initial balance is negative, or the player is an op
+     * @return true if the account was created successfully, false if the player already has an account in the bank,
+     *         the initial balance is negative, no bank exists, or the player is an op
      */
     public boolean createAccount(Player player, double initialBalance) {
-        return createAccount(player, DEFAULT_BANK_NAME, initialBalance);
+        Bank bank = getBankByPlayerLocation(player);
+        if (bank == null) {
+            return false;
+        }
+        return createAccount(player, bank.getName(), initialBalance);
     }
 
     /**
-     * Creates an account for a player in the default bank with the default initial balance (100.0).
+     * Creates an account for a player in the bank associated with their current location with the default initial balance (100.0).
      *
      * @param player the player
-     * @return true if the account was created successfully, false if the player already has an account in the default bank
-     *         or the player is an op
+     * @return true if the account was created successfully, false if the player already has an account in the bank,
+     *         no bank exists, or the player is an op
      */
     public boolean createAccount(Player player) {
-        return createAccount(player, DEFAULT_BANK_NAME, DEFAULT_INITIAL_BALANCE);
+        Bank bank = getBankByPlayerLocation(player);
+        if (bank == null) {
+            return false;
+        }
+        return createAccount(player, bank.getName(), DEFAULT_INITIAL_BALANCE);
     }
 
     /**
@@ -314,14 +371,18 @@ public class BankManager {
     }
 
     /**
-     * Deposits the specified amount into a player's account in the default bank.
+     * Deposits the specified amount into a player's account in the bank associated with their current location.
      *
      * @param player the player
      * @param amount the amount to deposit
-     * @return true if the deposit was successful, false if the amount is negative
+     * @return true if the deposit was successful, false if the amount is negative or no bank exists
      */
     public boolean deposit(Player player, double amount) {
-        return deposit(player, DEFAULT_BANK_NAME, amount);
+        Bank bank = getBankByPlayerLocation(player);
+        if (bank == null) {
+            return false;
+        }
+        return deposit(player, bank.getName(), amount);
     }
 
     /**
@@ -357,14 +418,18 @@ public class BankManager {
     }
 
     /**
-     * Withdraws the specified amount from a player's account in the default bank.
+     * Withdraws the specified amount from a player's account in the bank associated with their current location.
      *
      * @param player the player
      * @param amount the amount to withdraw
-     * @return true if the withdrawal was successful, false if the player doesn't have enough funds or the amount is negative
+     * @return true if the withdrawal was successful, false if the player doesn't have enough funds, the amount is negative, or no bank exists
      */
     public boolean withdraw(Player player, double amount) {
-        return withdraw(player, DEFAULT_BANK_NAME, amount);
+        Bank bank = getBankByPlayerLocation(player);
+        if (bank == null) {
+            return false;
+        }
+        return withdraw(player, bank.getName(), amount);
     }
 
     /**
@@ -416,15 +481,19 @@ public class BankManager {
     }
 
     /**
-     * Transfers the specified amount from one player's account to another player's account in the default bank.
+     * Transfers the specified amount from one player's account to another player's account in the bank associated with the 'from' player's location.
      *
      * @param from the player to transfer from
      * @param to the player to transfer to
      * @param amount the amount to transfer
-     * @return true if the transfer was successful, false if the from player doesn't have enough funds or the amount is negative
+     * @return true if the transfer was successful, false if the from player doesn't have enough funds, the amount is negative, or no bank exists
      */
     public boolean transfer(Player from, Player to, double amount) {
-        return transfer(from, to, DEFAULT_BANK_NAME, amount);
+        Bank bank = getBankByPlayerLocation(from);
+        if (bank == null) {
+            return false;
+        }
+        return transfer(from, to, bank.getName(), amount);
     }
 
     /**
@@ -480,6 +549,7 @@ public class BankManager {
     /**
      * Initializes a player's bank accounts when they first join.
      * Creates an account in the default bank with the default initial balance.
+     * If no banks exist, creates a "Main" bank.
      *
      * @param playerId the UUID of the player
      */
@@ -490,16 +560,17 @@ public class BankManager {
             return; // Ops cannot have bank accounts
         }
 
-        Bank defaultBank = banks.get(DEFAULT_BANK_NAME);
+        Bank defaultBank = getDefaultBank();
         if (defaultBank == null) {
-            // Create the default bank if it doesn't exist
-            defaultBank = new Bank(DEFAULT_BANK_NAME);
-            banks.put(DEFAULT_BANK_NAME, defaultBank);
+            // Create a bank if none exist
+            String mainBankName = "Main";
+            defaultBank = new Bank(mainBankName);
+            banks.put(mainBankName, defaultBank);
         }
 
         if (!defaultBank.hasAccount(playerId)) {
             defaultBank.createAccount(playerId, DEFAULT_INITIAL_BALANCE);
-            logTransaction(playerId, DEFAULT_BANK_NAME, "init", DEFAULT_INITIAL_BALANCE, DEFAULT_INITIAL_BALANCE);
+            logTransaction(playerId, defaultBank.getName(), "init", DEFAULT_INITIAL_BALANCE, DEFAULT_INITIAL_BALANCE);
             saveBanks();
         }
     }
@@ -553,10 +624,10 @@ public class BankManager {
      * Deletes a bank.
      *
      * @param bankName the name of the bank to delete
-     * @return true if the bank was deleted successfully, false if the bank doesn't exist or is the default bank
+     * @return true if the bank was deleted successfully, false if the bank doesn't exist or is the only bank
      */
     public boolean deleteBank(String bankName) {
-        if (!banks.containsKey(bankName) || bankName.equals(DEFAULT_BANK_NAME)) {
+        if (!banks.containsKey(bankName) || banks.size() <= 1) {
             return false;
         }
 
@@ -567,6 +638,7 @@ public class BankManager {
 
     /**
      * Deletes an account from a bank.
+     * If the account has a balance, it will be transferred to the player's wallet.
      *
      * @param bankName the name of the bank
      * @param playerId the UUID of the player whose account should be deleted
@@ -578,6 +650,36 @@ public class BankManager {
             return false;
         }
 
+        // Check if the account exists and get its balance
+        if (!bank.hasAccount(playerId)) {
+            return false;
+        }
+
+        double balance = bank.getBalance(playerId);
+
+        // Transfer the balance to the player's wallet if there's any
+        if (balance > 0) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null && player.isOnline()) {
+                // If player is online, deposit directly and notify
+                plugin.getWalletManager().deposit(player, balance);
+                player.sendMessage(Component.text("Your account at " + bankName + " has been closed. ", NamedTextColor.YELLOW)
+                        .append(Component.text(plugin.getWalletManager().formatAmount(balance), NamedTextColor.GOLD))
+                        .append(Component.text(" has been transferred to your wallet.", NamedTextColor.YELLOW)));
+            } else {
+                // If player is offline, still add to their wallet
+                plugin.getWalletManager().setWallet(playerId,
+                        plugin.getWalletManager().getWallet(playerId) + balance);
+
+                // We can't log the wallet transaction directly for offline players
+                // as logTransaction is private, but it will be logged by setWallet
+            }
+
+            // Log the bank transaction
+            logTransaction(playerId, bankName, "account_closure_withdrawal", balance, 0);
+        }
+
+        // Now delete the account
         boolean success = bank.deleteAccount(playerId);
         if (success) {
             saveBanks();
@@ -701,31 +803,59 @@ public class BankManager {
     }
 
     /**
+     * Checks if a player is in a chunk claimed by any bank.
+     *
+     * @param player the player to check
+     * @return true if the player is in a bank-claimed chunk, false otherwise
+     */
+    public boolean isPlayerInBankChunk(Player player) {
+        return getBankByChunk(player.getLocation().getChunk()) != null;
+    }
+
+    /**
+     * Checks if a player is in a chunk claimed by a specific bank.
+     *
+     * @param player the player to check
+     * @param bankName the name of the bank
+     * @return true if the player is in a chunk claimed by the specified bank, false otherwise
+     */
+    public boolean isPlayerInSpecificBankChunk(Player player, String bankName) {
+        Bank bank = getBankByChunk(player.getLocation().getChunk());
+        return bank != null && bank.getName().equalsIgnoreCase(bankName);
+    }
+
+    /**
      * Claims a chunk for a bank.
      *
-     * @param bank the bank to claim the chunk for
-     * @param chunk the chunk to claim
+     * @param bank   the bank to claim the chunk for
+     * @param chunk  the chunk to claim
      * @param player the player who is claiming the chunk
-     * @return true if the chunk was claimed successfully, false if it was already claimed by another bank
      */
-    public boolean claimChunk(Bank bank, Chunk chunk, Player player) {
+    public void claimChunk(Bank bank, Chunk chunk, Player player) {
         // Check if the chunk is already claimed by another bank
         Bank owner = getBankByChunk(chunk);
         if (owner != null && !owner.equals(bank)) {
-            player.sendMessage("This chunk is already claimed by " + owner.getName() + ".");
-            return false;
+            player.sendMessage(Component.text("This chunk is already claimed by " + owner.getName() + ".", NamedTextColor.RED));
+            return;
+        }
+
+        // Check if the chunk is within a SAFE zone (GuildType.SAFE)
+        Guild chunkOwner = guildManager.getChunkOwner(chunk);
+
+        if (chunkOwner == null || chunkOwner.getType() != GuildType.SAFE) {
+            player.sendMessage(Component.text("Banks can only be claimed within SAFE zones (GuildType.SAFE).", NamedTextColor.RED));
+            return;
         }
 
         // Claim the chunk for the bank
         boolean success = bank.claimChunk(chunk);
         if (success) {
-            player.sendMessage("Chunk claimed for " + bank.getName() + ".");
+            player.sendMessage(Component.text("Chunk claimed for " + bank.getName() + ".", NamedTextColor.GREEN));
             saveBanks();
         } else {
-            player.sendMessage("This chunk is already claimed by " + bank.getName() + ".");
+            player.sendMessage(Component.text("This chunk is already claimed by " + bank.getName() + ".", NamedTextColor.RED));
         }
 
-        return success;
     }
 
     /**
@@ -739,17 +869,130 @@ public class BankManager {
     public boolean unclaimChunk(Bank bank, Chunk chunk, Player player) {
         // Check if the chunk is claimed by the bank
         if (!bank.isChunkClaimed(chunk)) {
-            player.sendMessage("This chunk is not claimed by " + bank.getName() + ".");
+            player.sendMessage(Component.text("This chunk is not claimed by " + bank.getName() + ".", NamedTextColor.RED));
             return false;
         }
 
         // Unclaim the chunk from the bank
         boolean success = bank.unclaimChunk(chunk);
         if (success) {
-            player.sendMessage("Chunk unclaimed from " + bank.getName() + ".");
+            player.sendMessage(Component.text("Chunk unclaimed from " + bank.getName() + ".", NamedTextColor.GREEN));
             saveBanks();
         }
 
         return success;
+    }
+
+    /**
+     * Sets the spawn location for a bank using an armor stand.
+     *
+     * @param bank the bank to set the spawn for
+     * @param location the location to set as the spawn
+     * @param player the player setting the spawn
+     * @return true if the spawn was set successfully, false otherwise
+     */
+    public boolean setBankSpawn(Bank bank, Location location, Player player) {
+        // Check if the location is in a chunk claimed by the bank
+        Chunk chunk = location.getChunk();
+        if (!bank.isChunkClaimed(chunk)) {
+            player.sendMessage(Component.text("You can only set a bank spawn in a chunk claimed by the bank.", NamedTextColor.RED));
+            return false;
+        }
+
+        // Remove any existing armor stand at the previous spawn location
+        Location oldSpawn = bank.getSpawnLocation();
+        if (oldSpawn != null) {
+            oldSpawn.getWorld().getNearbyEntities(oldSpawn, 1, 1, 1).forEach(entity -> {
+                if (entity instanceof ArmorStand && entity.customName() != null &&
+                    Objects.requireNonNull(entity.customName()).contains(Component.text(bank.getName()).append(Component.text(" Bank")))) {
+                    entity.remove();
+                }
+            });
+        }
+
+        // Create a new armor stand at the spawn location
+        ArmorStand armorStand = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
+        armorStand.customName(Component.text(bank.getName()).append(Component.text(" Bank")));
+        armorStand.setCustomNameVisible(false); // Not visible by default
+        armorStand.setVisible(false); // Keep the ArmorStand itself invisible
+        armorStand.setGravity(false);
+        armorStand.setInvulnerable(true);
+        armorStand.setCanPickupItems(false);
+        armorStand.setSmall(true);
+
+        // Make the armor stand visible to this admin if they have visibility enabled
+        if (player.isOp() && adminBankVisibility.contains(player.getUniqueId())) {
+            // Only this player will see the change
+            armorStand.setCustomNameVisible(true);
+            armorStand.setVisible(true);
+        }
+
+        // Set the spawn location in the bank
+        bank.setSpawnLocation(location);
+        saveBanks();
+
+        player.sendMessage(Component.text("Spawn location set for " + bank.getName() + ".", NamedTextColor.GREEN));
+        return true;
+    }
+
+    /**
+     * Teleports a player to a bank's spawn location.
+     *
+     * @param player the player to teleport
+     * @param bankName the name of the bank to teleport to
+     * @return true if the teleport was successful, false otherwise
+     */
+    public boolean teleportToBank(Player player, String bankName) {
+        Bank bank = getBank(bankName);
+        if (bank == null) {
+            player.sendMessage(Component.text("Bank not found: " + bankName, NamedTextColor.RED));
+            return false;
+        }
+
+        Location spawnLocation = bank.getSpawnLocation();
+        if (spawnLocation == null) {
+            player.sendMessage(Component.text("This bank does not have a spawn location set.", NamedTextColor.RED));
+            return false;
+        }
+
+        // If player is an operator, bypass the teleport queue
+        if (player.isOp()) {
+            teleportManager.forceTeleport(player, spawnLocation);
+            player.sendMessage(Component.text("Teleported to bank " + bankName + " immediately (operator bypass).", NamedTextColor.GREEN));
+        } else {
+            // Use the teleport manager to handle the teleportation with queue
+            teleportManager.teleportQueue(player, spawnLocation);
+            player.sendMessage(Component.text("Teleport to bank " + bankName + " queued. Please stand still.", NamedTextColor.GREEN));
+        }
+
+        return true;
+    }
+
+    /**
+     * Toggles the visibility of bank armor stands for an admin.
+     *
+     * @param playerId The UUID of the admin
+     * @return true if visibility was enabled, false if it was disabled
+     */
+    public boolean toggleBankVisibility(UUID playerId) {
+        if (adminBankVisibility.contains(playerId)) {
+            // Disable visibility
+            adminBankVisibility.remove(playerId);
+            return false;
+        } else {
+            // Enable visibility
+            adminBankVisibility.add(playerId);
+            return true;
+        }
+    }
+
+    /**
+     * Checks if a player has bank visibility enabled.
+     *
+     * @param player The player to check
+     * @return true if the player has bank visibility enabled, false otherwise
+     */
+    public boolean hasBankVisibility(Player player) {
+        return player.isOp() && adminBankVisibility.contains(player.getUniqueId());
     }
 }

@@ -1,7 +1,7 @@
 # Homes Configuration
 
 # Default maximum number of homes a player can have
-default-max-player-homes: 3
+default-max-player-homes: 5
 
 # Default maximum number of homes a guild can have
 default-max-guild-homes: 1
@@ -13,13 +13,13 @@ base-home-cost: 100.0
 cost-multiplier: 1.5
 
 # Additional cost multiplier for guild homes (cost = base * guild-multiplier * multiplier^purchased)
-guild-cost-multiplier: 3.0
+guild-cost-multiplier: 10.0
 
 # List of worlds where homes cannot be set
-disabled-worlds: []
+disabled-worlds: [ world_nether,world_the_end ]
 
 # List of world types where homes cannot be set (NORMAL, NETHER, THE_END, CUSTOM)
-disabled-world-types: []
+disabled-world-types: [ NETHER,THE_END ]
 
 # Message shown when home functionality is attempted in a disabled world
 disabled-world-message: "&cHomes cannot be set in this world!"
