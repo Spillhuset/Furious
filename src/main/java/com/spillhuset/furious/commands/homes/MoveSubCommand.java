@@ -45,8 +45,8 @@ public class MoveSubCommand implements SubCommand {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
         sender.sendMessage(Component.text("/homes move [name] - Moves a home to your current location", NamedTextColor.YELLOW));
 
-        if (sender.hasPermission("furious.homes.admin")) {
-            sender.sendMessage(Component.text("/homes move <player> <name> - Moves a home for another player", NamedTextColor.YELLOW));
+        if (sender.hasPermission("furious.homes.move.others") || sender.hasPermission("furious.homes.admin")) {
+            sender.sendMessage(Component.text("/homes move <player> <n> - Moves a home for another player", NamedTextColor.YELLOW));
         }
     }
 
@@ -57,8 +57,8 @@ public class MoveSubCommand implements SubCommand {
             return true;
         }
 
-        // Admin command: /homes move <player> <name>
-        if (args.length >= 3 && sender.hasPermission("furious.homes.admin")) {
+        // Admin command: /homes move <player> <n>
+        if (args.length >= 3 && (sender.hasPermission("furious.homes.move.others") || sender.hasPermission("furious.homes.admin"))) {
             Player target = Bukkit.getPlayer(args[1]);
             if (target == null) {
                 sender.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
@@ -94,7 +94,7 @@ public class MoveSubCommand implements SubCommand {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 2) {
-            if (sender.hasPermission("furious.homes.admin")) {
+            if (sender.hasPermission("furious.homes.move.others") || sender.hasPermission("furious.homes.admin")) {
                 // Suggest player names for admin command
                 String partial = args[1].toLowerCase();
                 for (Player player : Bukkit.getOnlinePlayers()) {
@@ -113,7 +113,7 @@ public class MoveSubCommand implements SubCommand {
                     });
                 }
             }
-        } else if (args.length == 3 && sender.hasPermission("furious.homes.admin")) {
+        } else if (args.length == 3 && (sender.hasPermission("furious.homes.move.others") || sender.hasPermission("furious.homes.admin"))) {
             // For admin command, suggest home names for the target player
             Player target = Bukkit.getPlayer(args[1]);
             if (target != null) {

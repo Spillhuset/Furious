@@ -1,7 +1,5 @@
 package com.spillhuset.furious.entities;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -9,18 +7,13 @@ import java.util.regex.Pattern;
 /**
  * Represents a permission in the system.
  * Permissions can be positive (granted) or negative (denied).
- * Wildcards are supported using the * character at any position.
- * Supports multi-level inheritance and middle wildcards.
+ * Wildcards are supported using the * character.
  */
 public class Permission {
     private final UUID id;
     private final String node;
     private final boolean isNegated;
     private final Pattern pattern;
-
-    // Cache for permission check results to improve performance
-    private static final Map<String, Map<String, Boolean>> permissionCheckCache = new HashMap<>();
-    private static final int MAX_CACHE_SIZE = 1000; // Maximum number of permission nodes to cache
 
     /**
      * Creates a new permission with the given node.
@@ -59,7 +52,6 @@ public class Permission {
 
     /**
      * Creates a regex pattern from a permission node for wildcard matching.
-     * Supports wildcards at any position, including middle wildcards.
      *
      * @param node The permission node
      * @return A Pattern object for matching
@@ -109,74 +101,15 @@ public class Permission {
     }
 
     /**
-     * Clears the permission check cache.
-     * Should be called when permissions are updated.
-     */
-    public static void clearCache() {
-        permissionCheckCache.clear();
-    }
-
-    /**
      * Checks if this permission matches the given permission node.
      * Supports wildcard matching at any position in the permission node.
-     * Uses caching to improve performance for repeated checks.
-     *
-     * Examples:
-     * - "furious.*" matches "furious.bank.add", "furious.guild.create", etc.
-     * - "furious.*.admin" matches "furious.bank.admin", "furious.guild.admin", etc.
-     * - "furious.bank.*" matches "furious.bank.add", "furious.bank.subtract", etc.
      *
      * @param permissionNode The permission node to check against
      * @return True if this permission matches the given node, false otherwise
      */
     public boolean matches(String permissionNode) {
-        // Check cache first
-        if (permissionCheckCache.containsKey(node)) {
-            Map<String, Boolean> nodeCache = permissionCheckCache.get(node);
-            if (nodeCache.containsKey(permissionNode)) {
-                return nodeCache.get(permissionNode);
-            }
-        }
-
-        // Handle multi-level inheritance for wildcard permissions
-        if (node.endsWith(".*")) {
-            String prefix = node.substring(0, node.length() - 1);
-            if (permissionNode.startsWith(prefix)) {
-                cacheResult(node, permissionNode, true);
-                return true;
-            }
-        }
-
         // Use the regex pattern for matching
-        boolean result = pattern.matcher(permissionNode).matches();
-
-        // Cache the result
-        cacheResult(node, permissionNode, result);
-
-        return result;
-    }
-
-    /**
-     * Caches the result of a permission check.
-     *
-     * @param permNode The permission node being checked
-     * @param targetNode The target permission node
-     * @param result The result of the check
-     */
-    private void cacheResult(String permNode, String targetNode, boolean result) {
-        // Initialize cache for this permission node if it doesn't exist
-        permissionCheckCache.putIfAbsent(permNode, new HashMap<>());
-
-        // Add result to cache
-        Map<String, Boolean> nodeCache = permissionCheckCache.get(permNode);
-        nodeCache.put(targetNode, result);
-
-        // Limit cache size
-        if (nodeCache.size() > MAX_CACHE_SIZE) {
-            // Remove a random entry if cache gets too large
-            String keyToRemove = nodeCache.keySet().iterator().next();
-            nodeCache.remove(keyToRemove);
-        }
+        return pattern.matcher(permissionNode).matches();
     }
 
     /**

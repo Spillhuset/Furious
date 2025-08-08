@@ -43,17 +43,17 @@ public class DeleteSubCommand implements SubCommand {
     @Override
     public void getUsage(CommandSender sender) {
         sender.sendMessage(Component.text("Usage:", NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("/homes delete <name> - Deletes a home", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/homes delete <n> - Deletes a home", NamedTextColor.YELLOW));
 
-        if (sender.hasPermission("furious.homes.admin")) {
-            sender.sendMessage(Component.text("/homes delete <player> <name> - Deletes a home for another player", NamedTextColor.YELLOW));
+        if (sender.hasPermission("furious.homes.delete.others") || sender.hasPermission("furious.homes.admin")) {
+            sender.sendMessage(Component.text("/homes delete <player> <n> - Deletes a home for another player", NamedTextColor.YELLOW));
         }
     }
 
     @Override
     public boolean execute(@NotNull CommandSender sender, @NotNull String[] args) {
-        // Admin command: /homes delete <player> <name>
-        if (args.length >= 3 && sender.hasPermission("furious.homes.admin")) {
+        // Admin command: /homes delete <player> <n>
+        if (args.length >= 3 && (sender.hasPermission("furious.homes.delete.others") || sender.hasPermission("furious.homes.admin"))) {
             Player target = Bukkit.getPlayer(args[1]);
             if (target == null) {
                 sender.sendMessage(Component.text("Player not found!", NamedTextColor.RED));
@@ -72,7 +72,7 @@ public class DeleteSubCommand implements SubCommand {
             return true;
         }
 
-        // Regular command: /homes delete <name>
+        // Regular command: /homes delete <n>
         if (args.length < 2) {
             getUsage(sender);
             return true;
@@ -99,7 +99,7 @@ public class DeleteSubCommand implements SubCommand {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 2) {
-            if (sender.hasPermission("furious.homes.admin")) {
+            if (sender.hasPermission("furious.homes.delete.others") || sender.hasPermission("furious.homes.admin")) {
                 // Suggest player names for admin command
                 String partial = args[1].toLowerCase();
                 for (Player player : Bukkit.getOnlinePlayers()) {
@@ -118,7 +118,7 @@ public class DeleteSubCommand implements SubCommand {
                     });
                 }
             }
-        } else if (args.length == 3 && sender.hasPermission("furious.homes.admin")) {
+        } else if (args.length == 3 && (sender.hasPermission("furious.homes.delete.others") || sender.hasPermission("furious.homes.admin"))) {
             // For admin command, suggest home names for the target player
             Player target = Bukkit.getPlayer(args[1]);
             if (target != null) {

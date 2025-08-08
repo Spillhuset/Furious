@@ -6,6 +6,8 @@ This guide provides information about the permissions system from a player's per
 - [Overview](#overview)
 - [How Permissions Affect Players](#how-permissions-affect-players)
 - [Understanding Roles](#understanding-roles)
+- [Permission Inheritance System](#permission-inheritance-system)
+- [Permission Presets](#permission-presets)
 - [Checking Your Permissions](#checking-your-permissions)
 - [Common Permission Groups](#common-permission-groups)
 
@@ -35,10 +37,47 @@ The server uses a structured permission inheritance system where higher-level pe
 
 1. If you have a permission ending with `.*` (a wildcard permission), you automatically have all permissions that start with that prefix.
    - Example: If you have `furious.homes.*`, you have all home-related permissions.
+   - Example: If you have `furious.*`, you have access to all features in the Furious plugin.
 
-2. Your permission level may grant you additional capabilities within features:
+2. Wildcards can appear anywhere in the permission node, not just at the end:
+   - Example: `furious.*.admin` would grant all admin permissions across different features.
+   - Example: `furious.homes.*.others` would grant all permissions to manage other players' homes.
+
+3. Your permission level may grant you additional capabilities within features:
    - Example: Players with `furious.teleport.admin` can bypass teleport cooldowns and costs.
    - Example: Players with `furious.homes.limit.10` can set up to 10 homes, while others might be limited to fewer.
+
+The enhanced wildcard matching system now provides more flexibility in how permissions are assigned and inherited, allowing for more precise control over what features you can access.
+
+## Permission Presets
+
+The server now uses permission presets, which are predefined sets of permissions designed for specific player types or server roles. These presets help ensure consistent permission assignments across the server. Common presets include:
+
+1. **Admin Preset**: Full access to all server features and administrative tools
+   - Includes permissions like `furious.*` and `furious.admin.*`
+   - Typically assigned to server administrators only
+
+2. **Moderator Preset**: Tools for helping manage the server and players
+   - Includes permissions to view other players' information and manage basic server functions
+   - Examples: `furious.teleport.admin`, `furious.homes.*.others`, `furious.guild.admin.*`
+
+3. **Builder Preset**: Special permissions for world building and construction
+   - Includes permissions for teleportation and world management
+   - Examples: `furious.teleport.coords`, `furious.warps.create`
+
+4. **VIP Preset**: Enhanced gameplay features for donators or special players
+   - Includes bypass permissions for cooldowns and costs
+   - Examples: `furious.teleport.bypass.cooldown`, `furious.homes.set.extra.5`
+
+5. **Economy Preset**: Focused on economic activities and transactions
+   - Includes permissions for bank and wallet management
+   - Examples: `furious.bank.*`, `furious.wallet.*`
+
+6. **Survival Preset**: Basic gameplay permissions for regular survival players
+   - Includes essential teleportation, homes, and guild features
+   - Examples: `furious.teleport.*`, `furious.homes.*`, `furious.guild.*`
+
+Server administrators can apply these presets to your account based on your role on the server. You may be assigned multiple presets if you have multiple roles (e.g., both a Builder and VIP).
 
 ## Understanding Roles
 
@@ -55,17 +94,30 @@ When you're assigned a role, you automatically receive all the permissions assoc
 
 If you're curious about what permissions you have, you can:
 
-1. Ask a server administrator to check your permissions using:
+1. Ask a server administrator to check your permissions using the new GUI-based permission management system:
+   ```
+   /permissions gui player YourUsername
+   ```
+   This will show your permissions in an easy-to-navigate interface.
+
+2. Ask a server administrator to check your permissions using the command:
    ```
    /permissions player list permissions YourUsername
    ```
 
-2. Ask a server administrator to check your roles using:
+3. Ask a server administrator to check your roles using:
    ```
    /permissions player list roles YourUsername
    ```
 
-3. Try using a command - if you have permission, it will work; if not, you'll receive a message saying you don't have permission.
+4. Ask a server administrator which permission presets have been applied to your account:
+   ```
+   /permissions player list presets YourUsername
+   ```
+
+5. Try using a command - if you have permission, it will work; if not, you'll receive a message saying you don't have permission.
+
+The new permission system includes caching for better performance, so changes to your permissions may take a moment to apply across all server systems.
 
 ## Common Permission Groups
 

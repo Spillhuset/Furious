@@ -191,6 +191,30 @@ permissions:
       furious.guild.homes: true
       furious.guild.homes.set: true
       furious.guild.homes.teleport: true
+      furious.guild.admin.*: true
+  furious.guild.admin.*:
+    description: Grants all administrative guild permissions
+    children:
+      furious.guild.admin.transfer: true
+      furious.guild.admin.unclaim: true
+      furious.guild.admin.homes: true
+      furious.guild.admin.disband: true
+      furious.guild.admin.info: true
+  furious.guild.admin.transfer:
+    description: Allows administrative guild ownership transfers
+    default: op
+  furious.guild.admin.unclaim:
+    description: Allows administrative unclaiming of guild land
+    default: op
+  furious.guild.admin.homes:
+    description: Allows administrative management of guild homes
+    default: op
+  furious.guild.admin.disband:
+    description: Allows administrative disbanding of guilds
+    default: op
+  furious.guild.admin.info:
+    description: Allows viewing detailed administrative information about guilds
+    default: op
   furious.guild.create:
     description: Allows creating guilds
     default: true
@@ -334,6 +358,34 @@ permissions:
       furious.homes.buy: true
       furious.homes.admin: true
       furious.homes.limit.*: true
+      furious.homes.*.others: true
+  furious.homes.*.others:
+    description: Grants all administrative homes permissions
+    children:
+      furious.homes.set.others: true
+      furious.homes.delete.others: true
+      furious.homes.move.others: true
+      furious.homes.rename.others: true
+      furious.homes.tp.others: true
+      furious.homes.list.others: true
+  furious.homes.set.others:
+    description: Allows setting homes for other players
+    default: op
+  furious.homes.delete.others:
+    description: Allows deleting other players' homes
+    default: op
+  furious.homes.move.others:
+    description: Allows moving other players' homes
+    default: op
+  furious.homes.rename.others:
+    description: Allows renaming other players' homes
+    default: op
+  furious.homes.tp.others:
+    description: Allows teleporting to other players' homes
+    default: op
+  furious.homes.list.others:
+    description: Allows listing other players' homes
+    default: op
   furious.homes.set:
     description: Allows setting homes
     default: true
@@ -388,6 +440,34 @@ permissions:
       furious.warps.warp: true
       furious.warps.list: true
       furious.warps.visibility: true
+      furious.warps.admin.*: true
+  furious.warps.admin.*:
+    description: Grants all administrative warps permissions
+    children:
+      furious.warps.create.others: true
+      furious.warps.delete.others: true
+      furious.warps.relocate.others: true
+      furious.warps.rename.others: true
+      furious.warps.cost.others: true
+      furious.warps.passwd.others: true
+  furious.warps.create.others:
+    description: Allows creating warps for other players
+    default: op
+  furious.warps.delete.others:
+    description: Allows deleting other players' warps
+    default: op
+  furious.warps.relocate.others:
+    description: Allows relocating other players' warps
+    default: op
+  furious.warps.rename.others:
+    description: Allows renaming other players' warps
+    default: op
+  furious.warps.cost.others:
+    description: Allows setting costs on other players' warps
+    default: op
+  furious.warps.passwd.others:
+    description: Allows setting passwords on other players' warps
+    default: op
   furious.warps.create:
     description: Allows creating warps
     default: op
@@ -426,6 +506,30 @@ permissions:
     description: Gives access to all tombstone commands
     children:
       furious.tombstones.admin: true
+      furious.tombstones.admin.*: true
+  furious.tombstones.admin.*:
+    description: Grants all administrative tombstone permissions
+    children:
+      furious.tombstones.purge: true
+      furious.tombstones.purge.others: true
+      furious.tombstones.access.others: true
+      furious.tombstones.extend.others: true
+      furious.tombstones.teleport.others: true
+  furious.tombstones.purge:
+    description: Allows purging all tombstones
+    default: op
+  furious.tombstones.purge.others:
+    description: Allows purging other players' tombstones
+    default: op
+  furious.tombstones.access.others:
+    description: Allows accessing other players' tombstones
+    default: op
+  furious.tombstones.extend.others:
+    description: Allows extending the expiration time of other players' tombstones
+    default: op
+  furious.tombstones.teleport.others:
+    description: Allows teleporting to other players' tombstones
+    default: op
   furious.tombstones.admin:
     description: Allows managing tombstones (purge, etc.)
     default: op
@@ -459,6 +563,44 @@ permissions:
       furious.bank.createaccount.others: true
       furious.bank.deleteaccount.others: true
       furious.bank.editbalance.others: true
+      furious.bank.admin.*: true
+      furious.bank.add: true
+      furious.bank.subtract: true
+      furious.bank.set: true
+      furious.bank.add.others: true
+      furious.bank.subtract.others: true
+      furious.bank.set.others: true
+      furious.bank.interest: true
+  furious.bank.admin.*:
+    description: Grants all administrative bank permissions
+    children:
+      furious.bank.add.others: true
+      furious.bank.subtract.others: true
+      furious.bank.set.others: true
+      furious.bank.createaccount.others: true
+      furious.bank.deleteaccount.others: true
+      furious.bank.interest: true
+  furious.bank.add:
+    description: Allows adding to account balances
+    default: op
+  furious.bank.subtract:
+    description: Allows subtracting from account balances
+    default: op
+  furious.bank.set:
+    description: Allows setting account balances to specific values
+    default: op
+  furious.bank.add.others:
+    description: Allows adding to other players' account balances
+    default: op
+  furious.bank.subtract.others:
+    description: Allows subtracting from other players' account balances
+    default: op
+  furious.bank.set.others:
+    description: Allows setting other players' account balances
+    default: op
+  furious.bank.interest:
+    description: Allows editing bank interest rates
+    default: op
   furious.bank.balance:
     description: Allows checking bank balance
     default: true

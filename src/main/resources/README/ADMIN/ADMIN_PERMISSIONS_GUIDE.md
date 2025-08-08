@@ -5,6 +5,11 @@ This guide provides information on how to administer and configure the permissio
 ## Table of Contents
 - [Overview](#overview)
 - [Permission Requirements](#permission-requirements)
+- [Permission Inheritance System](#permission-inheritance-system)
+- [Enhanced Wildcard Matching](#enhanced-wildcard-matching)
+- [Permission Caching](#permission-caching)
+- [GUI-Based Permission Management](#gui-based-permission-management)
+- [Permission Presets](#permission-presets)
 - [Command Structure](#command-structure)
 - [Roles Management](#roles-management)
 - [Player Management](#player-management)
@@ -45,6 +50,200 @@ Permission inheritance follows these principles:
 4. **Granular Control**: The system allows for precise control over permissions
    - You can grant specific permissions without granting entire categories
    - You can create custom permission sets for different staff roles
+
+## Enhanced Wildcard Matching
+
+The permission system now features enhanced wildcard matching capabilities that provide more flexibility and power in permission management.
+
+### How Enhanced Wildcard Matching Works
+
+1. **Multi-Level Inheritance**: The enhanced system supports multi-level inheritance for wildcard permissions
+   - A permission like `furious.*` now grants all permissions that start with "furious."
+   - This works for any level of the permission hierarchy
+
+2. **Middle Wildcards**: Wildcards can now appear anywhere in the permission node, not just at the end
+   - Example: `furious.*.admin` matches permissions like `furious.bank.admin` and `furious.guild.admin`
+   - Example: `furious.homes.*.others` matches all permissions for managing other players' homes
+
+3. **Pattern Matching**: The system uses sophisticated pattern matching for permissions
+   - Permissions are converted to regex patterns for flexible matching
+   - The system handles complex permission structures efficiently
+
+### Examples of Enhanced Wildcard Matching
+
+1. **Feature-Wide Administrative Access**:
+   - `furious.*.admin` grants admin permissions across all features
+   - This matches `furious.bank.admin`, `furious.guild.admin`, `furious.homes.admin`, etc.
+
+2. **Cross-Feature Operations**:
+   - `furious.*.*.others` grants all permissions for operations on other players
+   - This matches `furious.homes.set.others`, `furious.bank.balance.others`, etc.
+
+3. **Specific Feature Wildcards**:
+   - `furious.homes.*` grants all home-related permissions
+   - `furious.bank.*` grants all bank-related permissions
+
+## Permission Caching
+
+To improve performance, especially on servers with many players and permissions, the system now includes a permission caching mechanism.
+
+### How Permission Caching Works
+
+1. **Result Caching**: The system caches the results of permission checks
+   - When a permission is checked, the result is stored in memory
+   - Subsequent checks for the same permission use the cached result
+   - This significantly reduces CPU usage for permission checks
+
+2. **Cache Invalidation**: The cache is automatically invalidated when permissions change
+   - When permissions are added or removed, the cache is cleared
+   - This ensures that permission changes take effect immediately
+
+3. **Configurable Caching**: The caching system can be configured based on server needs
+   - Cache size limits prevent memory issues
+   - Cache expiration can be set to balance performance and freshness
+
+### Benefits of Permission Caching
+
+1. **Improved Performance**: Faster permission checks, especially for frequently checked permissions
+2. **Reduced Server Load**: Less CPU usage for permission operations
+3. **Better Scalability**: More efficient handling of large permission sets and many players
+
+### Managing the Permission Cache
+
+- The cache is automatically managed by the system
+- To manually clear the cache (rarely needed):
+  ```
+  /permissions cache clear
+  ```
+
+## GUI-Based Permission Management
+
+A new graphical user interface (GUI) has been added to make permission management more intuitive and user-friendly.
+
+### Accessing the Permission GUI
+
+To open the permission management GUI:
+```
+/permissions gui
+```
+
+Requirements:
+- You must have the `furious.permission.*` permission
+
+### GUI Features
+
+The permission management GUI includes several sections:
+
+1. **Browse Permissions**: Browse and edit all permissions in the system
+   - View permissions by category
+   - Toggle permissions on/off with a click
+   - Search for specific permissions
+
+2. **Search Permissions**: Search for specific permissions
+   - Find permissions by name
+   - Filter by category or feature
+
+3. **Permission Presets**: Apply predefined permission sets
+   - View available presets
+   - Apply presets to players or roles
+
+4. **Player Permissions**: Manage permissions for specific players
+   - View a player's current permissions
+   - Add or remove permissions
+   - Assign roles to players
+
+5. **Role Editor**: Create and manage permission roles
+   - Create new roles
+   - Edit role permissions
+   - Assign roles to players
+
+6. **Inheritance Visualization**: Visualize permission inheritance relationships
+   - See how permissions are inherited
+   - Understand the permission hierarchy
+
+### Using the Permission GUI
+
+1. **Browsing Permissions**:
+   - Click on "Browse Permissions" in the main menu
+   - Navigate through pages of permissions
+   - Click on a permission to toggle it
+
+2. **Applying Presets**:
+   - Click on "Permission Presets" in the main menu
+   - Select a preset to view its permissions
+   - Click "Apply Preset" and enter a player or role name
+
+3. **Managing Player Permissions**:
+   - Click on "Player Permissions" in the main menu
+   - Enter a player name to view their permissions
+   - Add or remove permissions as needed
+
+## Permission Presets
+
+The system now includes predefined permission presets that can be applied to players or roles, making permission setup faster and more consistent.
+
+### Available Permission Presets
+
+1. **Admin Preset**: Full access to all server features and administrative tools
+   - Includes permissions like `furious.*` and `furious.admin.*`
+   - Typically assigned to server administrators only
+
+2. **Moderator Preset**: Tools for helping manage the server and players
+   - Includes permissions to view other players' information and manage basic server functions
+   - Examples: `furious.teleport.admin`, `furious.homes.*.others`, `furious.guild.admin.*`
+
+3. **Builder Preset**: Special permissions for world building and construction
+   - Includes permissions for teleportation and world management
+   - Examples: `furious.teleport.coords`, `furious.warps.create`
+
+4. **VIP Preset**: Enhanced gameplay features for donators or special players
+   - Includes bypass permissions for cooldowns and costs
+   - Examples: `furious.teleport.bypass.cooldown`, `furious.homes.set.extra.5`
+
+5. **Economy Preset**: Focused on economic activities and transactions
+   - Includes permissions for bank and wallet management
+   - Examples: `furious.bank.*`, `furious.wallet.*`
+
+6. **Survival Preset**: Basic gameplay permissions for regular survival players
+   - Includes essential teleportation, homes, and guild features
+   - Examples: `furious.teleport.*`, `furious.homes.*`, `furious.guild.*`
+
+### Using Permission Presets
+
+#### Via GUI
+
+1. Open the permission GUI:
+   ```
+   /permissions gui
+   ```
+
+2. Click on "Permission Presets"
+
+3. Select a preset and click "Apply Preset"
+
+4. Enter the player or role name to apply the preset
+
+#### Via Commands
+
+Apply a preset to a player:
+```
+/permissions preset apply <preset_name> player <player_name>
+```
+
+Apply a preset to a role:
+```
+/permissions preset apply <preset_name> role <role_name>
+```
+
+List available presets:
+```
+/permissions preset list
+```
+
+View preset details:
+```
+/permissions preset info <preset_name>
+```
 
 ### Examples of Permission Inheritance
 

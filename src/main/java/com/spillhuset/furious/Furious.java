@@ -67,6 +67,7 @@ public final class Furious extends JavaPlugin {
     private WalletDAO walletDAO;
     private ShopsManager shopsManager;
     private SafeZoneProtectionManager safeZoneProtectionManager;
+    private com.spillhuset.furious.gui.PermissionManagerGUI permissionManagerGUI;
     private static Furious instance;
 
     @Override
@@ -145,6 +146,9 @@ public final class Furious extends JavaPlugin {
         containerRegistry = new ContainerRegistry(this);
         getServer().getPluginManager().registerEvents(new ContainerListener(this, containerRegistry), this);
 
+        // Initialize and register the permission manager GUI
+        permissionManagerGUI = new com.spillhuset.furious.gui.PermissionManagerGUI(this);
+        getServer().getPluginManager().registerEvents(permissionManagerGUI, this);
 
         getLogger().info("Furious is enabled!");
     }
@@ -299,6 +303,15 @@ public final class Furious extends JavaPlugin {
 
     public SafeZoneProtectionManager getSafeZoneProtectionManager() {
         return safeZoneProtectionManager;
+    }
+
+    /**
+     * Gets the permission manager GUI.
+     *
+     * @return The permission manager GUI
+     */
+    public com.spillhuset.furious.gui.PermissionManagerGUI getPermissionManagerGUI() {
+        return permissionManagerGUI;
     }
 
     public ItemStack createScrapItem(double amount) {

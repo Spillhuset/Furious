@@ -2,6 +2,7 @@ package com.spillhuset.furious.commands;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.commands.permission.*;
+import com.spillhuset.furious.gui.PermissionManagerGUI;
 import com.spillhuset.furious.managers.PermissionManager;
 import com.spillhuset.furious.misc.SubCommand;
 import net.kyori.adventure.text.Component;
@@ -43,6 +44,9 @@ public class PermissionCommand implements CommandExecutor, TabCompleter {
         // Register the subcommand hierarchy
         registerSubCommand(new RolesSubCommand(plugin), "r");
         registerSubCommand(new PlayerSubCommand(plugin), "p");
+
+        // GUI command
+        registerSubCommand(new GUISubCommand(plugin), "g");
 
         // Help command
         registerSubCommand(new HelpSubCommand(plugin, subCommands), "h");

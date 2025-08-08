@@ -470,23 +470,61 @@ Here are the main permission nodes:
 - `furious.teleport.worldconfig`: Allows configuring world teleport settings
 - `furious.teleport.coords`: Allows using coordinate teleport commands
 - `furious.teleport.force`: Allows using force teleport commands
-- `furious.teleport.*`: Gives access to all teleport commands
+- `furious.teleport.worlds`: Allows viewing world teleport settings
+- `furious.teleport.worldspawn`: Allows teleporting to world spawn
+- `furious.teleport.setworldspawn`: Allows setting world spawn location
+
+#### Special Permissions
+- `furious.teleport.admin`: Allows bypassing teleport queue, effects, costs, and cooldowns
+
+#### Teleport Permission Inheritance
+- `furious.teleport.*`: Grants all teleport permissions
+- `furious.teleport.admin.*`: Grants all administrative teleport permissions
+- Higher-level permissions automatically grant related lower-level permissions
+
+#### Teleport Feature Limitations
+- `furious.teleport.cooldown.X`: Sets teleport cooldown to X seconds
+- `furious.teleport.cost.X`: Sets teleport cost to X
+- `furious.teleport.bypass.cooldown`: Allows bypassing teleport cooldowns
+- `furious.teleport.bypass.cost`: Allows teleporting without paying costs
 
 ### Warp Permissions
 
 #### User Permissions
 - `furious.warps.warp`: Allows teleporting to warps
 - `furious.warps.list`: Allows listing warps
+- `furious.warps.unlink`: Allows removing warp portals (if you have permission to create them)
 
 #### Admin Permissions
 - `furious.warps.create`: Allows creating warps
+- `furious.warps.delete`: Allows deleting warps
 - `furious.warps.relocate`: Allows relocating warps
+- `furious.warps.rename`: Allows renaming warps
 - `furious.warps.cost`: Allows setting warp costs
 - `furious.warps.passwd`: Allows setting warp passwords
-- `furious.warps.rename`: Allows renaming warps
-- `furious.warps.delete`: Allows deleting warps
 - `furious.warps.link`: Allows linking warps to portals
-- `furious.warps.*`: Gives access to all warps commands
+- `furious.warps.visibility`: Allows toggling warp visibility
+
+#### Granular Admin Permissions
+- `furious.warps.create.others`: Allows creating warps for other players
+- `furious.warps.delete.others`: Allows deleting other players' warps
+- `furious.warps.relocate.others`: Allows relocating other players' warps
+- `furious.warps.rename.others`: Allows renaming other players' warps
+- `furious.warps.cost.others`: Allows setting costs on other players' warps
+- `furious.warps.passwd.others`: Allows setting passwords on other players' warps
+
+#### Special Permissions
+- `furious.teleport.admin`: Allows bypassing teleport queue, effects, costs, and password requirements for warps
+
+#### Warp Permission Inheritance
+- `furious.warps.*`: Grants all warps permissions
+- `furious.warps.admin.*`: Grants all administrative warps permissions
+- Higher-level permissions automatically grant related lower-level permissions
+
+#### Warp Feature Limitations
+- `furious.warps.limit.X`: Sets maximum number of warps to X
+- `furious.warps.cooldown.X`: Sets warp cooldown to X seconds
+- `furious.warps.cost.multiplier.X`: Sets warp cost multiplier to X
 
 ### Home Permissions
 
@@ -498,93 +536,231 @@ Here are the main permission nodes:
 - `furious.homes.list`: Allows listing homes
 - `furious.homes.tp`: Allows teleporting to homes
 - `furious.homes.buy`: Allows purchasing additional home slots
-- `furious.homes.limit.<number>`: Sets home limit to <number> (e.g., 1, 2, 3, 5, 10)
+
+#### World Management Permissions
 - `furious.homes`: Allows using `/homes world list` command to view world settings for homes
 - `furious.homes.world`: Allows using `/homes world enable/disable [world]` commands to manage homes in specific worlds
 
-#### Admin Permissions
-- `furious.homes.admin`: Allows managing other players' homes
-- `furious.homes.*`: Gives access to all homes commands
+#### Granular Admin Permissions
+- `furious.homes.set.others`: Allows setting homes for other players
+- `furious.homes.delete.others`: Allows deleting other players' homes
+- `furious.homes.move.others`: Allows moving other players' homes
+- `furious.homes.rename.others`: Allows renaming other players' homes
+- `furious.homes.tp.others`: Allows teleporting to other players' homes
+- `furious.homes.list.others`: Allows listing other players' homes
+
+#### Legacy Admin Permissions
+- `furious.homes.admin`: Allows managing other players' homes (grants all granular admin permissions)
+
+#### Home Permission Inheritance
+- `furious.homes.*`: Grants all homes permissions and unlimited homes
+- `furious.homes.*.others`: Grants all administrative homes permissions
+- Higher-level permissions automatically grant related lower-level permissions
+
+#### Home Limit Permissions
+- `furious.homes.limit.1`: Sets home limit to 1 (default: false)
+- `furious.homes.limit.2`: Sets home limit to 2 (default: false)
+- `furious.homes.limit.3`: Sets home limit to 3 (default: true)
+- `furious.homes.limit.5`: Sets home limit to 5 (default: false)
+- `furious.homes.limit.10`: Sets home limit to 10 (default: false)
+- `furious.homes.limit.custom`: Custom home limit set by server administrators
 
 ### Guild Permissions
+
+#### Basic Guild Permissions
 - `furious.guild.create`: Allows creating guilds
+- `furious.guild.info`: Allows viewing guild information
+- `furious.guild.list`: Allows listing all guilds
+
+#### Member Management Permissions
 - `furious.guild.invite`: Allows inviting players to guilds
 - `furious.guild.join`: Allows joining guilds
 - `furious.guild.leave`: Allows leaving guilds
-- `furious.guild.info`: Allows viewing guild information
-- `furious.guild.list`: Allows listing all guilds
-- `furious.guild`: Allows using `/guild world list` command to view world settings for guilds
-- `furious.guild.world`: Allows using `/guild world enable/disable [world]` commands to manage guilds in specific worlds
 - `furious.guild.kick`: Allows kicking players from guilds
-- `furious.guild.disband`: Allows disbanding guilds
 - `furious.guild.transfer`: Allows transferring guild ownership
-- `furious.guild.description`: Allows setting guild descriptions
+
+#### Territory Management Permissions
 - `furious.guild.claim`: Allows claiming chunks for a guild
-- `furious.guild.claim.unmanned`: Allows claiming chunks for unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
 - `furious.guild.unclaim`: Allows unclaiming chunks from a guild
-- `furious.guild.unclaim.unmanned`: Allows unclaiming chunks from unmanned guilds
 - `furious.guild.claims`: Allows viewing claimed chunks of a guild
 - `furious.guild.mobs`: Allows controlling mob spawning in guild claimed chunks
+
+#### Guild Homes Permissions
 - `furious.guild.homes`: Allows managing guild homes
 - `furious.guild.homes.set`: Allows setting guild homes
 - `furious.guild.homes.teleport`: Allows teleporting to guild homes
-- `furious.guild.*`: Gives access to all guild commands
+
+#### World Management Permissions
+- `furious.guild`: Allows using `/guild world list` command to view world settings for guilds
+- `furious.guild.world`: Allows using `/guild world enable/disable [world]` commands to manage guilds in specific worlds
+
+#### Guild Settings Permissions
+- `furious.guild.description`: Allows setting guild descriptions
+
+#### Granular Admin Permissions
+- `furious.guild.admin.transfer`: Allows administrative guild ownership transfers
+- `furious.guild.admin.unclaim`: Allows administrative unclaiming of guild land
+- `furious.guild.admin.homes`: Allows administrative management of guild homes
+- `furious.guild.admin.disband`: Allows administrative disbanding of guilds
+- `furious.guild.admin.info`: Allows viewing detailed administrative information about guilds
+
+#### Special Admin Permissions
+- `furious.guild.claim.unmanned`: Allows claiming chunks for unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
+- `furious.guild.unclaim.unmanned`: Allows unclaiming chunks from unmanned guilds
+
+#### Legacy Admin Permissions
+- `furious.guild.admin`: Allows administrative guild operations (grants all granular admin permissions)
+
+#### Guild Permission Inheritance
+- `furious.guild.*`: Grants all guild permissions
+- `furious.guild.admin.*`: Grants all administrative guild permissions
+- `furious.guild.officer.*`: Grants all officer-level permissions
+- Higher-level permissions automatically grant related lower-level permissions
+
+#### Guild Role-Permission Integration
+- Guild roles (Owner, Officer, Member) have corresponding permission sets
+- Permission checks consider both the player's permissions and their role within the guild
+- Higher roles automatically include permissions from lower roles
 
 ### Locks Permissions
-- `furious.locks.lock`: Allows creating lock items
-- `furious.locks.unlock`: Allows creating unlock items
-- `furious.locks.info`: Allows checking lock ownership
-- `furious.locks.key`: Allows creating key items
+
+#### Basic Lock Management Permissions
+- `furious.locks.lock`: Allows creating lock items (default: true)
+- `furious.locks.unlock`: Allows creating unlock items (default: true)
+- `furious.locks.info`: Allows checking lock ownership (default: true)
+- `furious.locks.key`: Allows creating key items (default: true)
+
+#### World Management Permissions
 - `furious.locks`: Allows using `/locks world list` command to view world settings for locks
-- `furious.locks.world`: Allows using `/locks world enable/disable [world]` commands to manage locks in specific worlds
-- `furious.locks.*`: Gives access to all locks commands
+- `furious.locks.world`: Allows managing locks world settings (default: op)
+
+#### Granular Admin Permissions
+- `furious.locks.lock.others`: Allows creating locks for other players (default: op)
+- `furious.locks.unlock.others`: Allows unlocking other players' locks (default: op)
+- `furious.locks.key.others`: Allows creating keys for other players' locks (default: op)
+- `furious.locks.bypass`: Allows bypassing lock restrictions (default: op)
+
+#### Economic Integration
+- `furious.wallet.bypass.cost`: Allows creating locks without paying the cost
+- Players with different permission levels may have different lock costs
+
+#### Locks Permission Inheritance
+- `furious.locks.*`: Grants all locks permissions
+- `furious.locks.admin.*`: Grants all administrative locks permissions
+- Higher-level permissions automatically grant related lower-level permissions
 
 ### Security Permissions
-- `furious.security.admin`: Allows managing security reviews and other security-related tasks
-- `furious.security.*`: Gives access to all security commands
+
+#### Basic Security Permissions
+- `furious.security.status`: Allows viewing security status (default: op)
+- `furious.security.review`: Allows managing security reviews (default: op)
+- `furious.security.help`: Allows accessing security help information (default: op)
+
+#### Admin Security Permissions
+- `furious.security.admin`: Allows managing security reviews and other security-related tasks (default: op)
+
+#### Security Permission Inheritance
+- `furious.security.*`: Grants all security permissions
+- Higher-level permissions automatically grant related lower-level permissions
 
 ### Tombstone Permissions
-- `furious.tombstones.admin`: Allows managing tombstones (purge, etc.)
-- `furious.tombstones.*`: Gives access to all tombstone commands
+
+#### Basic Tombstone Management
+- `furious.tombstones.locate`: Allows locating your own tombstones (default: true)
+- `furious.tombstones.info`: Allows viewing information about your own tombstones (default: true)
+- `furious.tombstones.extend`: Allows extending the expiration time of your own tombstones (default: true)
+- `furious.tombstones.teleport`: Allows teleporting to your own tombstones (default: true)
+
+#### Granular Admin Permissions
+- `furious.tombstones.purge`: Allows purging all tombstones (default: op)
+- `furious.tombstones.purge.others`: Allows purging other players' tombstones (default: op)
+- `furious.tombstones.access.others`: Allows accessing other players' tombstones (default: op)
+- `furious.tombstones.extend.others`: Allows extending the expiration time of other players' tombstones (default: op)
+- `furious.tombstones.teleport.others`: Allows teleporting to other players' tombstones (default: op)
+
+#### Legacy Admin Permissions
+- `furious.tombstones.admin`: Allows all tombstone administration (default: op)
+
+#### Tombstone Permission Inheritance
+- `furious.tombstones.*`: Grants all tombstone permissions
+- `furious.tombstones.admin.*`: Grants all administrative tombstone permissions
+- Higher-level permissions automatically grant related lower-level permissions
+
+#### Player Experience Customization
+- `furious.tombstones.extended`: Provides longer tombstone expiration times
+- `furious.tombstones.secure`: Makes tombstones accessible only to the owner
+- `furious.tombstones.notify`: Sends notifications when tombstones are about to expire
 
 ### Permission Management
-- `furious.permission.*`: Gives access to all permission management commands
+
+#### Basic Permission Management
+- `furious.permission.roles.list`: Allows listing all roles (default: op)
+- `furious.permission.roles.info`: Allows viewing detailed information about roles (default: op)
+- `furious.permission.player.list`: Allows listing player permissions and roles (default: op)
+
+#### Advanced Permission Management
+- `furious.permission.roles.create`: Allows creating new roles (default: op)
+- `furious.permission.roles.delete`: Allows deleting roles (default: op)
+- `furious.permission.roles.set`: Allows modifying role properties (default: op)
+- `furious.permission.roles.add`: Allows adding permissions or players to roles (default: op)
+- `furious.permission.roles.remove`: Allows removing permissions or players from roles (default: op)
+- `furious.permission.player.add`: Allows adding permissions directly to players (default: op)
+- `furious.permission.player.remove`: Allows removing permissions from players (default: op)
+
+#### Permission Management Inheritance
+- `furious.permission.*`: Grants all permission management permissions (default: op)
+- Higher-level permissions automatically grant related lower-level permissions
 
 ### Minigame Permissions
 
 #### User Permissions
-- `furious.minigame.join`: Allows joining minigame queues
-- `furious.minigame.leave`: Allows leaving minigame queues
-- `furious.minigame.list`: Allows listing available minigames
-- `furious.minigame.info`: Allows viewing minigame information
+- `furious.minigame.join`: Allows joining minigame queues (default: true)
+- `furious.minigame.leave`: Allows leaving minigame queues (default: true)
+- `furious.minigame.list`: Allows listing available minigames (default: true)
+- `furious.minigame.info`: Allows viewing minigame information (default: true)
 
 #### Admin Permissions
-- `furious.minigame.create`: Allows creating minigames
-- `furious.minigame.disable`: Allows disabling minigames
-- `furious.minigame.enable`: Allows enabling minigames
-- `furious.minigame.start`: Allows starting minigames
-- `furious.minigame.stop`: Allows stopping minigames
-- `furious.minigame.edit`: Allows editing minigames
-- `furious.minigame.tp`: Allows teleporting to the GameWorld
-- `furious.minigame.*`: Gives access to all minigame commands
+- `furious.minigame.create`: Allows creating minigames (default: op)
+- `furious.minigame.disable`: Allows disabling minigames (default: op)
+- `furious.minigame.enable`: Allows enabling minigames (default: op)
+- `furious.minigame.start`: Allows starting minigames (default: op)
+- `furious.minigame.stop`: Allows stopping minigames (default: op)
+- `furious.minigame.edit`: Allows editing minigames (default: op)
+- `furious.minigame.tp`: Allows teleporting to the GameWorld (default: op)
+
+#### Minigame Permission Inheritance
+- `furious.minigame.*`: Grants all minigame permissions
+- `furious.minigame.admin.*`: Grants all administrative minigame permissions
+- Higher-level permissions automatically grant related lower-level permissions
 
 ### Utility Permissions
 
 #### Inventory Viewing
-- `furious.invsee`: Allows viewing other players' inventories
-- `furious.endersee`: Allows viewing other players' enderchests
-- `furious.endersee.offline`: Allows viewing offline players' enderchests
+- `furious.invsee`: Allows viewing other players' inventories (default: op)
+- `furious.invsee.edit`: Allows editing other players' inventories (default: op)
+- `furious.endersee`: Allows viewing other players' enderchests (default: op)
+- `furious.endersee.edit`: Allows editing other players' enderchests (default: op)
+- `furious.endersee.offline`: Allows viewing offline players' enderchests (default: op)
 
 #### Healing and Feeding
-- `furious.heal.self`: Allows healing yourself
-- `furious.heal.others`: Allows healing other players
-- `furious.heal.*`: Gives access to all heal commands
-- `furious.feed.self`: Allows feeding yourself
-- `furious.feed.others`: Allows feeding other players
-- `furious.feed.*`: Gives access to all feed commands
+- `furious.heal.self`: Allows healing yourself (default: op)
+- `furious.heal.others`: Allows healing other players (default: op)
+- `furious.heal.cooldown.X`: Sets heal cooldown to X seconds
+- `furious.heal.bypass.cooldown`: Allows bypassing heal cooldowns (default: op)
+- `furious.feed.self`: Allows feeding yourself (default: op)
+- `furious.feed.others`: Allows feeding other players (default: op)
+- `furious.feed.cooldown.X`: Sets feed cooldown to X seconds
+- `furious.feed.bypass.cooldown`: Allows bypassing feed cooldowns (default: op)
+
+#### Utility Permission Inheritance
+- `furious.heal.*`: Grants all heal permissions
+- `furious.feed.*`: Grants all feed permissions
+- `furious.inventory.*`: Grants all inventory viewing permissions
+- Higher-level permissions automatically grant related lower-level permissions
 
 #### Rate Limiting
-- `furious.ratelimit.exempt`: Exempts a player from all rate limits
+- `furious.ratelimit.exempt`: Exempts a player from all rate limits (default: op)
+- `furious.ratelimit.exempt.X`: Exempts a player from rate limits for command X
 
 ## API for Developers
 
