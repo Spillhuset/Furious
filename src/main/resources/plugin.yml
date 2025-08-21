@@ -1,778 +1,280 @@
-name: furious
+name: Furious
 version: '1.0-SNAPSHOT'
 main: com.spillhuset.furious.Furious
 api-version: '1.21'
-depend: [WorldEdit]
+
 commands:
-  teleport:
-    description: Teleport command for requesting and managing teleports
-    aliases: [tp]
-    usage: /<command> [request|accept|decline|list|abort|deny|world|worldspawn|setworldspawn|<player>]
-  tpa:
-    description: Alias for /teleport request
-    usage: /<command> <player>
-  tpaccept:
-    description: Alias for /teleport accept
-    usage: /<command> [player]
-  tpdecline:
-    description: Alias for /teleport decline
-    usage: /<command> [player]
-  invsee:
-    description: View other player's inventory
-    usage: /<command> <player>
-  endersee:
-    description: View other player's enderchest
-    usage: /<command> <player>
-  guild:
-    description: Guild command for creating and managing guilds
-    aliases: [g]
-    usage: /<command> [create|invite|join|leave|info|list|kick|disband|transfer|description]
-  heal:
-    description: Heals yourself, or given players to maximum
-    usage: /<command> [player1] ...
-  feed:
-    description: Feeds yourself, or given players to maximum
-    usage: /<command> [player1] ...
-    aliases: [food]
-  locks:
-    description: Manage locks for blocks
-    usage: /<command> [lock|unlock|info|key]
-  minigame:
-    description: Manage minigames
-    usage: /<command> [join|leave|list|info|create|disable|enable|start|stop|edit|spawn|save]
-    aliases: [mg]
-  homes:
-    description: Manage your homes
-    usage: /<command> [set|move|rename|delete|list|tp|buy]
-    aliases: [home, h]
-  warps:
-    description: Manage and use warps
-    usage: /<command> [create|relocate|cost|passwd|rename|delete|link|warp|list]
-    aliases: [warp]
-  tombstones:
-    description: Manage tombstones
-    usage: /<command> [purge]
-  security:
-    description: Manage security reviews and other security-related tasks
-    usage: /<command> [status|review|help]
-  banks:
-    description: Manage your bank account
-    usage: /<command> [balance|deposit|withdraw|transfer|claim|unclaim|info|create|rename|delete|deleteaccount|createaccount|editbalance|editinterest|help]
-    aliases: [b, bank]
-  perm:
-    description: Manage permissions, roles, and player permissions
-    usage: /<command> [roles|player|help] or /<command> roles [create|delete|list|info|set|add|remove] or /<command> player [add|remove|list]
   wallet:
-    description: Manage your wallet and trade scraps
-  hide:
-    description: Toggle your visibility in the locator bar
-    usage: /<command>
+    description: Wallet command
+  homes:
+    description: Homes command
+  guild:
+    description: Guild command
+  warps:
+    description: Warps command
+  banks:
+    description: Banks command
   shops:
-    description: Buy and sell items for scraps
-    usage: /<command> [buy <item> [count]|sell]
+    description: Shops command
+  teleport:
+    description: Teleport request command
+  tombstones:
+    description: Tombstones administration command
+  locks:
+    description: Locks command
+  checklist:
+    description: Checklist command
 
 permissions:
-  furious.invsee:
-    description: Allows viewing other players' inventories
-    default: op
-  furious.invsee.offline:
-    description: Allows viewing offline players' inventories
-    default: op
-  furious.invsee.edit:
-    description: Allows editing other players' inventories
-    default: op
-  furious.endersee:
-    description: Allows viewing other players' enderchests
-    default: op
-  furious.endersee.offline:
-    description: Allows viewing offline players' enderchests
-    default: op
-  furious.endersee.edit:
-    description: Allows editing other players' enderchests
-    default: op
-
-  furious.teleport.*:
-    description: Gives access to all teleport commands
-    children:
-      furious.teleport.request: true
-      furious.teleport.accept: true
-      furious.teleport.decline: true
-      furious.teleport.list: true
-      furious.teleport.abort: true
-      furious.teleport.deny: true
-      furious.teleport.worldconfig: true
-      furious.teleport.coords: true
-      furious.teleport.force: true
-      furious.teleport.worldspawn: true
-      furious.teleport.setworldspawn: true
-      furious.teleport.bypass: true
-      furious.teleport.admin: true
-  furious.teleport.request:
-    description: Allows requesting teleports to other players
+  furious.locks:
     default: true
-  furious.teleport.accept:
-    description: Allows accepting teleport requests
+  furious.locks.worlds:
+    default: op
+  furious.homes:
     default: true
-  furious.teleport.decline:
-    description: Allows declining teleport requests
-    default: true
-  furious.teleport.list:
-    description: Allows listing teleport requests
-    default: true
-  furious.teleport.abort:
-    description: Allows aborting outgoing teleport requests
-    default: true
-  furious.teleport.deny:
-    description: Allows toggling auto-deny of teleport requests
-    default: true
-  furious.teleport.worldconfig:
-    description: Allows configuring world teleport settings
-    default: op
-  furious.teleport.coords:
-    description: Allows using coordinate teleport commands
-    default: op
-  furious.teleport.force:
-    description: Allows using force teleport commands
-    default: op
-  furious.teleport.worldspawn:
-    description: Allows teleporting to world spawn locations
-    default: op
-  furious.teleport.setworldspawn:
-    description: Allows setting world spawn locations
-    default: op
-  furious.teleport.bypass:
-    description: Allows bypassing teleport queue for instant teleportation
-    default: op
-  furious.teleport.admin:
-    description: Allows bypassing teleport queue and effects for warps
-    default: op
-  furious.heal.*:
-    description: Gives access to all heal commands
-    children:
-      furious.heal.others: true
-      furious.heal.self: true
-  furious.heal.others:
-    description: Allows healing other players
-    default: op
-  furious.heal.self:
-    description: Allows healing yourself
-    default: op
-  furious.feed.*:
-    description: Gives access to all feed commands
-    children:
-      furious.feed.others: true
-      furious.feed.self: true
-  furious.feed.others:
-    description: Allows feeding other players
-    default: op
-  furious.feed.self:
-    description: Allows feeding yourself
-    default: op
-
-  furious.guild.*:
-    description: Gives access to all guild commands
-    children:
-      furious.guild.create: true
-      furious.guild.invite: true
-      furious.guild.join: true
-      furious.guild.leave: true
-      furious.guild.info: true
-      furious.guild.list: true
-      furious.guild.kick: true
-      furious.guild.disband: true
-      furious.guild.transfer: true
-      furious.guild.description: true
-      furious.guild.claim: true
-      furious.guild.claim.unmanned: true
-      furious.guild.unclaim: true
-      furious.guild.unclaim.unmanned: true
-      furious.guild.claims: true
-      furious.guild.mobs: true
-      furious.guild.homes: true
-      furious.guild.homes.set: true
-      furious.guild.homes.teleport: true
-      furious.guild.admin.*: true
-  furious.guild.admin.*:
-    description: Grants all administrative guild permissions
-    children:
-      furious.guild.admin.transfer: true
-      furious.guild.admin.unclaim: true
-      furious.guild.admin.homes: true
-      furious.guild.admin.disband: true
-      furious.guild.admin.info: true
-  furious.guild.admin.transfer:
-    description: Allows administrative guild ownership transfers
-    default: op
-  furious.guild.admin.unclaim:
-    description: Allows administrative unclaiming of guild land
-    default: op
-  furious.guild.admin.homes:
-    description: Allows administrative management of guild homes
-    default: op
-  furious.guild.admin.disband:
-    description: Allows administrative disbanding of guilds
-    default: op
-  furious.guild.admin.info:
-    description: Allows viewing detailed administrative information about guilds
-    default: op
-  furious.guild.create:
-    description: Allows creating guilds
-    default: true
-  furious.guild.invite:
-    description: Allows inviting players to guilds
-    default: true
-  furious.guild.join:
-    description: Allows joining guilds
-    default: true
-  furious.guild.leave:
-    description: Allows leaving guilds
-    default: true
-  furious.guild.info:
-    description: Allows viewing guild information
-    default: true
-  furious.guild.list:
-    description: Allows listing all guilds
-    default: true
-  furious.guild.kick:
-    description: Allows kicking players from guilds
-    default: true
-  furious.guild.disband:
-    description: Allows disbanding guilds
-    default: true
-  furious.guild.transfer:
-    description: Allows transferring guild ownership
-    default: true
-  furious.guild.description:
-    description: Allows setting guild descriptions
-    default: true
-  furious.guild.claim:
-    description: Allows claiming chunks for a guild
-    default: true
-  furious.guild.claim.unmanned:
-    description: Allows claiming chunks for unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
-    default: op
-  furious.guild.unclaim:
-    description: Allows unclaiming chunks from a guild
-    default: true
-  furious.guild.unclaim.unmanned:
-    description: Allows unclaiming chunks from unmanned guilds (S_A_F_E, WARZONE, WILDLIFE)
-    default: op
-  furious.guild.claims:
-    description: Allows viewing claimed chunks of a guild
-    default: true
-  furious.guild.mobs:
-    description: Allows controlling mob spawning in guild claimed chunks
-    default: true
-  furious.guild.homes:
-    description: Allows managing guild homes
-    default: true
-  furious.guild.homes.set:
-    description: Allows setting guild homes
-    default: true
-  furious.guild.homes.teleport:
-    description: Allows teleporting to guild homes
-    default: true
-
-  furious.locks.*:
-    description: Gives access to all locks commands
-    children:
-      furious.locks.lock: true
-      furious.locks.unlock: true
-      furious.locks.info: true
-      furious.locks.key: true
-      furious.locks.world: true
-  furious.locks.lock:
-    description: Allows creating lock items
-    default: true
-  furious.locks.unlock:
-    description: Allows creating unlock items
-    default: true
-  furious.locks.info:
-    description: Allows checking lock ownership
-    default: true
-  furious.locks.key:
-    description: Allows creating key items
-    default: true
-  furious.locks.world:
-    description: Allows managing locks world settings
-    default: op
-
-  furious.minigame.*:
-    description: Gives access to all minigame commands
-    children:
-      furious.minigame.join: true
-      furious.minigame.leave: true
-      furious.minigame.list: true
-      furious.minigame.info: true
-      furious.minigame.create: true
-      furious.minigame.disable: true
-      furious.minigame.enable: true
-      furious.minigame.start: true
-      furious.minigame.stop: true
-      furious.minigame.edit: true
-      furious.minigame.tp: true
-  furious.minigame.join:
-    description: Allows joining minigame queues
-    default: true
-  furious.minigame.leave:
-    description: Allows leaving minigame queues
-    default: true
-  furious.minigame.list:
-    description: Allows listing available minigames
-    default: true
-  furious.minigame.info:
-    description: Allows viewing minigame information
-    default: true
-  furious.minigame.create:
-    description: Allows creating minigames
-    default: op
-  furious.minigame.disable:
-    description: Allows disabling minigames
-    default: op
-  furious.minigame.enable:
-    description: Allows enabling minigames
-    default: op
-  furious.minigame.start:
-    description: Allows starting minigames
-    default: op
-  furious.minigame.stop:
-    description: Allows stopping minigames
-    default: op
-  furious.minigame.edit:
-    description: Allows editing minigames
-    default: op
-  furious.minigame.tp:
-    description: Allows teleporting to the GameWorld
-    default: op
-
-
-  furious.homes.*:
-    description: Gives access to all homes commands
-    children:
-      furious.homes.set: true
-      furious.homes.move: true
-      furious.homes.rename: true
-      furious.homes.delete: true
-      furious.homes.list: true
-      furious.homes.tp: true
-      furious.homes.buy: true
-      furious.homes.admin: true
-      furious.homes.limit.*: true
-      furious.homes.*.others: true
-  furious.homes.*.others:
-    description: Grants all administrative homes permissions
-    children:
-      furious.homes.set.others: true
-      furious.homes.delete.others: true
-      furious.homes.move.others: true
-      furious.homes.rename.others: true
-      furious.homes.tp.others: true
-      furious.homes.list.others: true
-  furious.homes.set.others:
-    description: Allows setting homes for other players
-    default: op
-  furious.homes.delete.others:
-    description: Allows deleting other players' homes
-    default: op
-  furious.homes.move.others:
-    description: Allows moving other players' homes
-    default: op
-  furious.homes.rename.others:
-    description: Allows renaming other players' homes
-    default: op
-  furious.homes.tp.others:
-    description: Allows teleporting to other players' homes
-    default: op
-  furious.homes.list.others:
-    description: Allows listing other players' homes
+  furious.homes.others:
     default: op
   furious.homes.set:
-    description: Allows setting homes
     default: true
-  furious.homes.move:
-    description: Allows moving homes
+  furious.homes.remove:
     default: true
-  furious.homes.rename:
-    description: Allows renaming homes
-    default: true
-  furious.homes.delete:
-    description: Allows deleting homes
+  furious.homes.teleport:
     default: true
   furious.homes.list:
-    description: Allows listing homes
     default: true
-  furious.homes.tp:
-    description: Allows teleporting to homes
+  furious.homes.move:
+    default: true
+  furious.homes.rename:
     default: true
   furious.homes.buy:
-    description: Allows purchasing additional home slots
     default: true
+  furious.homes.worlds:
+    default: op
+  furious.homes.set.others:
+    default: op
+  furious.homes.remove.others:
+    default: op
+  furious.homes.teleport.others:
+    default: op
+  furious.homes.list.others:
+    default: op
+  furious.homes.move.others:
+    default: op
+  furious.homes.rename.others:
+    default: op
+  furious.homes.buy.others:
+    default: op
   furious.homes.admin:
-    description: Allows managing other players' homes
     default: op
-  furious.homes.limit.1:
-    description: Sets home limit to 1
-    default: false
-  furious.homes.limit.2:
-    description: Sets home limit to 2
-    default: false
-  furious.homes.limit.3:
-    description: Sets home limit to 3
+    children:
+      furious.homes.*: true
+  furious.homes.users:
     default: true
-  furious.homes.limit.5:
-    description: Sets home limit to 5
-    default: false
-  furious.homes.limit.10:
-    description: Sets home limit to 10
-    default: false
+    children:
+      furious.homes: true
+      furious.homes.set: true
+      furious.homes.remove: true
+      furious.homes.teleport: true
+      furious.homes.list: true
+      furious.homes.move: true
+      furious.homes.rename: true
+      furious.homes.buy: true
 
-  furious.warps.*:
-    description: Gives access to all warps commands
-    children:
-      furious.warps.create: true
-      furious.warps.relocate: true
-      furious.warps.cost: true
-      furious.warps.passwd: true
-      furious.warps.rename: true
-      furious.warps.delete: true
-      furious.warps.link: true
-      furious.warps.unlink: true
-      furious.warps.warp: true
-      furious.warps.list: true
-      furious.warps.visibility: true
-      furious.warps.admin.*: true
-  furious.warps.admin.*:
-    description: Grants all administrative warps permissions
-    children:
-      furious.warps.create.others: true
-      furious.warps.delete.others: true
-      furious.warps.relocate.others: true
-      furious.warps.rename.others: true
-      furious.warps.cost.others: true
-      furious.warps.passwd.others: true
-  furious.warps.create.others:
-    description: Allows creating warps for other players
-    default: op
-  furious.warps.delete.others:
-    description: Allows deleting other players' warps
-    default: op
-  furious.warps.relocate.others:
-    description: Allows relocating other players' warps
-    default: op
-  furious.warps.rename.others:
-    description: Allows renaming other players' warps
-    default: op
-  furious.warps.cost.others:
-    description: Allows setting costs on other players' warps
-    default: op
-  furious.warps.passwd.others:
-    description: Allows setting passwords on other players' warps
-    default: op
-  furious.warps.create:
-    description: Allows creating warps
-    default: op
-  furious.warps.relocate:
-    description: Allows relocating warps
-    default: op
-  furious.warps.cost:
-    description: Allows setting warp costs
-    default: op
-  furious.warps.passwd:
-    description: Allows setting warp passwords
-    default: op
-  furious.warps.rename:
-    description: Allows renaming warps
-    default: op
-  furious.warps.delete:
-    description: Allows deleting warps
-    default: op
-  furious.warps.link:
-    description: Allows linking warps to portals
-    default: op
-  furious.warps.unlink:
-    description: Allows removing warp portals
-    default: op
-  furious.warps.warp:
-    description: Allows teleporting to warps
-    default: true
-  furious.warps.list:
-    description: Allows listing warps
-    default: true
-  furious.warps.visibility:
-    description: Allows toggling visibility of warp armor stands
-    default: op
-
-  furious.tombstones.*:
-    description: Gives access to all tombstone commands
-    children:
-      furious.tombstones.admin: true
-      furious.tombstones.admin.*: true
-  furious.tombstones.admin.*:
-    description: Grants all administrative tombstone permissions
-    children:
-      furious.tombstones.purge: true
-      furious.tombstones.purge.others: true
-      furious.tombstones.access.others: true
-      furious.tombstones.extend.others: true
-      furious.tombstones.teleport.others: true
-  furious.tombstones.purge:
-    description: Allows purging all tombstones
-    default: op
-  furious.tombstones.purge.others:
-    description: Allows purging other players' tombstones
-    default: op
-  furious.tombstones.access.others:
-    description: Allows accessing other players' tombstones
-    default: op
-  furious.tombstones.extend.others:
-    description: Allows extending the expiration time of other players' tombstones
-    default: op
-  furious.tombstones.teleport.others:
-    description: Allows teleporting to other players' tombstones
-    default: op
-  furious.tombstones.admin:
-    description: Allows managing tombstones (purge, etc.)
-    default: op
-
-  furious.security.*:
-    description: Gives access to all security commands
-    children:
-      furious.security.admin: true
-  furious.security.admin:
-    description: Allows managing security reviews and other security-related tasks
-    default: op
-
-  furious.bank.*:
-    description: Gives access to all bank commands
-    children:
-      furious.bank.balance: true
-      furious.bank.deposit: true
-      furious.bank.withdraw: true
-      furious.bank.transfer: true
-      furious.bank.claim: true
-      furious.bank.unclaim: true
-      furious.bank.info: true
-      furious.bank.create: true
-      furious.bank.rename: true
-      furious.bank.delete: true
-      furious.bank.deleteaccount: true
-      furious.bank.createaccount: true
-      furious.bank.editbalance: true
-      furious.bank.editinterest: true
-      furious.bank.admin: true
-      furious.bank.createaccount.others: true
-      furious.bank.deleteaccount.others: true
-      furious.bank.editbalance.others: true
-      furious.bank.admin.*: true
-      furious.bank.add: true
-      furious.bank.subtract: true
-      furious.bank.set: true
-      furious.bank.add.others: true
-      furious.bank.subtract.others: true
-      furious.bank.set.others: true
-      furious.bank.interest: true
-  furious.bank.admin.*:
-    description: Grants all administrative bank permissions
-    children:
-      furious.bank.add.others: true
-      furious.bank.subtract.others: true
-      furious.bank.set.others: true
-      furious.bank.createaccount.others: true
-      furious.bank.deleteaccount.others: true
-      furious.bank.interest: true
-  furious.bank.add:
-    description: Allows adding to account balances
-    default: op
-  furious.bank.subtract:
-    description: Allows subtracting from account balances
-    default: op
-  furious.bank.set:
-    description: Allows setting account balances to specific values
-    default: op
-  furious.bank.add.others:
-    description: Allows adding to other players' account balances
-    default: op
-  furious.bank.subtract.others:
-    description: Allows subtracting from other players' account balances
-    default: op
-  furious.bank.set.others:
-    description: Allows setting other players' account balances
-    default: op
-  furious.bank.interest:
-    description: Allows editing bank interest rates
-    default: op
-  furious.bank.balance:
-    description: Allows checking bank balance
-    default: true
-  furious.bank.deposit:
-    description: Allows depositing to bank
-    default: true
-  furious.bank.withdraw:
-    description: Allows withdrawing from bank
-    default: true
-  furious.bank.transfer:
-    description: Allows transferring funds between bank accounts
-    default: true
-  furious.bank.claim:
-    description: Allows claiming chunks for banks
-    default: op
-  furious.bank.unclaim:
-    description: Allows unclaiming chunks from banks
-    default: op
-  furious.bank.info:
-    description: Allows viewing bank information at current location
-    default: true
-  furious.bank.create:
-    description: Allows creating banks
-    default: op
-  furious.bank.rename:
-    description: Allows renaming banks
-    default: op
-  furious.bank.delete:
-    description: Allows deleting banks
-    default: op
-  furious.bank.deleteaccount:
-    description: Allows deleting accounts from banks
-    default: true
-  furious.bank.createaccount:
-    description: Allows creating accounts in banks
-    default: true
-  furious.bank.editbalance:
-    description: Allows editing player balances in banks
-    default: op
-  furious.bank.editinterest:
-    description: Allows editing bank interest rates
-    default: op
-  furious.bank.createaccount.others:
-    description: Allows creating bank accounts for other players
-    default: op
-  furious.bank.deleteaccount.others:
-    description: Allows deleting bank accounts of other players
-    default: op
-  furious.bank.editbalance.others:
-    description: Allows editing bank balances of other players
-    default: op
-  furious.bank.admin:
-    description: Allows administrative bank operations
-    default: op
-  furious.permission.*:
-    description: Gives access to all permission management commands
-    default: op
-
-  furious.wallet.*:
-    description: Gives access to all wallet commands
-    children:
-      furious.wallet: true
-      furious.wallet.pay: true
-      furious.wallet.balance.others: true
-      furious.wallet.add: true
-      furious.wallet.sub: true
-      furious.wallet.set: true
   furious.wallet:
-    description: Allows to have a wallet (check own balance)
+    description: Access to Wallet command
     default: true
-  furious.wallet.pay:
-    description: Allows basic wallet operations (pay)
+  furious.wallet.balance:
     default: true
   furious.wallet.balance.others:
-    description: Allows checking other players' wallet balances
+    default: op
+  furious.wallet.pay:
+    default: true
+  furious.wallet.set:
     default: op
   furious.wallet.add:
-    description: Allows adding scraps to players' wallets
     default: op
-  furious.wallet.sub:
-    description: Allows subtracting scraps from players' wallets
+  furious.wallet.subtract:
     default: op
-  furious.wallet.set:
-    description: Allows setting players' wallet balances
+  furious.wallet.reload:
     default: op
-  furious.hide:
-    description: Allows toggling visibility in the locator bar
-    default: true
-  furious.shops.*:
-    description: Gives access to all shops commands
+  furious.wallet.log:
+    default: op
+  furious.wallet.admin:
+    default: op
     children:
-      furious.shops.buy: true
-      furious.shops.sell: true
-      furious.shops.info: true
-      furious.shops.create: true
-      furious.shops.claim: true
-      furious.shops.unclaim: true
-      furious.shops.spawn: true
-      furious.shops.teleport: true
-      furious.shops.add: true
-      furious.shops.remove: true
-      furious.shops.stock: true
-      furious.shops.price: true
-      furious.shops.restock: true
-      furious.shops.toggle: true
-  furious.shops.buy:
-    description: Allows buying items from the shop
+      furious.wallet.*: true
+  furious.wallet.users:
     default: true
-  furious.shops.sell:
-    description: Allows selling items to the shop
+    children:
+      furious.wallet: true
+      furious.wallet.balance: true
+      furious.wallet.pay: true
+
+  furious.guild:
     default: true
-  furious.shops.info:
-    description: Allows viewing shop information including pricing and stock
+  furious.guild.create:
     default: true
-  furious.shops.create:
-    description: Allows creating shops
+  furious.guild.create.admin:
     default: op
+  furious.guild.rename:
+    default: true
+  furious.guild.rename.others:
+    default: op
+
+  furious.tombstones:
+    default: op
+  furious.tombstones.clear:
+    default: op
+  furious.guild.delete:
+    default: true
+  furious.guild.delete.others:
+    default: op
+  furious.guild.invite:
+    default: true
+  furious.guild.accept:
+    default: true
+  furious.guild.decline:
+    default: true
+  furious.guild.kick:
+    default: true
+  furious.guild.kick.others:
+    default: op
+  furious.guild.promote:
+    default: true
+  furious.guild.promote.others:
+    default: op
+  furious.guild.demote:
+    default: true
+  furious.guild.demote.others:
+    default: op
+  furious.guild.claim:
+    default: true
+  furious.guild.claims:
+    default: op
+  furious.guild.unclaim:
+    default: true
+  furious.guild.unclaims:
+    default: op
+  furious.guild.setopen:
+    default: true
+  furious.guild.setopen.others:
+    default: op
+  furious.guild.join:
+    default: true
+  furious.guild.worlds:
+    default: op
+  furious.guild.list:
+    default: true
+
+  furious.warps:
+    default: true
+  furious.warps.set:
+    default: op
+  furious.warps.move:
+    default: op
+  furious.warps.rename:
+    default: op
+  furious.warps.setcost:
+    default: op
+  furious.warps.setpassword:
+    default: op
+  furious.warps.remove:
+    default: op
+  furious.warps.connectportal:
+    default: op
+  furious.warps.teleport:
+    default: true
+  furious.warps.list:
+    default: true
+
+  furious.banks:
+    default: true
+  furious.banks.create:
+    default: op
+  furious.banks.rename:
+    default: op
+  furious.banks.delete:
+    default: op
+  furious.banks.claim:
+    default: op
+  furious.banks.unclaim:
+    default: op
+  furious.banks.setinterest:
+    default: op
+  furious.banks.type:
+    default: op
+  furious.banks.createaccount:
+    default: true
+  furious.banks.deposit:
+    default: true
+  furious.banks.withdraw:
+    default: true
+  furious.banks.deleteaccount:
+    default: true
+  furious.banks.list:
+    default: true
+
+  furious.shops:
+    default: true
   furious.shops.claim:
-    description: Allows claiming chunks for shops
     default: op
   furious.shops.unclaim:
-    description: Allows unclaiming chunks from shops
+    default: op
+  furious.shops.setbuyprice:
+    default: op
+  furious.shops.setsellprice:
+    default: op
+  furious.shops.create:
+    default: op
+  furious.shops.delete:
     default: op
   furious.shops.spawn:
-    description: Allows setting spawn locations for shops
     default: op
   furious.shops.teleport:
-    description: Allows teleporting to shops
+    default: op
+  furious.shops.list:
     default: true
-  furious.shops.add:
-    description: Allows adding items to shops
+  furious.shops.additem:
     default: op
-  furious.shops.remove:
-    description: Allows removing items from shops
+  furious.shops.removeitem:
     default: op
+  furious.shops.listitem:
+    default: true
+  furious.shops.buy:
+    default: true
+  furious.shops.sell:
+    default: true
   furious.shops.stock:
-    description: Allows setting stock for shop items
-    default: op
-  furious.shops.price:
-    description: Allows setting prices for shop items
     default: op
   furious.shops.restock:
-    description: Allows restocking all items in a shop
     default: op
-  furious.shops.toggle:
-    description: Allows toggling whether items can be bought from or sold to a shop
+  furious.shops.type:
     default: op
-  furious.*:
-    description: Gives access to all furious plugin permissions
-    children:
-      furious.invsee: true
-      furious.invsee.offline: true
-      furious.invsee.edit: true
-      furious.endersee: true
-      furious.endersee.offline: true
-      furious.endersee.edit: true
-      furious.teleport.*: true
-      furious.heal.*: true
-      furious.feed.*: true
-      furious.guild.*: true
-      furious.locks.*: true
-      furious.minigame.*: true
-      furious.homes.*: true
-      furious.warps.*: true
-      furious.tombstones.*: true
-      furious.security.*: true
-      furious.bank.*: true
-      furious.permission.*: true
-      furious.wallet.*: true
-      furious.shops.*: true
-      furious.hide: true
-      furious.ratelimit.exempt: true
-  furious.ratelimit.exempt:
-    description: Exempts a player from all rate limits
+
+  furious.teleport:
+    default: true
+  furious.teleport.request:
+    default: true
+  furious.teleport.accept:
+    default: true
+  furious.teleport.decline:
+    default: true
+  furious.teleport.cancel:
+    default: true
+  furious.teleport.deny:
+    default: true
+
+  furious.checklist:
+    default: true
+  furious.checklist.biomes:
+    default: true
+  furious.checklist.biomes.others:
+    default: op
+  furious.checklist.monsters:
+    default: true
+  furious.checklist.monsters.others:
+    default: op
+  furious.checklist.taming:
+    default: true
+  furious.checklist.taming.others:
     default: op

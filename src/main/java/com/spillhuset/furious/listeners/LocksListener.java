@@ -1,436 +1,241 @@
 package com.spillhuset.furious.listeners;
 
 import com.spillhuset.furious.Furious;
-import com.spillhuset.furious.entities.Guild;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import com.spillhuset.furious.utils.Components;
 import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.Bisected;
+import org.bukkit.block.data.Openable;
+import org.bukkit.block.data.type.Door;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
-/**
- * Listener for lock-related events.
- */
 public class LocksListener implements Listener {
     private final Furious plugin;
-    private final NamespacedKey lockKey;
-    private final NamespacedKey unlockKey;
-    private final NamespacedKey infoKey;
-    private final NamespacedKey keyKey;
-    private final NamespacedKey ownerKey;
-    private final NamespacedKey blockTypeKey;
-    private final NamespacedKey guildKey;
+    private final NamespacedKey TOOL_KEY;
+    private final NamespacedKey KEY_OWNER_KEY;
 
-    /**
-     * Creates a new LocksListener.
-     *
-     * @param plugin The plugin instance
-     */
     public LocksListener(Furious plugin) {
-        this.plugin = plugin;
-        this.lockKey = new NamespacedKey(plugin, "lock_item");
-        this.unlockKey = new NamespacedKey(plugin, "unlock_item");
-        this.infoKey = new NamespacedKey(plugin, "info_tool");
-        this.keyKey = new NamespacedKey(plugin, "key_item");
-        this.ownerKey = new NamespacedKey(plugin, "owner_uuid");
-        this.blockTypeKey = new NamespacedKey(plugin, "block_type");
-        this.guildKey = new NamespacedKey(plugin, "guild_key");
+        this.plugin = plugin.getInstance();
+        this.TOOL_KEY = new NamespacedKey(this.plugin, "locks_tool");
+        this.KEY_OWNER_KEY = new NamespacedKey(this.plugin, "locks_key_owner");
     }
 
-    /**
-     * Handles player interactions with blocks using lock items.
-     */
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onPlayerInteract(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        ItemStack item = event.getItem();
+    @EventHandler
+    public void onDrop(PlayerDropItemEvent event) {
+        ItemStack stack = event.getItemDrop().getItemStack();
+        if (isTool(stack)) {
+            event.setCancelled(true);
+            Components.sendErrorMessage(event.getPlayer(), "You cannot drop lock/unlock tools.");
+        }
+    }
+
+    @EventHandler
+    public void onInteract(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) return; // ignore off-hand to avoid double firing
         Block block = event.getClickedBlock();
-
-        // Only handle right-clicks on blocks with items
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || item == null || block == null) {
-            return;
-        }
-
-        // Check if the block is locked and handle access control
-        // This needs to happen before handling lock items
-        if (plugin.getLocksManager().isLocked(block)) {
-            // Get the owner of the lock
-            UUID lockOwner = plugin.getLocksManager().getOwner(block);
-
-            // Check if the player is the owner or an op
-            if (player.getUniqueId().equals(lockOwner) || player.isOp()) {
-                // Allow access
-                return;
-            }
-
-            // Check if the player has a key for this lock in either hand
-            // First check main hand
-            if (checkKeyForLock(item, lockOwner, block)) {
-                // Allow access
-                return;
-            }
-
-            // Then check off hand
-            ItemStack offHandItem = player.getInventory().getItemInOffHand();
-            if (checkKeyForLock(offHandItem, lockOwner, block)) {
-                // Allow access
-                return;
-            }
-
-            // Check if the block is in a guild territory
-            Chunk chunk = block.getChunk();
-            Guild guild = plugin.getGuildManager().getChunkOwner(chunk);
-
-            if (guild != null) {
-                // Block is in guild territory, use existing guild permission system
-                // The GuildListener will handle this
-                return;
-            }
-
-            // Block is outside guild territory and player doesn't have permission
-            event.setCancelled(true);
-            player.sendMessage(Component.text("This block is locked by someone else!", NamedTextColor.RED));
-            return;
-        }
-
-        // Check if the player is in a valid world (not nether, the end, or a game world)
-        World world = block.getWorld();
-        String worldName = world.getName();
-
-        // Don't allow locks in nether or end worlds
-        if (worldName.endsWith("_nether") || worldName.endsWith("_the_end")) {
-            player.sendMessage(Component.text("Locks cannot be used in this dimension!", NamedTextColor.RED));
-            event.setCancelled(true);
-            return;
-        }
-
-        // Don't allow locks in game worlds
-        if (worldName.equals(plugin.getWorldManager().getGameWorldName()) ||
-                worldName.equals(plugin.getWorldManager().getGameBackupName()) ||
-                worldName.contains("_playground") ||
-                worldName.contains("Map") ||
-                worldName.contains("Backup")) {
-            player.sendMessage(Component.text("Locks cannot be used in game worlds!", NamedTextColor.RED));
-            event.setCancelled(true);
-            return;
-        }
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            return;
-        }
-
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-
-        // Handle lock item
-        if (container.has(lockKey, PersistentDataType.STRING)) {
-            event.setCancelled(true); // Prevent normal interaction
-
-            // Check if the block is lockable
-            if (!plugin.getLocksManager().isLockable(block)) {
-                player.sendMessage(Component.text("This block cannot be locked!", NamedTextColor.RED));
-                return;
-            }
-
-            // Check if the block is already locked
-            if (plugin.getLocksManager().isLocked(block)) {
-                player.sendMessage(Component.text("This block is already locked!", NamedTextColor.RED));
-                return;
-            }
-
-            // Lock the block
-            if (plugin.getLocksManager().lockBlock(player, block)) {
-                player.sendMessage(Component.text("Block locked successfully!", NamedTextColor.GREEN));
-
-                // Remove one lock item from the player's hand
-                if (item.getAmount() > 1) {
-                    item.setAmount(item.getAmount() - 1);
-                    player.getInventory().setItemInMainHand(item);
-                } else {
-                    player.getInventory().setItemInMainHand(null);
+        if (block == null) return;
+        Player player = event.getPlayer();
+        // If locks disabled in this world, do not enforce and block tool usage
+        if (plugin.locksService != null) {
+            block.getWorld();
+            if (!plugin.locksService.isWorldEnabled(block.getWorld().getUID())) {
+                // If trying to use tools in a disabled world, cancel and inform
+                ItemStack toolCheck = player.getInventory().getItemInMainHand();
+                String toolType0 = getToolType(toolCheck);
+                if (toolType0 != null) {
+                    event.setCancelled(true);
+                    Components.sendErrorMessage(player, "Locks are disabled in this world.");
                 }
-            } else {
-                player.sendMessage(Component.text("Failed to lock the block!", NamedTextColor.RED));
+                return;
             }
         }
+        ItemStack inHand = player.getInventory().getItemInMainHand();
+        String toolType = getToolType(inHand);
+        UUID owner = plugin.locksService == null ? null : plugin.locksService.getOwner(block);
 
-        // Handle unlock item
-        else if (container.has(unlockKey, PersistentDataType.STRING)) {
-            event.setCancelled(true); // Prevent normal interaction
-
-            // Check if the block is locked
-            if (!plugin.getLocksManager().isLocked(block)) {
-                player.sendMessage(Component.text("This block is not locked!", NamedTextColor.RED));
-                return;
-            }
-
-            // Check if the player is the owner
-            UUID owner = plugin.getLocksManager().getOwner(block);
-            if (owner == null || !owner.equals(player.getUniqueId())) {
-                player.sendMessage(Component.text("You don't own this lock!", NamedTextColor.RED));
-                return;
-            }
-
-            // Unlock the block
-            if (plugin.getLocksManager().unlockBlock(player, block)) {
-                player.sendMessage(Component.text("Block unlocked successfully!", NamedTextColor.GREEN));
-
-                // Remove one unlock item from the player's hand
-                if (item.getAmount() > 1) {
-                    item.setAmount(item.getAmount() - 1);
-                    player.getInventory().setItemInMainHand(item);
-                } else {
-                    player.getInventory().setItemInMainHand(null);
-                }
-            } else {
-                player.sendMessage(Component.text("Failed to unlock the block!", NamedTextColor.RED));
-            }
-        }
-
-        // Handle info tool
-        else if (container.has(infoKey, PersistentDataType.STRING)) {
-            event.setCancelled(true); // Prevent normal interaction
-
-            // Check if the block is locked
-            if (!plugin.getLocksManager().isLocked(block)) {
-                player.sendMessage(Component.text("This block is not locked!", NamedTextColor.YELLOW));
-                return;
-            }
-
-            // Get the owner
-            UUID ownerUUID = plugin.getLocksManager().getOwner(block);
-            String ownerName = "Unknown";
-
-            if (ownerUUID != null) {
-                Player owner = Bukkit.getPlayer(ownerUUID);
+        // Using tools: lock/unlock
+        if (toolType != null) {
+            event.setCancelled(true); // prevent normal item use (like placing a sign or using shears)
+            if (toolType.equals("lock")) {
+                // Prevent locking in a claimed chunk if player is not a member of the owning guild (ops bypass)
+                try {
+                    if (!player.isOp()) {
+                        block.getWorld();
+                        UUID worldId = block.getWorld().getUID();
+                        int cx = block.getChunk().getX();
+                        int cz = block.getChunk().getZ();
+                        UUID owningGuild = plugin.guildService.getClaimOwner(worldId, cx, cz);
+                        if (owningGuild != null) {
+                            UUID playerGuild = plugin.guildService.getGuildIdForMember(player.getUniqueId());
+                            if (playerGuild == null || !playerGuild.equals(owningGuild)) {
+                                Components.sendErrorMessage(player, "You must be a member of the guild that owns this chunk to set a lock here.");
+                                return;
+                            }
+                        }
+                    }
+                } catch (Throwable ignored) {}
                 if (owner != null) {
-                    ownerName = owner.getName();
-                } else {
-                    // Use UUID string representation for offline players to avoid blocking network calls
-                    ownerName = ownerUUID.toString();
+                    Components.sendErrorMessage(player, "This block (or its pair) is already locked.");
+                    return;
                 }
-            }
-
-            player.sendMessage(Component.text("This block is locked by: ", NamedTextColor.YELLOW)
-                    .append(Component.text(ownerName, NamedTextColor.GOLD)));
-        }
-
-        // Handle key item
-        else if (container.has(keyKey, PersistentDataType.STRING)) {
-            event.setCancelled(true); // Prevent normal interaction
-
-            // Check if the block is locked
-            if (!plugin.getLocksManager().isLocked(block)) {
-                player.sendMessage(Component.text("This block is not locked!", NamedTextColor.RED));
-                return;
-            }
-
-            // Get the owner of the key
-            String keyOwnerStr = container.get(ownerKey, PersistentDataType.STRING);
-            if (keyOwnerStr == null) {
-                player.sendMessage(Component.text("This key is invalid!", NamedTextColor.RED));
-                return;
-            }
-
-            UUID keyOwner = UUID.fromString(keyOwnerStr);
-
-            // Check if the key is for a specific block type
-            String keyBlockType = container.get(blockTypeKey, PersistentDataType.STRING);
-            if (keyBlockType != null && !block.getType().name().equals(keyBlockType)) {
-                player.sendMessage(Component.text("This key doesn't work on this type of block!", NamedTextColor.RED));
-                return;
-            }
-
-            // Get the owner of the lock
-            UUID lockOwner = plugin.getLocksManager().getOwner(block);
-            if (lockOwner == null) {
-                player.sendMessage(Component.text("This lock is invalid!", NamedTextColor.RED));
-                return;
-            }
-
-            // Check if the key owner matches the lock owner
-            if (!keyOwner.equals(lockOwner)) {
-                player.sendMessage(Component.text("This key doesn't fit this lock!", NamedTextColor.RED));
-                return;
-            }
-
-            // Unlock the block
-            if (plugin.getLocksManager().unlockBlock(player, block)) {
-                player.sendMessage(Component.text("Block unlocked successfully with key!", NamedTextColor.GREEN));
-
-                // Remove one key from the player's hand
-                if (item.getAmount() > 1) {
-                    item.setAmount(item.getAmount() - 1);
-                    player.getInventory().setItemInMainHand(item);
+                boolean ok = plugin.locksService.lockBlock(player.getUniqueId(), block);
+                if (ok) {
+                    consumeOne(player);
+                    plugin.locksService.save();
+                    Components.sendSuccessMessage(player, "Locked.");
                 } else {
-                    player.getInventory().setItemInMainHand(null);
+                    Components.sendErrorMessage(player, "Could not lock this block.");
                 }
-            } else {
-                player.sendMessage(Component.text("Failed to unlock the block with key!", NamedTextColor.RED));
+                return;
+            } else if (toolType.equals("unlock")) {
+                boolean ok = plugin.locksService.unlockBlock(player.getUniqueId(), player.isOp(), block);
+                if (ok) {
+                    consumeOne(player);
+                    plugin.locksService.save();
+                    Components.sendSuccessMessage(player, "Unlocked.");
+                } else {
+                    Components.sendErrorMessage(player, "You are not the owner, or it isn't locked.");
+                }
+                return;
             }
         }
+
+        // No tool: enforce access, but allow with matching key
+        if (!player.isOp() && owner != null && !owner.equals(player.getUniqueId())) {
+            if (!hasMatchingKey(inHand, owner)) {
+                event.setCancelled(true);
+                Components.sendErrorMessage(player, "This block is locked.");
+                return;
+            }
+        }
+
+        // If it's a door and interaction is allowed (we return early on cancel), sync paired door open state
+        if (block.getBlockData() instanceof Door) {
+            syncDoubleDoor(block);
+        }
     }
 
-    /**
-     * Prevents placing lock/key items.
-     */
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onItemPlace(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-
-        ItemStack item = event.getItem();
-        if (item == null || !item.hasItemMeta()) {
-            return;
-        }
-
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-
-        // Check if the item is a lock-related item
-        if (container.has(lockKey, PersistentDataType.STRING) ||
-                container.has(unlockKey, PersistentDataType.STRING) ||
-                container.has(infoKey, PersistentDataType.STRING) ||
-                container.has(keyKey, PersistentDataType.STRING)) {
-
-            // Prevent placing the item
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        if (player.isOp()) return; // ops bypass for breaking
+        Block block = event.getBlock();
+        // Skip enforcement in disabled worlds
+        if (plugin.locksService != null && block.getWorld() != null && !plugin.locksService.isWorldEnabled(block.getWorld().getUID())) return;
+        UUID owner = plugin.locksService == null ? null : plugin.locksService.getOwner(block);
+        if (owner != null && !owner.equals(player.getUniqueId())) {
             event.setCancelled(true);
+            Components.sendErrorMessage(player, "This block is locked.");
         }
     }
 
-    /**
-     * Prevents dropping the info tool.
-     */
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onItemDrop(PlayerDropItemEvent event) {
-        ItemStack item = event.getItemDrop().getItemStack();
-
-        if (!item.hasItemMeta()) {
-            return;
-        }
-
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-
-        // Check if the item is an info tool
-        if (container.has(infoKey, PersistentDataType.STRING)) {
-            // Prevent dropping the item
-            event.setCancelled(true);
-            event.getPlayer().sendMessage(Component.text("You cannot drop the lock info tool!", NamedTextColor.RED));
-        }
+    private boolean isTool(ItemStack stack) {
+        if (stack == null) return false;
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) return false;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        return pdc.has(TOOL_KEY, PersistentDataType.STRING);
     }
 
-    /**
-     * Checks if an item is a key for a specific lock.
-     *
-     * @param item      The item to check
-     * @param lockOwner The UUID of the lock owner
-     * @param block     The locked block
-     * @return true if the item is a key for the lock, false otherwise
-     */
-    private boolean checkKeyForLock(ItemStack item, UUID lockOwner, Block block) {
-        if (item == null || !item.hasItemMeta()) {
+    private String getToolType(ItemStack stack) {
+        if (stack == null) return null;
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) return null;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        return pdc.get(TOOL_KEY, PersistentDataType.STRING);
+    }
+
+    private boolean hasMatchingKey(ItemStack stack, UUID owner) {
+        if (stack == null) return false;
+        ItemMeta meta = stack.getItemMeta();
+        if (meta == null) return false;
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        String val = pdc.get(KEY_OWNER_KEY, PersistentDataType.STRING);
+        if (val == null) return false;
+        try {
+            return owner.equals(UUID.fromString(val));
+        } catch (IllegalArgumentException ignored) {
             return false;
         }
-
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-
-        if (container.has(keyKey, PersistentDataType.STRING)) {
-            // Check if the key is for a specific block type
-            String keyBlockType = container.get(blockTypeKey, PersistentDataType.STRING);
-            if (keyBlockType != null && !block.getType().name().equals(keyBlockType)) {
-                return false; // Key is for a different block type
-            }
-
-            // Check if this is a guild key
-            String guildIdStr = container.get(guildKey, PersistentDataType.STRING);
-            if (guildIdStr != null) {
-                // This is a guild key
-                UUID guildId = UUID.fromString(guildIdStr);
-
-                // Get the guild that owns the lock
-                Guild lockGuild = null;
-                for (Guild guild : plugin.getGuildManager().getAllGuilds()) {
-                    if (guild.isMember(lockOwner)) {
-                        lockGuild = guild;
-                        break;
-                    }
-                }
-
-                // If the lock owner is not in a guild, check if the key's guild matches
-                if (lockGuild == null) {
-                    // Get the key's guild
-                    Guild keyGuild = plugin.getGuildManager().getGuild(guildId);
-                    return keyGuild != null && keyGuild.isMember(lockOwner); // The lock owner is a member of the key's guild
-                } else {
-                    // Check if the key's guild matches the lock owner's guild
-                    return lockGuild.getId().equals(guildId);
-                }
-            } else {
-                // This is a player key
-                // Get the owner of the key
-                String keyOwnerStr = container.get(ownerKey, PersistentDataType.STRING);
-                if (keyOwnerStr != null) {
-                    UUID keyOwner = UUID.fromString(keyOwnerStr);
-                    // Check if the key owner matches the lock owner
-                    return keyOwner.equals(lockOwner);
-                }
-            }
-        }
-
-        return false;
     }
 
-    /**
-     * Prevents transferring the info tool.
-     */
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onInventoryClick(InventoryClickEvent event) {
-        ItemStack item = event.getCurrentItem();
-
-        if (item == null || !item.hasItemMeta()) {
-            return;
+    private void consumeOne(Player player) {
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        if (hand == null) return;
+        int amt = hand.getAmount();
+        if (amt <= 1) {
+            player.getInventory().setItemInMainHand(null);
+        } else {
+            hand.setAmount(amt - 1);
         }
+    }
 
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-
-        // Check if the item is an info tool
-        if (container.has(infoKey, PersistentDataType.STRING)) {
-            // Only allow the owner to move the item within their own inventory
-            String ownerStr = container.get(ownerKey, PersistentDataType.STRING);
-            if (ownerStr == null) {
-                // Invalid item, cancel the event
-                event.setCancelled(true);
-                return;
+    private void syncDoubleDoor(Block doorBlock) {
+        // Run next tick to let vanilla toggle the clicked door; then mirror the state to its pair
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!(doorBlock.getBlockData() instanceof Door door)) return;
+            boolean open;
+            try {
+                open = ((Openable) doorBlock.getBlockData()).isOpen();
+            } catch (Throwable t) {
+                open = door.isOpen();
             }
+            Block pair = findPairedDoor(doorBlock, door);
+            if (pair == null) return;
+            if (pair.getBlockData() instanceof Door d2) {
+                if (d2.isOpen() != open) {
+                    d2.setOpen(open);
+                    // ensure we modify the bottom half (Bukkit applies to both halves based on half)
+                    Block toSet = pair;
+                    if (d2.getHalf() == Bisected.Half.TOP) {
+                        toSet = pair.getRelative(BlockFace.DOWN);
+                        if (toSet.getBlockData() instanceof Door d3) {
+                            d3.setOpen(open);
+                            toSet.setBlockData(d3, false);
+                            return;
+                        }
+                    }
+                    toSet.setBlockData(d2, false);
+                }
+            }
+        });
+    }
 
-            UUID ownerUUID = UUID.fromString(ownerStr);
-            Player player = (Player) event.getWhoClicked();
-
-            // If the player is not the owner or trying to move to another inventory
-            if (!player.getUniqueId().equals(ownerUUID) || event.getClickedInventory() != player.getInventory()) {
-                event.setCancelled(true);
-                player.sendMessage(Component.text("You cannot transfer the lock info tool!", NamedTextColor.RED));
+    private Block findPairedDoor(Block base, Door door) {
+        BlockFace facing = door.getFacing();
+        // Doors pair are adjacent on the perpendicular axis with opposite hinges
+        BlockFace left = switch (facing) {
+            case NORTH -> BlockFace.WEST;
+            case SOUTH -> BlockFace.EAST;
+            case EAST -> BlockFace.SOUTH;
+            case WEST -> BlockFace.NORTH;
+            default -> BlockFace.NORTH;
+        };
+        Block[] cands = new Block[]{base.getRelative(left), base.getRelative(left.getOppositeFace())};
+        for (Block b : cands) {
+            if (b.getType() == base.getType() && b.getBlockData() instanceof Door d2) {
+                if (d2.getFacing() == facing && d2.getHinge() != door.getHinge()) {
+                    return b;
+                }
             }
         }
+        return null;
     }
 }

@@ -1,0 +1,500 @@
+package com.spillhuset.furious.listeners;
+
+import com.spillhuset.furious.Furious;
+import com.spillhuset.furious.utils.Guild;
+import com.spillhuset.furious.utils.GuildType;
+import com.spillhuset.furious.utils.GuildRole;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.entity.*;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockFromToEvent;
+import org.bukkit.event.entity.*;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.potion.PotionType;
+
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Enforces protections for SAFE-type guild claims:
+ * - No block placing or breaking (players) within SAFE chunks.
+ * - No mob spawning within SAFE chunks.
+ * - No explosions or entity-caused block changes within SAFE chunks.
+ * - Prevents harmful entities like TNT from spawning/activating in SAFE chunks.
+ * - Prevents players from being hit by arrows, fireballs, snowballs, or harmful potions in SAFE chunks.
+ */
+public class ProtectionListener implements Listener {
+    private final Furious plugin;
+
+    public ProtectionListener(Furious plugin) {
+        this.plugin = plugin.getInstance();
+    }
+
+    private boolean isInSafeGuild(Location loc) {
+        if (loc == null || plugin.guildService == null || loc.getWorld() == null) return false;
+        Chunk chunk = loc.getChunk();
+        UUID worldId = loc.getWorld().getUID();
+        UUID owner = plugin.guildService.getClaimOwner(worldId, chunk.getX(), chunk.getZ());
+        if (owner == null) return false;
+        Guild g = plugin.guildService.getGuildById(owner);
+        return g != null && g.getType() == GuildType.SAFE;
+    }
+
+    private boolean isInWarGuild(Location loc) {
+        if (loc == null || plugin.guildService == null || loc.getWorld() == null) return false;
+        Chunk chunk = loc.getChunk();
+        UUID worldId = loc.getWorld().getUID();
+        UUID owner = plugin.guildService.getClaimOwner(worldId, chunk.getX(), chunk.getZ());
+        if (owner == null) return false;
+        Guild g = plugin.guildService.getGuildById(owner);
+        return g != null && g.getType() == GuildType.WAR;
+    }
+
+    private Guild getOwningGuild(Location loc) {
+        if (loc == null || plugin.guildService == null || loc.getWorld() == null) return null;
+        Chunk chunk = loc.getChunk();
+        UUID worldId = loc.getWorld().getUID();
+        UUID owner = plugin.guildService.getClaimOwner(worldId, chunk.getX(), chunk.getZ());
+        return owner == null ? null : plugin.guildService.getGuildById(owner);
+    }
+
+    private boolean isInOwnedGuild(Location loc) {
+        Guild g = getOwningGuild(loc);
+        return g != null && g.getType() == GuildType.OWNED;
+    }
+
+    // --- Build/break protections ---
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Block block = event.getBlock();
+        Location loc = block.getLocation();
+        if (isInSafeGuild(loc) || isInWarGuild(loc)) {
+            if (event.getPlayer().isOp()) return; // allow ops
+            event.setCancelled(true);
+            return;
+        }
+        // OWNED: only MODERATOR or ADMIN of the owning guild may break
+        if (isInOwnedGuild(loc) && !event.getPlayer().isOp()) {
+            Guild g = getOwningGuild(loc);
+            if (g != null) {
+                GuildRole role = g.getMembers().get(event.getPlayer().getUniqueId());
+                UUID playerGuildId = plugin.guildService.getGuildIdForMember(event.getPlayer().getUniqueId());
+                boolean sameGuild = g.getUuid().equals(playerGuildId);
+                boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
+                if (!can) {
+                    event.setCancelled(true);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Block block = event.getBlockPlaced();
+        Location loc = block.getLocation();
+        if (isInSafeGuild(loc) || isInWarGuild(loc)) {
+            if (event.getPlayer().isOp()) return; // allow ops
+            event.setCancelled(true);
+            return;
+        }
+        // OWNED: only MODERATOR or ADMIN of the owning guild may place
+        if (isInOwnedGuild(loc) && !event.getPlayer().isOp()) {
+            Guild g = getOwningGuild(loc);
+            if (g != null) {
+                GuildRole role = g.getMembers().get(event.getPlayer().getUniqueId());
+                UUID playerGuildId = plugin.guildService.getGuildIdForMember(event.getPlayer().getUniqueId());
+                boolean sameGuild = g.getUuid().equals(playerGuildId);
+                boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
+                if (!can) {
+                    event.setCancelled(true);
+                }
+            }
+        }
+    }
+
+    // --- Entity/environment protections ---
+
+    // Fire ignition/spread/burn handling in OWNED claims
+    @EventHandler
+    public void onBlockIgnite(BlockIgniteEvent event) {
+        Location loc = event.getBlock().getLocation();
+        if (!isInOwnedGuild(loc)) return;
+        BlockIgniteEvent.IgniteCause cause = event.getCause();
+        switch (cause) {
+            case SPREAD -> {
+                // Prevent natural fire spread ignition in OWNED territories
+                event.setCancelled(true);
+            }
+            case LAVA -> {
+                // Prevent lava-caused ignitions inside OWNED territories
+                event.setCancelled(true);
+            }
+            case FLINT_AND_STEEL -> {
+                // Allow only owning guild MODERATOR/ADMIN (or ops)
+                if (event.getPlayer() == null) {
+                    event.setCancelled(true);
+                    return;
+                }
+                if (event.getPlayer().isOp()) return;
+                Guild g = getOwningGuild(loc);
+                if (g == null) {
+                    event.setCancelled(true);
+                    return;
+                }
+                UUID playerId = event.getPlayer().getUniqueId();
+                UUID playerGuildId = plugin.guildService.getGuildIdForMember(playerId);
+                boolean sameGuild = g.getUuid().equals(playerGuildId);
+                GuildRole role = g.getMembers().get(playerId);
+                boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
+                if (!can) {
+                    event.setCancelled(true);
+                }
+            }
+            default -> {
+                // For other ignite causes in OWNED, be conservative and cancel spread-like ignitions
+                // We allow portal/campfire etc. only if player action is allowed via block place rules
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBlockSpread(BlockSpreadEvent event) {
+        // Cancel fire block spreading into OWNED territory
+        if (event.getSource() != null && event.getSource().getType() == Material.FIRE) {
+            if (isInOwnedGuild(event.getBlock().getLocation())) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onBlockBurn(BlockBurnEvent event) {
+        // Prevent blocks from burning in OWNED territories
+        if (isInOwnedGuild(event.getBlock().getLocation())) {
+            event.setCancelled(true);
+        }
+    }
+
+    // Allow mods/admins to place water/lava in OWNED chunks; outsiders blocked
+    @EventHandler
+    public void onBucketEmpty(PlayerBucketEmptyEvent event) {
+        // Only care about water and lava buckets per requirement
+        Material bucket = event.getBucket();
+        if (bucket != Material.WATER_BUCKET && bucket != Material.LAVA_BUCKET) return;
+        Location targetLoc = null;
+        try {
+            Block b = event.getBlock();
+            if (b != null) targetLoc = b.getLocation();
+        } catch (Throwable ignored) {
+        }
+        if (targetLoc == null) {
+            try {
+                Block clicked = event.getBlockClicked();
+                if (clicked != null) {
+                    targetLoc = clicked.getRelative(event.getBlockFace()).getLocation();
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (targetLoc == null) return;
+        if (!isInOwnedGuild(targetLoc)) return; // only enforce in OWNED
+        if (event.getPlayer() != null && event.getPlayer().isOp()) return; // ops bypass
+        Guild g = getOwningGuild(targetLoc);
+        if (g == null) {
+            event.setCancelled(true);
+            return;
+        }
+        if (event.getPlayer() == null) {
+            event.setCancelled(true);
+            return;
+        }
+        UUID playerId = event.getPlayer().getUniqueId();
+        UUID playerGuildId = plugin.guildService.getGuildIdForMember(playerId);
+        boolean sameGuild = g.getUuid().equals(playerGuildId);
+        GuildRole role = g.getMembers().get(playerId);
+        boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
+        if (!can) {
+            event.setCancelled(true);
+        }
+    }
+
+    // Prevent griefing water/lava flow into OWNED chunks from differently owned or unclaimed chunks
+    @EventHandler
+    public void onLiquidFlow(BlockFromToEvent event) {
+        Block from = event.getBlock();
+        if (from == null) return;
+        Material type = from.getType();
+        if (type != Material.WATER && type != Material.LAVA) return; // only water/lava per requirement
+        Block to = event.getToBlock();
+        if (to == null) return;
+        Location toLoc = to.getLocation();
+        Guild destGuild = getOwningGuild(toLoc);
+        if (destGuild == null || destGuild.getType() != GuildType.OWNED) return; // only protect OWNED
+        Guild srcGuild = getOwningGuild(from.getLocation());
+        // Allow only if the same owning guild; cancel otherwise (includes unclaimed or different owners)
+        if (srcGuild == null || !srcGuild.getUuid().equals(destGuild.getUuid())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onCreatureSpawn(CreatureSpawnEvent event) {
+        if (isInSafeGuild(event.getLocation())) {
+            // Block all mob spawning in SAFE territory
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onEntityExplode(EntityExplodeEvent event) {
+        if (isInSafeGuild(event.getLocation()) || isInWarGuild(event.getLocation())) {
+            // Cancel explosion effects entirely in SAFE and prevent destruction in WAR
+            event.setCancelled(true);
+            event.blockList().clear();
+        }
+    }
+
+    @EventHandler
+    public void onBlockExplode(BlockExplodeEvent event) {
+        if (isInSafeGuild(event.getBlock().getLocation()) || isInWarGuild(event.getBlock().getLocation())) {
+            event.setCancelled(true);
+            event.blockList().clear();
+        }
+    }
+
+    @EventHandler
+    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
+        if (isInSafeGuild(event.getBlock().getLocation()) || isInWarGuild(event.getBlock().getLocation())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPotentiallyHarmfulEntitySpawn(EntitySpawnEvent event) {
+        Entity ent = event.getEntity();
+        if (!isInSafeGuild(ent.getLocation())) return;
+        // As a safety net: cancel TNT primed and other obviously harmful non-creature spawns
+        if (ent instanceof TNTPrimed) {
+            event.setCancelled(true);
+        }
+    }
+
+    // --- Combat protections inside SAFE ---
+    @EventHandler
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        Entity victim = event.getEntity();
+        if (!isInSafeGuild(victim.getLocation())) return;
+
+        Entity damager = event.getDamager();
+        if (damager instanceof Arrow ||
+                damager instanceof Snowball ||
+                damager instanceof Fireball) {
+            event.setCancelled(true);
+            // Optionally remove the projectile to prevent lingering interactions
+            Projectile proj = (Projectile) damager;
+            try {
+                proj.remove();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private static final Set<PotionEffectType> HARMFUL_EFFECTS = Set.of(
+            PotionEffectType.INSTANT_DAMAGE,
+            PotionEffectType.POISON,
+            PotionEffectType.WITHER,
+            PotionEffectType.SLOWNESS,
+            PotionEffectType.WEAKNESS,
+            PotionEffectType.BLINDNESS,
+            PotionEffectType.HUNGER,
+            PotionEffectType.UNLUCK,
+            PotionEffectType.BAD_OMEN,
+            PotionEffectType.DARKNESS,
+            PotionEffectType.MINING_FATIGUE,
+            PotionEffectType.LEVITATION
+    );
+
+    private boolean potionHasHarmfulEffects(ThrownPotion potion) {
+        try {
+            for (PotionEffect effect : potion.getEffects()) {
+                PotionEffectType type = effect.getType();
+                if (HARMFUL_EFFECTS.contains(type)) {
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    @EventHandler
+    public void onPotionSplash(PotionSplashEvent event) {
+        ThrownPotion potion = event.getPotion();
+        if (!isInSafeGuild(potion.getLocation())) return;
+        if (potionHasHarmfulEffects(potion)) {
+            event.setCancelled(true);
+        }
+    }
+
+    private static final Set<PotionType> HARMFUL_POTION_TYPES = Set.of(
+            PotionType.HARMING,
+            PotionType.POISON,
+            PotionType.WEAKNESS,
+            PotionType.SLOWNESS
+    );
+
+    @EventHandler
+    public void onLingeringPotionApply(AreaEffectCloudApplyEvent event) {
+        AreaEffectCloud cloud = event.getEntity();
+        if (!isInSafeGuild(cloud.getLocation())) return;
+        try {
+            // Base type check
+            try {
+                PotionType base = cloud.getBasePotionType();
+                if (base != null && HARMFUL_POTION_TYPES.contains(base)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            } catch (Throwable ignored) {
+            }
+            // Custom effects check
+            List<PotionEffect> effects = cloud.getCustomEffects();
+            for (PotionEffect effect : effects) {
+                if (effect != null && HARMFUL_EFFECTS.contains(effect.getType())) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    // --- Interactions in OWNED claims ---
+    // Note: Outsiders are blocked from these; same-guild members can interact
+    private static final Set<Material> INTERACTABLES = Set.of(
+            Material.OAK_DOOR, Material.SPRUCE_DOOR, Material.BIRCH_DOOR, Material.JUNGLE_DOOR, Material.ACACIA_DOOR, Material.DARK_OAK_DOOR, Material.MANGROVE_DOOR, Material.CHERRY_DOOR, Material.BAMBOO_DOOR, Material.CRIMSON_DOOR, Material.WARPED_DOOR,
+            Material.IRON_DOOR, Material.OAK_TRAPDOOR, Material.SPRUCE_TRAPDOOR, Material.BIRCH_TRAPDOOR, Material.JUNGLE_TRAPDOOR, Material.ACACIA_TRAPDOOR, Material.DARK_OAK_TRAPDOOR, Material.MANGROVE_TRAPDOOR, Material.CHERRY_TRAPDOOR, Material.BAMBOO_TRAPDOOR, Material.CRIMSON_TRAPDOOR, Material.WARPED_TRAPDOOR, Material.IRON_TRAPDOOR,
+            Material.LEVER, Material.STONE_BUTTON, Material.OAK_BUTTON, Material.SPRUCE_BUTTON, Material.BIRCH_BUTTON, Material.JUNGLE_BUTTON, Material.ACACIA_BUTTON, Material.DARK_OAK_BUTTON, Material.MANGROVE_BUTTON, Material.CHERRY_BUTTON, Material.BAMBOO_BUTTON, Material.CRIMSON_BUTTON, Material.WARPED_BUTTON,
+            Material.STONE_PRESSURE_PLATE, Material.LIGHT_WEIGHTED_PRESSURE_PLATE, Material.HEAVY_WEIGHTED_PRESSURE_PLATE, Material.OAK_PRESSURE_PLATE, Material.SPRUCE_PRESSURE_PLATE, Material.BIRCH_PRESSURE_PLATE, Material.JUNGLE_PRESSURE_PLATE, Material.ACACIA_PRESSURE_PLATE, Material.DARK_OAK_PRESSURE_PLATE, Material.MANGROVE_PRESSURE_PLATE, Material.CHERRY_PRESSURE_PLATE, Material.BAMBOO_PRESSURE_PLATE, Material.CRIMSON_PRESSURE_PLATE, Material.WARPED_PRESSURE_PLATE,
+            Material.NOTE_BLOCK, Material.REPEATER, Material.COMPARATOR, Material.CHEST, Material.TRAPPED_CHEST, Material.ENDER_CHEST, Material.BARREL, Material.FURNACE, Material.BLAST_FURNACE, Material.SMOKER, Material.CRAFTING_TABLE,
+            Material.HOPPER, Material.DROPPER, Material.DISPENSER, Material.BELL,
+            // Shulker boxes (all colors)
+            Material.SHULKER_BOX, Material.WHITE_SHULKER_BOX, Material.LIGHT_GRAY_SHULKER_BOX, Material.GRAY_SHULKER_BOX, Material.BLACK_SHULKER_BOX,
+            Material.BROWN_SHULKER_BOX, Material.RED_SHULKER_BOX, Material.ORANGE_SHULKER_BOX, Material.YELLOW_SHULKER_BOX, Material.LIME_SHULKER_BOX,
+            Material.GREEN_SHULKER_BOX, Material.CYAN_SHULKER_BOX, Material.LIGHT_BLUE_SHULKER_BOX, Material.BLUE_SHULKER_BOX, Material.PURPLE_SHULKER_BOX,
+            Material.MAGENTA_SHULKER_BOX, Material.PINK_SHULKER_BOX
+    );
+
+    private boolean isInteractable(Material type) {
+        return INTERACTABLES.contains(type);
+    }
+
+    @EventHandler
+    public void onInteractOwned(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) return; // only main hand relevance here
+        // Only handle clicks on blocks
+        if (event.getClickedBlock() == null) return;
+        Location loc = event.getClickedBlock().getLocation();
+        if (!isInOwnedGuild(loc)) return;
+        if (event.getPlayer().isOp()) return; // allow ops bypass
+        Guild g = getOwningGuild(loc);
+        if (g == null) return;
+        UUID playerId = event.getPlayer().getUniqueId();
+        UUID playerGuildId = plugin.guildService.getGuildIdForMember(playerId);
+        boolean sameGuild = g.getUuid().equals(playerGuildId);
+        Material type = event.getClickedBlock().getType();
+        if (!sameGuild) {
+            // Outsiders: block interaction with interactables to prevent grief
+            if (isInteractable(type)) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+        // Members: allow interactables regardless of role; other interactions proceed as normal
+        // No action needed unless we want to explicitly cancel non-interactables (we don't)
+    }
+
+    // Block opening entity containers (storage minecarts, hopper minecarts, chest boats) by outsiders in OWNED claims
+    @EventHandler
+    public void onInteractEntityOwned(PlayerInteractAtEntityEvent event) {
+        Entity entity = event.getRightClicked();
+        if (entity == null) return;
+        Location loc = entity.getLocation();
+        if (!isInOwnedGuild(loc)) return;
+        if (event.getPlayer() != null && event.getPlayer().isOp()) return;
+        Guild g = getOwningGuild(loc);
+        if (g == null) return;
+        // Only consider entity containers
+        boolean isEntityContainer = (entity instanceof org.bukkit.entity.minecart.StorageMinecart)
+                || (entity instanceof org.bukkit.entity.minecart.HopperMinecart)
+                || (entity instanceof org.bukkit.entity.ChestBoat);
+        if (!isEntityContainer) return;
+        UUID playerId = event.getPlayer().getUniqueId();
+        UUID playerGuildId = plugin.guildService.getGuildIdForMember(playerId);
+        boolean sameGuild = g.getUuid().equals(playerGuildId);
+        if (!sameGuild) {
+            event.setCancelled(true);
+        }
+    }
+
+    // --- Remove monsters entering SAFE ---
+    @EventHandler
+    public void onEntityTarget(EntityTargetEvent event) {
+        if (!(event.getEntity() instanceof LivingEntity le)) return;
+        if (!(le instanceof Enemy)) return; // only hostile entities
+        Entity target = event.getTarget();
+        if (!(target instanceof Player)) return;
+        // If either attacker or target is in SAFE, remove the hostile mob and cancel targeting
+        if (isInSafeGuild(le.getLocation()) || isInSafeGuild(target.getLocation())) {
+            try {
+                le.remove();
+            } catch (Throwable ignored) {
+            }
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        // Only act when changing chunks to reduce checks
+        Chunk fromChunk = event.getFrom().getChunk();
+        Chunk toChunk = event.getTo().getChunk();
+        if (fromChunk.getX() == toChunk.getX() && fromChunk.getZ() == toChunk.getZ() &&
+                event.getFrom().getWorld() != null && event.getFrom().getWorld().equals(event.getTo().getWorld())) {
+            return;
+        }
+        // If player is now in SAFE, purge nearby hostile mobs that are inside SAFE
+        if (!isInSafeGuild(event.getTo())) return;
+        World world = event.getTo().getWorld();
+        if (world == null) return;
+        // Reasonable radius to cover adjacent entries while limiting cost
+        for (Entity e : world.getNearbyEntities(event.getTo(), 32, 16, 32)) {
+            if (e instanceof LivingEntity le && e instanceof Enemy) {
+                if (isInSafeGuild(le.getLocation())) {
+                    try {
+                        le.remove();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+    }
+}

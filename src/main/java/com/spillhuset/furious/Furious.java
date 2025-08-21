@@ -1,351 +1,209 @@
 package com.spillhuset.furious;
 
-import com.spillhuset.furious.commands.bank.BankCommand;
-import com.spillhuset.furious.commands.EnderseeCommand;
-import com.spillhuset.furious.commands.FeedCommand;
-import com.spillhuset.furious.commands.HealCommand;
-import com.spillhuset.furious.commands.HideCommand;
-import com.spillhuset.furious.commands.InvseeCommand;
-import com.spillhuset.furious.commands.PermissionCommand;
-import com.spillhuset.furious.commands.SecurityCommand;
-import com.spillhuset.furious.commands.TombstonesCommand;
-import com.spillhuset.furious.commands.wallet.WalletCommand;
-import com.spillhuset.furious.commands.shops.ShopsCommand;
-import com.spillhuset.furious.commands.guild.GuildCommand;
-import com.spillhuset.furious.commands.homes.HomesCommand;
-import com.spillhuset.furious.commands.locks.LocksCommand;
-import com.spillhuset.furious.commands.minigame.MinigameCommand;
-import com.spillhuset.furious.commands.teleport.TeleportCommand;
-import com.spillhuset.furious.commands.teleport.TpaCommand;
-import com.spillhuset.furious.commands.teleport.TpacceptCommand;
-import com.spillhuset.furious.commands.teleport.TpdeclineCommand;
-import com.spillhuset.furious.commands.warps.WarpsCommand;
+import com.spillhuset.furious.commands.*;
 import com.spillhuset.furious.listeners.*;
-import com.spillhuset.furious.managers.*;
-import com.spillhuset.furious.minigames.hungergames.ContainerRegistry;
-import com.spillhuset.furious.managers.PermissionManager;
-import com.spillhuset.furious.utils.AuditLogger;
-import com.spillhuset.furious.utils.DatabaseManager;
-import com.spillhuset.furious.utils.EncryptionUtil;
-import com.spillhuset.furious.utils.GuildDAO;
-import com.spillhuset.furious.utils.RateLimiter;
-import com.spillhuset.furious.utils.SecurityReviewManager;
-import com.spillhuset.furious.utils.WalletDAO;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Material;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
+import com.spillhuset.furious.managers.ArmorStandManager;
+import com.spillhuset.furious.services.*;
+import com.spillhuset.furious.services.Checklist.BiomesService;
+import com.spillhuset.furious.services.Checklist.MonstersService;
+import com.spillhuset.furious.services.Checklist.TamingService;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.util.List;
+import java.util.logging.Level;
 
-public final class Furious extends JavaPlugin {
-    private TeleportManager teleportManager;
-    private WalletManager walletManager;
-    private GuildManager guildManager;
-    private LocksManager locksManager;
-    private MinigameManager minigameManager;
-    private WorldManager worldManager;
-    private HomesManager homesManager;
-    private WarpsManager warpsManager;
-    private ContainerRegistry containerRegistry;
-    private PlayerDataManager playerDataManager;
-    private PlayerVisibilityManager playerVisibilityManager;
-    private AuditLogger auditLogger;
-    private RateLimiter rateLimiter;
-    private TombstoneManager tombstoneManager;
-    private SecurityReviewManager securityReviewManager;
-    private CombatManager combatManager;
-    private EncryptionUtil encryptionUtil;
-    private BankManager bankManager;
-    private BankInterestListener bankInterestListener;
-    private PermissionManager permissionManager;
-    private DatabaseManager databaseManager;
-    private GuildDAO guildDAO;
-    private WalletDAO walletDAO;
-    private ShopsManager shopsManager;
-    private SafeZoneProtectionManager safeZoneProtectionManager;
-    private com.spillhuset.furious.gui.PermissionManagerGUI permissionManagerGUI;
+public class Furious extends JavaPlugin {
     private static Furious instance;
+
+    public WalletService walletService;
+    public HomesService homesService;
+    public GuildService guildService;
+    public GuildHomesService guildHomesService;
+    public WarpsService warpsService;
+    public BanksService banksService;
+    public TeleportsService teleportsService;
+    public ShopsService shopsService;
+    public ArmorStandManager armorStandManager;
+    public TombstoneService tombstoneService;
+    public LocksService locksService;
+    public BiomesService biomesService;
+    public MonstersService monstersService;
+    public TamingService tamingService;
+    public com.spillhuset.furious.utils.RegistryCache registryCache;
+    public com.spillhuset.furious.utils.MessageThrottle messageThrottle;
 
     @Override
     public void onEnable() {
-        // Plugin startup logic
         instance = this;
+        // Ensure default config.yml is available for rewards and wallet settings
         saveDefaultConfig();
 
-        // Save default configuration files
-        saveDefaultConfigFiles();
+        // Build registry cache once to avoid repeated traversal during gameplay
+        registryCache = new com.spillhuset.furious.utils.RegistryCache(instance);
+        registryCache.init();
 
-        // Initialize database manager and DAOs
-        databaseManager = new DatabaseManager(this);
-        guildDAO = new GuildDAO(this, databaseManager);
-        walletDAO = new WalletDAO(this, databaseManager);
+        // Initialize message throttle for anti-spam of action bars/broadcasts
+        messageThrottle = new com.spillhuset.furious.utils.MessageThrottle(instance);
 
-        teleportManager = new TeleportManager(this);
-        walletManager = new WalletManager(this);
-        guildManager = new GuildManager(this);
-        locksManager = new LocksManager(this);
-        worldManager = new WorldManager(this);
-        minigameManager = new MinigameManager(this);
-        homesManager = new HomesManager(this);
-        warpsManager = new WarpsManager(this);
-        playerDataManager = new PlayerDataManager(this);
-        playerVisibilityManager = new PlayerVisibilityManager(this);
-        auditLogger = new AuditLogger(this);
-        rateLimiter = new RateLimiter(this);
-        tombstoneManager = new TombstoneManager(this);
-        securityReviewManager = new SecurityReviewManager(this);
-        combatManager = new CombatManager(this);
-        encryptionUtil = new EncryptionUtil(getLogger(), getDataFolder());
-        bankManager = new BankManager(this);
-        permissionManager = new PermissionManager(this);
-        shopsManager = new ShopsManager(this);
-        safeZoneProtectionManager = new SafeZoneProtectionManager(this);
+        guildService = new GuildService(instance);
+        guildService.load();
 
-        getCommand("invsee").setExecutor(new InvseeCommand(this));
-        getCommand("endersee").setExecutor(new EnderseeCommand(this));
-        getCommand("teleport").setExecutor(new TeleportCommand(this));
-        getCommand("tpa").setExecutor(new TpaCommand(this));
-        getCommand("tpaccept").setExecutor(new TpacceptCommand(this));
-        getCommand("tpdecline").setExecutor(new TpdeclineCommand(this));
-        getCommand("guild").setExecutor(new GuildCommand(this));
-        getCommand("heal").setExecutor(new HealCommand(this));
-        getCommand("feed").setExecutor(new FeedCommand(this));
-        getCommand("locks").setExecutor(new LocksCommand(this));
-        getCommand("minigame").setExecutor(new MinigameCommand(this));
-        getCommand("homes").setExecutor(new HomesCommand(this));
-        getCommand("warps").setExecutor(new WarpsCommand(this));
-        getCommand("tombstones").setExecutor(new TombstonesCommand(this));
-        getCommand("security").setExecutor(new SecurityCommand(this, securityReviewManager));
-        getCommand("bank").setExecutor(new BankCommand(this));
-        getCommand("perm").setExecutor(new PermissionCommand(this));
-        getCommand("wallet").setExecutor(new WalletCommand(this));
-        getCommand("hide").setExecutor(new HideCommand(this));
-        getCommand("shops").setExecutor(new ShopsCommand(this));
+        guildHomesService = new GuildHomesService(instance);
+        guildHomesService.load();
 
-        getServer().getPluginManager().registerEvents(new TeleportListener(this), this);
-        getServer().getPluginManager().registerEvents(new WalletListener(this), this);
-        getServer().getPluginManager().registerEvents(new GuildListener(this), this);
-        getServer().getPluginManager().registerEvents(new MinigameListener(this), this);
-        getServer().getPluginManager().registerEvents(new WarpsListener(this), this);
-        getServer().getPluginManager().registerEvents(new LocksListener(this), this);
-        getServer().getPluginManager().registerEvents(new TombstoneListener(this), this);
-        getServer().getPluginManager().registerEvents(new CombatListener(this), this);
-        getServer().getPluginManager().registerEvents(new MessageListener(this), this);
-        getServer().getPluginManager().registerEvents(new PlayerVisibilityListener(this), this);
-        getServer().getPluginManager().registerEvents(new BankListener(this), this);
+        walletService = new WalletService(instance);
+        walletService.load();
 
-        // Register bank interest listener for tracking day cycles and applying interest
-        bankInterestListener = new BankInterestListener(this);
-        getServer().getPluginManager().registerEvents(bankInterestListener, this);
+        homesService = new HomesService(instance);
+        homesService.load();
 
-        // Register container listener for hunger games
-        containerRegistry = new ContainerRegistry(this);
-        getServer().getPluginManager().registerEvents(new ContainerListener(this, containerRegistry), this);
+        warpsService = new WarpsService(instance);
+        warpsService.load();
 
-        // Initialize and register the permission manager GUI
-        permissionManagerGUI = new com.spillhuset.furious.gui.PermissionManagerGUI(this);
-        getServer().getPluginManager().registerEvents(permissionManagerGUI, this);
+        banksService = new BanksService(instance);
+        banksService.load();
 
-        getLogger().info("Furious is enabled!");
+        shopsService = new ShopsService(instance);
+        shopsService.load();
+
+        teleportsService = new TeleportsService(instance);
+        tombstoneService = new TombstoneService(instance);
+        armorStandManager = new ArmorStandManager(instance);
+        locksService = new LocksService(instance);
+        locksService.load();
+
+        biomesService = new BiomesService(instance);
+        biomesService.load();
+
+        monstersService = new MonstersService(instance);
+        monstersService.load();
+
+        tamingService = new TamingService(instance);
+        tamingService.load();
+
+        PluginCommand cmd;
+
+        cmd = getCommand("wallet");
+        if (cmd != null) {
+            WalletCommand wc = new WalletCommand(instance);
+            cmd.setExecutor(wc);
+            cmd.setTabCompleter(wc);
+        }
+
+        cmd = getCommand("homes");
+        if (cmd != null) {
+            HomesCommand hc = new HomesCommand(instance);
+            cmd.setExecutor(hc);
+            cmd.setTabCompleter(hc);
+        }
+
+        cmd = getCommand("guild");
+        if (cmd != null) {
+            GuildCommand gc = new GuildCommand(instance);
+            cmd.setExecutor(gc);
+            cmd.setTabCompleter(gc);
+        }
+
+        // Register warps command
+        cmd = getCommand("warps");
+        if (cmd != null) {
+            WarpsCommand wpc = new WarpsCommand(instance);
+            cmd.setExecutor(wpc);
+            cmd.setTabCompleter(wpc);
+        }
+
+        cmd = getCommand("banks");
+        if (cmd != null) {
+            BanksCommand bc = new BanksCommand(instance);
+            cmd.setExecutor(bc);
+            cmd.setTabCompleter(bc);
+        }
+
+        cmd = getCommand("shops");
+        if (cmd != null) {
+            ShopsCommand sc = new ShopsCommand(instance);
+            cmd.setExecutor(sc);
+            cmd.setTabCompleter(sc);
+        }
+
+        cmd = getCommand("teleport");
+        if (cmd != null) {
+            TeleportCommand tc = new TeleportCommand(instance);
+            cmd.setExecutor(tc);
+            cmd.setTabCompleter(tc);
+        }
+
+        cmd = getCommand("tombstones");
+        if (cmd != null) {
+            TombstoneCommand tsc = new TombstoneCommand(instance);
+            cmd.setExecutor(tsc);
+            cmd.setTabCompleter(tsc);
+        }
+
+        cmd = getCommand("locks");
+        if (cmd != null) {
+            LocksCommand lc = new LocksCommand(instance);
+            cmd.setExecutor(lc);
+            cmd.setTabCompleter(lc);
+        }
+
+        cmd = getCommand("checklist");
+        if (cmd != null) {
+            ChecklistCommand clc = new ChecklistCommand(instance);
+            cmd.setExecutor(clc);
+            cmd.setTabCompleter(clc);
+        }
+
+        getServer().getPluginManager().registerEvents(new PlayerJoinListener(instance), instance);
+        // Ensure ops are hidden from non-ops on join and when op/deop changes
+        getServer().getPluginManager().registerEvents(new OpVisibilityListener(instance), instance);
+        getServer().getPluginManager().registerEvents(new SelectionListener(instance), instance);
+        getServer().getPluginManager().registerEvents(new TeleportsListener(instance), instance);
+
+        getServer().getPluginManager().registerEvents(new ArmorStandListener(instance), instance);
+        getServer().getPluginManager().registerEvents(new TombstoneListener(instance), instance);
+        // Show territory info on chunk changes
+        getServer().getPluginManager().registerEvents(new ChunkChangeListener(instance), instance);
+        // Enforce SAFE-type protections in guild territories
+        getServer().getPluginManager().registerEvents(new ProtectionListener(instance), instance);
+        // Enforce simple block locks
+        getServer().getPluginManager().registerEvents(new LocksListener(instance), instance);
+        // Cleanup orphans and recreate missing ArmorStands on chunk load
+        getServer().getPluginManager().registerEvents(new ChunkArmorStandSanitizer(instance), instance);
+        // Track visited biomes
+        getServer().getPluginManager().registerEvents(new BiomeTrackListener(instance), instance);
+        // Track removed monsters
+        getServer().getPluginManager().registerEvents(new MonsterTrackListener(instance), instance);
+        // Track tamed animals
+        getServer().getPluginManager().registerEvents(new TamingTrackListener(instance), instance);
+
+        // Ensure all marker ArmorStands are present after startup (centralized)
+        try {
+            if (armorStandManager != null) armorStandManager.ensureArmorStands();
+        } catch (Exception ex) {
+            getLogger().log(Level.WARNING, "Failed to ensure ArmorStands", ex);
+        }
+
+        getLogger().info("Furious enabled!");
     }
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
-        if (teleportManager != null) {
-            teleportManager.shutdown();
-        }
-        if (walletManager != null) {
-            walletManager.shutdown();
-        }
-        if (guildManager != null) {
-            guildManager.shutdown();
-        }
-        if (locksManager != null) {
-            locksManager.shutdown();
-        }
-        if (worldManager != null) {
-            worldManager.shutdown();
-        }
-        if (minigameManager != null) {
-            minigameManager.shutdown();
-        }
-        if (homesManager != null) {
-            homesManager.shutdown();
-        }
-        if (warpsManager != null) {
-            warpsManager.shutdown();
-        }
-        if (containerRegistry != null) {
-            containerRegistry.shutdown();
-        }
-        if (playerVisibilityManager != null) {
-            playerVisibilityManager.shutdown();
-        }
-        if (tombstoneManager != null) {
-            tombstoneManager.shutdown();
-        }
-        if (combatManager != null) {
-            combatManager.shutdown();
-        }
-        if (bankInterestListener != null) {
-            bankInterestListener.shutdown();
-        }
-        if (bankManager != null) {
-            bankManager.shutdown();
-        }
-        if (permissionManager != null) {
-            permissionManager.shutdown();
-        }
-        if (safeZoneProtectionManager != null) {
-            safeZoneProtectionManager.shutdown();
-        }
-        if (databaseManager != null) {
-            databaseManager.shutdown();
-        }
+        if (walletService != null) walletService.save();
+        if (homesService != null) homesService.save();
+        if (guildService != null) guildService.save();
+        if (guildHomesService != null) guildHomesService.save();
+        if (warpsService != null) warpsService.save();
+        if (banksService != null) banksService.save();
+        if (shopsService != null) shopsService.save();
+        if (locksService != null) locksService.save();
+        if (biomesService != null) biomesService.save();
+        if (monstersService != null) monstersService.save();
+        if (tamingService != null) tamingService.save();
+        getLogger().info("Furious disabled!");
     }
 
-    public TeleportManager getTeleportManager() {
-        return teleportManager;
-    }
-
-    public WalletManager getWalletManager() {
-        return walletManager;
-    }
-
-    public GuildManager getGuildManager() {
-        return guildManager;
-    }
-
-    public LocksManager getLocksManager() {
-        return locksManager;
-    }
-
-    public MinigameManager getMinigameManager() {
-        return minigameManager;
-    }
-
-    public WorldManager getWorldManager() {
-        return worldManager;
-    }
-
-    public HomesManager getHomesManager() {
-        return homesManager;
-    }
-
-    public WarpsManager getWarpsManager() {
-        return warpsManager;
-    }
-
-    public ContainerRegistry getContainerRegistry() {
-        return containerRegistry;
-    }
-
-    public PlayerDataManager getPlayerDataManager() {
-        return playerDataManager;
-    }
-
-    public PlayerVisibilityManager getPlayerVisibilityManager() {
-        return playerVisibilityManager;
-    }
-
-    public AuditLogger getAuditLogger() {
-        return auditLogger;
-    }
-
-    public RateLimiter getRateLimiter() {
-        return rateLimiter;
-    }
-
-    public TombstoneManager getTombstoneManager() {
-        return tombstoneManager;
-    }
-
-    public SecurityReviewManager getSecurityReviewManager() {
-        return securityReviewManager;
-    }
-
-    public CombatManager getCombatManager() {
-        return combatManager;
-    }
-
-    public EncryptionUtil getEncryptionUtil() {
-        return encryptionUtil;
-    }
-
-    public BankManager getBankManager() {
-        return bankManager;
-    }
-
-    public PermissionManager getPermissionManager() {
-        return permissionManager;
-    }
-
-    public DatabaseManager getDatabaseManager() {
-        return databaseManager;
-    }
-
-    public GuildDAO getGuildDAO() {
-        return guildDAO;
-    }
-
-    public WalletDAO getWalletDAO() {
-        return walletDAO;
-    }
-
-    public ShopsManager getShopsManager() {
-        return shopsManager;
-    }
-
-    public SafeZoneProtectionManager getSafeZoneProtectionManager() {
-        return safeZoneProtectionManager;
-    }
-
-    /**
-     * Gets the permission manager GUI.
-     *
-     * @return The permission manager GUI
-     */
-    public com.spillhuset.furious.gui.PermissionManagerGUI getPermissionManagerGUI() {
-        return permissionManagerGUI;
-    }
-
-    public ItemStack createScrapItem(double amount) {
-        // Use the cached currency configuration from the WalletManager
-        String material = walletManager.getCurrencyMaterial();
-        Material scrapMaterial = Material.getMaterial(material);
-        if (scrapMaterial == null) {
-            scrapMaterial = Material.IRON_INGOT;
-        }
-        ItemStack scrapItem = new ItemStack(scrapMaterial, 1);
-        ItemMeta scrapMeta = scrapItem.getItemMeta();
-
-        // Use the cached currency symbol and name
-        String symbol = walletManager.getCurrencySymbol();
-        String name = amount == 1 ? walletManager.getCurrencyName() : walletManager.getCurrencyPlural();
-
-        scrapMeta.displayName(Component.text(symbol + " ").append(Component.text(amount, NamedTextColor.GOLD)).append(Component.text(" " + name)));
-        scrapItem.setItemMeta(scrapMeta);
-        return scrapItem;
-    }
-
-    public static Furious getInstance() {
+    public Furious getInstance() {
         return instance;
-    }
-
-    /**
-     * Saves default configuration files listed in the config.yml file.
-     */
-    private void saveDefaultConfigFiles() {
-        List<String> configFiles = getConfig().getStringList("config-files");
-        for (String configFile : configFiles) {
-            if (!new File(getDataFolder(), configFile).exists()) {
-                saveResource(configFile, false);
-            }
-        }
     }
 }
