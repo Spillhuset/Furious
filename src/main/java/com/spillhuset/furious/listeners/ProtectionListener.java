@@ -4,6 +4,7 @@ import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.utils.Guild;
 import com.spillhuset.furious.utils.GuildType;
 import com.spillhuset.furious.utils.GuildRole;
+import io.papermc.paper.event.entity.EntityMoveEvent;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -28,6 +29,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
+import net.kyori.adventure.text.Component;
 
 import java.util.List;
 import java.util.Set;
@@ -42,10 +44,34 @@ import java.util.UUID;
  * - Prevents players from being hit by arrows, fireballs, snowballs, or harmful potions in SAFE chunks.
  */
 public class ProtectionListener implements Listener {
+    private static final String MSG_SAFE = "You cannot do that here (SAFE territory)";
+    private static final String MSG_WAR = "You cannot do that here (WAR zone)";
+    private static final String MSG_OWNED_OUTSIDER = "You cannot do that here. Claimed land";
+    private static final String MSG_OWNED_ROLE = "Only Moderators/Admins of this guild can build here";
     private final Furious plugin;
 
     public ProtectionListener(Furious plugin) {
         this.plugin = plugin.getInstance();
+    }
+
+    private void notifyDenied(org.bukkit.entity.Player player, String message) {
+        if (player == null) return;
+        try {
+            if (plugin.messageThrottle != null) {
+                plugin.messageThrottle.sendActionBarThrottled(player, Component.text(message));
+            } else {
+                player.sendMessage(message);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private String ownedBySuffix(Guild g) {
+        try {
+            if (g != null && g.getName() != null && !g.getName().isBlank()) {
+                return " (" + g.getName() + ")";
+            }
+        } catch (Throwable ignored) {}
+        return "";
     }
 
     private boolean isInSafeGuild(Location loc) {
@@ -89,6 +115,7 @@ public class ProtectionListener implements Listener {
         if (isInSafeGuild(loc) || isInWarGuild(loc)) {
             if (event.getPlayer().isOp()) return; // allow ops
             event.setCancelled(true);
+            notifyDenied(event.getPlayer(), isInSafeGuild(loc) ? MSG_SAFE : MSG_WAR);
             return;
         }
         // OWNED: only MODERATOR or ADMIN of the owning guild may break
@@ -101,6 +128,7 @@ public class ProtectionListener implements Listener {
                 boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
                 if (!can) {
                     event.setCancelled(true);
+                    notifyDenied(event.getPlayer(), sameGuild ? MSG_OWNED_ROLE : (MSG_OWNED_OUTSIDER + ownedBySuffix(g)));
                 }
             }
         }
@@ -113,6 +141,7 @@ public class ProtectionListener implements Listener {
         if (isInSafeGuild(loc) || isInWarGuild(loc)) {
             if (event.getPlayer().isOp()) return; // allow ops
             event.setCancelled(true);
+            notifyDenied(event.getPlayer(), isInSafeGuild(loc) ? MSG_SAFE : MSG_WAR);
             return;
         }
         // OWNED: only MODERATOR or ADMIN of the owning guild may place
@@ -125,6 +154,7 @@ public class ProtectionListener implements Listener {
                 boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
                 if (!can) {
                     event.setCancelled(true);
+                    notifyDenied(event.getPlayer(), sameGuild ? MSG_OWNED_ROLE : (MSG_OWNED_OUTSIDER + ownedBySuffix(g)));
                 }
             }
         }
@@ -166,6 +196,7 @@ public class ProtectionListener implements Listener {
                 boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
                 if (!can) {
                     event.setCancelled(true);
+                    notifyDenied(event.getPlayer(), MSG_OWNED_ROLE + ownedBySuffix(g));
                 }
             }
             default -> {
@@ -178,7 +209,7 @@ public class ProtectionListener implements Listener {
     @EventHandler
     public void onBlockSpread(BlockSpreadEvent event) {
         // Cancel fire block spreading into OWNED territory
-        if (event.getSource() != null && event.getSource().getType() == Material.FIRE) {
+        if (event.getSource().getType() == Material.FIRE) {
             if (isInOwnedGuild(event.getBlock().getLocation())) {
                 event.setCancelled(true);
             }
@@ -202,28 +233,23 @@ public class ProtectionListener implements Listener {
         Location targetLoc = null;
         try {
             Block b = event.getBlock();
-            if (b != null) targetLoc = b.getLocation();
+            targetLoc = b.getLocation();
         } catch (Throwable ignored) {
         }
         if (targetLoc == null) {
             try {
                 Block clicked = event.getBlockClicked();
-                if (clicked != null) {
-                    targetLoc = clicked.getRelative(event.getBlockFace()).getLocation();
-                }
+                targetLoc = clicked.getRelative(event.getBlockFace()).getLocation();
             } catch (Throwable ignored) {
             }
         }
         if (targetLoc == null) return;
         if (!isInOwnedGuild(targetLoc)) return; // only enforce in OWNED
-        if (event.getPlayer() != null && event.getPlayer().isOp()) return; // ops bypass
+        if (event.getPlayer().isOp()) return; // ops bypass
         Guild g = getOwningGuild(targetLoc);
         if (g == null) {
             event.setCancelled(true);
-            return;
-        }
-        if (event.getPlayer() == null) {
-            event.setCancelled(true);
+            notifyDenied(event.getPlayer(), MSG_OWNED_OUTSIDER);
             return;
         }
         UUID playerId = event.getPlayer().getUniqueId();
@@ -233,6 +259,7 @@ public class ProtectionListener implements Listener {
         boolean can = sameGuild && (role == GuildRole.MODERATOR || role == GuildRole.ADMIN);
         if (!can) {
             event.setCancelled(true);
+            notifyDenied(event.getPlayer(), sameGuild ? MSG_OWNED_ROLE : (MSG_OWNED_OUTSIDER + ownedBySuffix(g)));
         }
     }
 
@@ -240,11 +267,9 @@ public class ProtectionListener implements Listener {
     @EventHandler
     public void onLiquidFlow(BlockFromToEvent event) {
         Block from = event.getBlock();
-        if (from == null) return;
         Material type = from.getType();
         if (type != Material.WATER && type != Material.LAVA) return; // only water/lava per requirement
         Block to = event.getToBlock();
-        if (to == null) return;
         Location toLoc = to.getLocation();
         Guild destGuild = getOwningGuild(toLoc);
         if (destGuild == null || destGuild.getType() != GuildType.OWNED) return; // only protect OWNED
@@ -259,6 +284,11 @@ public class ProtectionListener implements Listener {
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (isInSafeGuild(event.getLocation())) {
             // Block all mob spawning in SAFE territory
+            event.setCancelled(true);
+            return;
+        }
+        // In OWNED territory, block only harmful mobs (hostiles)
+        if (isInOwnedGuild(event.getLocation()) && event.getEntity() instanceof Enemy) {
             event.setCancelled(true);
         }
     }
@@ -290,16 +320,49 @@ public class ProtectionListener implements Listener {
     @EventHandler
     public void onPotentiallyHarmfulEntitySpawn(EntitySpawnEvent event) {
         Entity ent = event.getEntity();
-        if (!isInSafeGuild(ent.getLocation())) return;
-        // As a safety net: cancel TNT primed and other obviously harmful non-creature spawns
-        if (ent instanceof TNTPrimed) {
+        if (!(ent instanceof Enemy)) {
+            // Not a mob or not hostile; only apply TNT safeguard in SAFE
+            if (isInSafeGuild(ent.getLocation()) && ent instanceof TNTPrimed) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+        // For hostile mobs: block if in SAFE or OWNED
+        if (isInSafeGuild(ent.getLocation()) || isInOwnedGuild(ent.getLocation())) {
+            event.setCancelled(true);
+        }
+    }
+
+    // Remove hostile mobs that teleport into SAFE or OWNED
+    @EventHandler
+    public void onEntityTeleport(EntityTeleportEvent event) {
+        Entity ent = event.getEntity();
+        if (!(ent instanceof Enemy)) return;
+        Location to = event.getTo();
+        if (to == null) return;
+        if (isInSafeGuild(to) || isInOwnedGuild(to)) {
+            try {
+                ent.remove();
+            } catch (Throwable ignored) {
+            }
             event.setCancelled(true);
         }
     }
 
     // --- Combat protections inside SAFE ---
     @EventHandler
+    public void onEntityDamage(EntityDamageEvent event) {
+        // Prevent ANY damage to players while they are in SAFE territory
+        Entity entity = event.getEntity();
+        if (!(entity instanceof Player)) return;
+        if (isInSafeGuild(entity.getLocation())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        // Redundant safety for projectiles inside SAFE; kept to also remove projectiles
         Entity victim = event.getEntity();
         if (!isInSafeGuild(victim.getLocation())) return;
 
@@ -425,6 +488,7 @@ public class ProtectionListener implements Listener {
             // Outsiders: block interaction with interactables to prevent grief
             if (isInteractable(type)) {
                 event.setCancelled(true);
+                notifyDenied(event.getPlayer(), MSG_OWNED_OUTSIDER + ownedBySuffix(g));
             }
             return;
         }
@@ -436,10 +500,9 @@ public class ProtectionListener implements Listener {
     @EventHandler
     public void onInteractEntityOwned(PlayerInteractAtEntityEvent event) {
         Entity entity = event.getRightClicked();
-        if (entity == null) return;
         Location loc = entity.getLocation();
         if (!isInOwnedGuild(loc)) return;
-        if (event.getPlayer() != null && event.getPlayer().isOp()) return;
+        if (event.getPlayer().isOp()) return;
         Guild g = getOwningGuild(loc);
         if (g == null) return;
         // Only consider entity containers
@@ -452,18 +515,30 @@ public class ProtectionListener implements Listener {
         boolean sameGuild = g.getUuid().equals(playerGuildId);
         if (!sameGuild) {
             event.setCancelled(true);
+            notifyDenied(event.getPlayer(), MSG_OWNED_OUTSIDER + ownedBySuffix(g));
+        }
+    }
+    @EventHandler
+    public void onMove(EntityMoveEvent event) {
+        if(!(event.getEntity() instanceof LivingEntity le))  return;
+        if (!(le instanceof Enemy)) return;
+        Entity entity = event.getEntity();
+        if (isInSafeGuild(entity.getLocation()) || isInOwnedGuild(entity.getLocation())) {
+            le.remove();
+            event.setCancelled(true);
         }
     }
 
-    // --- Remove monsters entering SAFE ---
+    // --- Remove monsters entering SAFE/OWNED ---
     @EventHandler
     public void onEntityTarget(EntityTargetEvent event) {
         if (!(event.getEntity() instanceof LivingEntity le)) return;
         if (!(le instanceof Enemy)) return; // only hostile entities
         Entity target = event.getTarget();
         if (!(target instanceof Player)) return;
-        // If either attacker or target is in SAFE, remove the hostile mob and cancel targeting
-        if (isInSafeGuild(le.getLocation()) || isInSafeGuild(target.getLocation())) {
+        // If attacker or target is in SAFE or OWNED, remove the hostile mob and cancel targeting
+        if (isInSafeGuild(le.getLocation()) || isInSafeGuild(target.getLocation())
+                || isInOwnedGuild(le.getLocation()) || isInOwnedGuild(target.getLocation())) {
             try {
                 le.remove();
             } catch (Throwable ignored) {
@@ -481,14 +556,17 @@ public class ProtectionListener implements Listener {
                 event.getFrom().getWorld() != null && event.getFrom().getWorld().equals(event.getTo().getWorld())) {
             return;
         }
-        // If player is now in SAFE, purge nearby hostile mobs that are inside SAFE
-        if (!isInSafeGuild(event.getTo())) return;
-        World world = event.getTo().getWorld();
+        // If player is now in SAFE or OWNED, purge nearby hostile mobs that are inside same protected territory
+        Location to = event.getTo();
+        boolean inSafe = isInSafeGuild(to);
+        boolean inOwned = !inSafe && isInOwnedGuild(to);
+        if (!inSafe && !inOwned) return;
+        World world = to.getWorld();
         if (world == null) return;
         // Reasonable radius to cover adjacent entries while limiting cost
-        for (Entity e : world.getNearbyEntities(event.getTo(), 32, 16, 32)) {
+        for (Entity e : world.getNearbyEntities(to, 32, 16, 32)) {
             if (e instanceof LivingEntity le && e instanceof Enemy) {
-                if (isInSafeGuild(le.getLocation())) {
+                if ((inSafe && isInSafeGuild(le.getLocation())) || (inOwned && isInOwnedGuild(le.getLocation()))) {
                     try {
                         le.remove();
                     } catch (Throwable ignored) {

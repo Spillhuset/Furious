@@ -67,8 +67,8 @@ public class Furious extends JavaPlugin {
         shopsService.load();
 
         teleportsService = new TeleportsService(instance);
-        tombstoneService = new TombstoneService(instance);
         armorStandManager = new ArmorStandManager(instance);
+        tombstoneService = new TombstoneService(instance);
         locksService = new LocksService(instance);
         locksService.load();
 

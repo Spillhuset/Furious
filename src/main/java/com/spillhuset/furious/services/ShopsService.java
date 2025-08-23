@@ -327,9 +327,9 @@ public class ShopsService {
         } catch (Throwable ignored) {}
         save();
         if (hasStand) {
-            Components.sendSuccess(sender, Components.t("Spawn set for shop "), Components.valueComp(s.getName()), Components.t(" (armorstand created)"));
+            Components.sendSuccess(sender, Components.t("Spawn set for shop "), Components.valueComp(s.getName()), Components.t(" (armor stand created)"));
         } else {
-            Components.sendSuccess(sender, Components.t("Spawn set for shop "), Components.valueComp(s.getName()), Components.t(" (armorstand not created yet; will be ensured shortly)"));
+            Components.sendSuccess(sender, Components.t("Spawn set for shop "), Components.valueComp(s.getName()), Components.t(" (armor stand not yet visible; it will appear shortly once the area finishes loading)"));
             // Best-effort ensure on next tick so chunk/entity systems have settled
             try {
                 plugin.getServer().getScheduler().runTask(plugin, () -> {

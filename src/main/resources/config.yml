@@ -1,0 +1,86 @@
+# Furious Plugin default configuration
+# This file is packaged with the plugin and copied to the plugin data folder on first run.
+# Adjust values in your server's plugins/furious/config.yml as needed.
+
+wallet:
+  # Currency presentation
+  symbol: "⚙"
+  name: "scrap"
+  name_plural: "scraps"
+  # Initial balance granted the first time a player's wallet is accessed
+  initial-balance: 1000.0
+  # Auto-flush tuning (advanced). How often to write pending changes to disk
+  flush-interval-ticks: 100
+  # How many pending balance changes trigger an immediate flush
+  flush-threshold: 50
+
+homes:
+  # Base number of homes a player can set (can increase via purchases)
+  default: 5
+  # Cost of purchasing the next home slot
+  cost: 5000.0
+  # Price multiplier applied per additional slot
+  multiplier: 1.5
+  # Enabled world UUIDs for homes features (empty = all worlds allowed)
+  enabled-worlds: []
+
+teleport:
+  # Seconds before a teleport request expires
+  request-timeout-seconds: 120
+  # Cooldown between sending teleport requests
+  cooldown-seconds: 300
+  # Cost charged when sending a teleport request (0 to disable)
+  cost: 50.0
+  # Countdown before teleport completes
+  queue-seconds: 10
+
+guild:
+  # Maximum number of chunk claims per guild
+  max-claims-per-guild: 25
+  # Enabled world UUIDs for guild features (empty = all worlds allowed)
+  enabled-worlds: []
+
+locks:
+  # Enabled world UUIDs for locks features (empty = all worlds allowed)
+  enabled-worlds: []
+
+# Tombstone behavior on player death
+# Note: these keys are consumed by TombstoneService
+# Duration before a tombstone despawns (minutes)
+tombstone:
+  expiration_minutes: 30
+  # Create a cosmetic scalp item in the tombstone
+  create_scalp: true
+  # Move the deceased's wallet into a claimable token in the tombstone
+  create_wallet: true
+  # Percentage of wallet lost on death (remaining is placed in tombstone token)
+  wallet_loss_percent: 0.0
+  # Percentage of XP lost on death (remaining is placed in tombstone XP bottle)
+  xp_loss_percent: 0.0
+
+# Global reward defaults for checklist systems
+# Individual checklist YAMLs (biomes.yml, monsters.yml, taming.yml) may override via rewards.amounts.<key>
+rewards:
+  # Biomes
+  your-first-Biomes: 10
+  server-first-per-Biomes: 1000
+  this-year-first-per-Biomes: 500
+  this-month-first-per-Biomes: 500
+  50%-Biomes: 2000
+  complete-Biomes: 10000
+
+  # Monsters
+  your-first-Monsters: 10
+  server-first-per-Monsters: 1000
+  this-year-first-per-Monsters: 500
+  this-month-first-per-Monsters: 500
+  50%-Monsters: 2000
+  complete-Monsters: 10000
+
+  # Taming
+  your-first-Taming: 10
+  server-first-per-Taming: 1000
+  this-year-first-per-Taming: 500
+  this-month-first-per-Taming: 500
+  50%-Taming: 2000
+  complete-Taming: 10000

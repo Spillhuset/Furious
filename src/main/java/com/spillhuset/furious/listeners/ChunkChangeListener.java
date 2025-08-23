@@ -47,6 +47,18 @@ public class ChunkChangeListener implements Listener {
             int cx = toChunk.getX();
             int cz = toChunk.getZ();
             UUID ownerGid = plugin.guildService != null ? plugin.guildService.getClaimOwner(worldId, cx, cz) : null;
+
+            // If both previous and current chunks are unclaimed (Wilderness), do not update the title
+            try {
+                if (plugin.guildService != null) {
+                    UUID prevWorldId = event.getFrom().getWorld().getUID();
+                    UUID prevOwnerGid = plugin.guildService.getClaimOwner(prevWorldId, fromChunk.getX(), fromChunk.getZ());
+                    if (prevOwnerGid == null && ownerGid == null) {
+                        return; // unclaimed -> unclaimed: skip title update
+                    }
+                }
+            } catch (Throwable ignored) {}
+
             if (ownerGid != null && plugin.guildService != null) {
                 Guild g = plugin.guildService.getGuildById(ownerGid);
                 if (g != null && g.getName() != null && !g.getName().isBlank()) {
