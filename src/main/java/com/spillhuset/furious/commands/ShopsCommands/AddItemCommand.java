@@ -2,6 +2,9 @@ package com.spillhuset.furious.commands.ShopsCommands;
 
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.utils.Components;
+import com.spillhuset.furious.utils.Shop;
+import com.spillhuset.furious.utils.ShopGuildItem;
+import com.spillhuset.furious.utils.ShopType;
 import com.spillhuset.furious.utils.SubCommandInterface;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
@@ -19,8 +22,15 @@ public class AddItemCommand implements SubCommandInterface {
         if (args.length == 2) list.addAll(plugin.shopsService.suggestShopNames(args[1]));
         if (args.length == 3) {
             String p = args[2].toUpperCase();
-            for (Material m : Material.values()) {
-                if (m.isItem() && m.name().startsWith(p)) list.add(m.name());
+            Shop shop = plugin.shopsService.getShopByName(args[1]);
+            if (shop != null && shop.getType() == ShopType.GUILD) {
+                for (ShopGuildItem gi : ShopGuildItem.values()) {
+                    if (gi.name().startsWith(p)) list.add(gi.name());
+                }
+            } else {
+                for (Material m : Material.values()) {
+                    if (m.isItem() && m.name().startsWith(p)) list.add(m.name());
+                }
             }
         }
         if (args.length == 5) { list.add("-"); list.add("0"); }

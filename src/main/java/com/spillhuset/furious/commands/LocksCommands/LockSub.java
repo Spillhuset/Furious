@@ -4,7 +4,6 @@ import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.utils.Components;
 import com.spillhuset.furious.utils.SubCommandInterface;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -39,6 +38,24 @@ public class LockSub implements SubCommandInterface {
             Components.sendErrorMessage(sender, "Only players can use this command.");
             return true;
         }
+
+        // Apply cost for non-ops (configurable)
+        if (!player.isOp()) {
+            double cost = plugin.getConfig().getDouble("locks.lock-cost", 10.0);
+            if (plugin.walletService != null && cost > 0) {
+                double bal = plugin.walletService.getBalance(player.getUniqueId());
+                if (bal < cost) {
+                    Components.sendErrorMessage(player, "Not enough money to get a Lock Tool. Cost: " + plugin.walletService.formatAmount(cost) + ". Balance: " + plugin.walletService.formatAmount(bal) + ".");
+                    return true;
+                }
+                boolean ok = plugin.walletService.subBalance(player.getUniqueId(), cost, "Get lock tool");
+                if (!ok) {
+                    Components.sendErrorMessage(player, "Payment failed. You need " + plugin.walletService.formatAmount(cost) + ".");
+                    return true;
+                }
+            }
+        }
+
         // Give a lock-tool (sign)
         org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(org.bukkit.Material.OAK_SIGN);
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
@@ -52,7 +69,14 @@ public class LockSub implements SubCommandInterface {
         pdc.set(key, org.bukkit.persistence.PersistentDataType.STRING, "lock");
         item.setItemMeta(meta);
         player.getInventory().addItem(item);
-        Components.sendSuccessMessage(player, "You received a Lock Tool.");
+
+        // Success message reflecting cost if any
+        double cost = plugin.getConfig().getDouble("locks.lock-cost", 10.0);
+        if (!player.isOp() && cost > 0 && plugin.walletService != null) {
+            Components.sendSuccessMessage(player, "You received a Lock Tool for " + plugin.walletService.formatAmount(cost) + ".");
+        } else {
+            Components.sendSuccessMessage(player, "You received a Lock Tool.");
+        }
         return true;
     }
 }

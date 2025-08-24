@@ -23,6 +23,10 @@ public class Warp {
     // Optional ArmorStand holder entity UUID used as the canonical location
     private @Nullable UUID armorStandUuid;
 
+    // Optional portal region (axis-aligned box) that triggers teleport to portalTarget
+    private @Nullable UUID portalWorld;
+    private Integer pMinX, pMinY, pMinZ, pMaxX, pMaxY, pMaxZ;
+
     public Warp(String name, Location loc) {
         this.name = name;
         setLocation(loc);
@@ -87,4 +91,41 @@ public class Warp {
     public double getZ() { return z; }
     public float getYaw() { return yaw; }
     public float getPitch() { return pitch; }
+
+    // Portal region API
+    public void clearPortalRegion() {
+        portalWorld = null;
+        pMinX = pMinY = pMinZ = pMaxX = pMaxY = pMaxZ = null;
+    }
+
+    public void setPortalRegion(UUID worldId, int x1, int y1, int z1, int x2, int y2, int z2) {
+        this.portalWorld = worldId;
+        this.pMinX = Math.min(x1, x2);
+        this.pMinY = Math.min(y1, y2);
+        this.pMinZ = Math.min(z1, z2);
+        this.pMaxX = Math.max(x1, x2);
+        this.pMaxY = Math.max(y1, y2);
+        this.pMaxZ = Math.max(z1, z2);
+    }
+
+    public @Nullable UUID getPortalWorld() { return portalWorld; }
+    public Integer getpMinX() { return pMinX; }
+    public Integer getpMinY() { return pMinY; }
+    public Integer getpMinZ() { return pMinZ; }
+    public Integer getpMaxX() { return pMaxX; }
+    public Integer getpMaxY() { return pMaxY; }
+    public Integer getpMaxZ() { return pMaxZ; }
+
+    public boolean hasPortalRegion() {
+        return portalWorld != null && pMinX != null && pMinY != null && pMinZ != null && pMaxX != null && pMaxY != null && pMaxZ != null;
+    }
+
+    public boolean isInsidePortalRegion(Location loc) {
+        if (!hasPortalRegion() || loc.getWorld() == null) return false;
+        if (!loc.getWorld().getUID().equals(portalWorld)) return false;
+        int bx = loc.getBlockX();
+        int by = loc.getBlockY();
+        int bz = loc.getBlockZ();
+        return bx >= pMinX && bx <= pMaxX && by >= pMinY && by <= pMaxY && bz >= pMinZ && bz <= pMaxZ;
+    }
 }

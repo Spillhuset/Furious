@@ -18,7 +18,31 @@ public class WorldsCommand implements SubCommandInterface {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        return List.of();
+        // /guild worlds [world] [enable|disable]
+        String prefix = args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "";
+        if (args.length == 1) {
+            java.util.ArrayList<String> list = new java.util.ArrayList<>();
+            for (World w : plugin.getServer().getWorlds()) {
+                list.add(w.getName());
+            }
+            return list;
+        } else if (args.length == 2) {
+            java.util.ArrayList<String> list = new java.util.ArrayList<>();
+            for (World w : plugin.getServer().getWorlds()) {
+                String name = w.getName();
+                if (prefix.isEmpty() || name.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+                    list.add(name);
+                }
+            }
+            return list;
+        } else if (args.length == 3) {
+            String actionPrefix = args[2].toLowerCase(Locale.ROOT);
+            java.util.ArrayList<String> list = new java.util.ArrayList<>();
+            if ("enable".startsWith(actionPrefix)) list.add("enable");
+            if ("disable".startsWith(actionPrefix)) list.add("disable");
+            return list;
+        }
+        return java.util.Collections.emptyList();
     }
 
     @Override

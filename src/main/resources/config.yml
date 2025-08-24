@@ -44,6 +44,13 @@ locks:
   # Enabled world UUIDs for locks features (empty = all worlds allowed)
   enabled-worlds: []
 
+# Portals configuration
+portals:
+  # Mode for portal activation:
+  # - custom: stepping into a claimed portal region triggers teleport
+  # - nether: only when standing inside Nether Portal blocks and inside a claimed region
+  mode: custom
+
 # Tombstone behavior on player death
 # Note: these keys are consumed by TombstoneService
 # Duration before a tombstone despawns (minutes)

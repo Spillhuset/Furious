@@ -374,6 +374,35 @@ public class GuildHomesService {
         return false;
     }
 
+    /**
+     * Attempt to adopt an unreferenced, managed ArmorStand into a matching Guild Home
+     * by proximity to the stored home location.
+     */
+    public boolean adoptArmorStand(org.bukkit.entity.ArmorStand stand) {
+        if (stand == null || stand.getWorld() == null) return false;
+        org.bukkit.Location sLoc = stand.getLocation();
+        try {
+            for (Home h : new java.util.ArrayList<>(homes.values())) {
+                org.bukkit.Location hLoc = h.getLocation(plugin);
+                if (hLoc == null || hLoc.getWorld() == null) continue;
+                if (!hLoc.getWorld().equals(sLoc.getWorld())) continue;
+                if (hLoc.distanceSquared(sLoc) <= 4.0) {
+                    if (stand.getUniqueId().equals(h.getArmorStandUuid())) return true;
+                    h.setArmorStandUuid(stand.getUniqueId());
+                    try { plugin.armorStandManager.register(stand.getUniqueId(), () -> removeByArmorStand(stand.getUniqueId())); } catch (Throwable ignored) {}
+                    try {
+                        for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
+                            if (viewer.isOp()) viewer.showEntity(plugin, stand); else viewer.hideEntity(plugin, stand);
+                        }
+                    } catch (Throwable ignored) {}
+                    save();
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
     public boolean removeByArmorStand(java.util.UUID armorStandId) {
         for (java.util.Map.Entry<java.util.UUID, Home> e : new java.util.HashMap<>(homes).entrySet()) {
             Home h = e.getValue();

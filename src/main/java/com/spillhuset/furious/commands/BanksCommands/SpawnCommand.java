@@ -45,12 +45,9 @@ public class SpawnCommand implements SubCommandInterface {
             Components.sendErrorMessage(sender, "This bank is not claimed; cannot set spawn.");
             return true;
         }
-        if (player.getWorld() == null || !player.getWorld().getUID().equals(bank.getWorldId())) {
-            Components.sendErrorMessage(sender, "You must stand inside the bank's claimed chunk (wrong world).");
-            return true;
-        }
-        org.bukkit.Chunk pc = player.getLocation().getChunk();
-        if (pc.getX() != bank.getChunkX() || pc.getZ() != bank.getChunkZ()) {
+        // Verify the player stands inside any of this bank's claimed chunks
+        Bank at = plugin.banksService.getBankAt(player.getLocation());
+        if (at == null || !at.getId().equals(bank.getId())) {
             Components.sendErrorMessage(sender, "You must stand inside the bank's claimed chunk to set spawn.");
             return true;
         }

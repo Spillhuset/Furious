@@ -182,5 +182,21 @@ public class PlayerJoinListener implements Listener {
             }
         } catch (Throwable ignored) {
         }
+
+        // Ensure auctions armor stand is visible only to ops for this joining player
+        try {
+            if (instance.auctionsService != null) {
+                instance.auctionsService.applyAuctionsArmorStandVisibilityForViewer(player);
+            }
+        } catch (Throwable ignored) {
+        }
+
+        // Deliver any pending auction returns on login
+        try {
+            if (instance.auctionsService != null) {
+                instance.auctionsService.processPendingReturns(player);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 }

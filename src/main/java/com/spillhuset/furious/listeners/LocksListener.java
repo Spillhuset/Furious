@@ -117,9 +117,11 @@ public class LocksListener implements Listener {
             }
         }
 
-        // No tool: enforce access, but allow with matching key
+        // No tool: enforce access, but allow with matching key (either hand)
         if (!player.isOp() && owner != null && !owner.equals(player.getUniqueId())) {
-            if (!hasMatchingKey(inHand, owner)) {
+            ItemStack offHand = player.getInventory().getItemInOffHand();
+            boolean hasKey = hasMatchingKey(inHand, owner) || hasMatchingKey(offHand, owner);
+            if (!hasKey) {
                 event.setCancelled(true);
                 Components.sendErrorMessage(player, "This block is locked.");
                 return;
@@ -135,14 +137,28 @@ public class LocksListener implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        if (player.isOp()) return; // ops bypass for breaking
         Block block = event.getBlock();
-        // Skip enforcement in disabled worlds
-        if (plugin.locksService != null && block.getWorld() != null && !plugin.locksService.isWorldEnabled(block.getWorld().getUID())) return;
-        UUID owner = plugin.locksService == null ? null : plugin.locksService.getOwner(block);
-        if (owner != null && !owner.equals(player.getUniqueId())) {
+
+        if (plugin.locksService == null || block == null || block.getWorld() == null) {
+            return;
+        }
+
+        boolean worldEnabled = plugin.locksService.isWorldEnabled(block.getWorld().getUID());
+        UUID owner = plugin.locksService.getOwner(block);
+
+        // Enforcement only in enabled worlds (ops bypass)
+        if (worldEnabled && owner != null && !owner.equals(player.getUniqueId()) && !player.isOp()) {
             event.setCancelled(true);
             Components.sendErrorMessage(player, "This block is locked.");
+            return;
+        }
+
+        // If the block had a lock and the break is allowed to proceed, remove the lock for the whole related group
+        if (owner != null) {
+            boolean ok = plugin.locksService.unlockBlock(player.getUniqueId(), player.isOp(), block);
+            if (ok) {
+                plugin.locksService.save();
+            }
         }
     }
 

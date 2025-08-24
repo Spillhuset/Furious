@@ -9,6 +9,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -40,13 +41,14 @@ public class HomesCommand implements CommandInterface, CommandExecutor, TabCompl
             return true;
         }
 
-        if(args.length == 0) {
+        if (args.length == 0) {
             sendUsage(sender);
             return true;
         }
 
-        for(SubCommandInterface subCommandInterface : subCommands) {
-            if(subCommandInterface.getName().equalsIgnoreCase(args[0])) {
+        // Try to match a subcommand first
+        for (SubCommandInterface subCommandInterface : subCommands) {
+            if (subCommandInterface.getName().equalsIgnoreCase(args[0])) {
                 if (subCommandInterface.can(sender, true)) {
                     subCommandInterface.execute(sender, args);
                     return true;
@@ -54,14 +56,25 @@ public class HomesCommand implements CommandInterface, CommandExecutor, TabCompl
             }
         }
 
+        // If no subcommand matched and exactly one arg is given, treat it as shorthand for teleporting to own home
+        if (args.length == 1 && sender instanceof Player player) {
+            if (!sender.hasPermission("furious.homes.teleport")) {
+                Components.sendErrorMessage(sender, "You don't have permission to teleport to homes.");
+                return true;
+            }
+            plugin.homesService.teleportHome(player, player.getUniqueId(), args[0]);
+            return true;
+        }
+
+        // Fallback: show usage
         sendUsage(sender);
         return true;
     }
 
     public void sendUsage(CommandSender sender) {
         List<String> commands = new ArrayList<>();
-        for(SubCommandInterface subCommandInterface : subCommands) {
-            if(subCommandInterface.can(sender, false)) {
+        for (SubCommandInterface subCommandInterface : subCommands) {
+            if (subCommandInterface.can(sender, false)) {
                 commands.add(subCommandInterface.getName());
             }
         }
@@ -72,13 +85,29 @@ public class HomesCommand implements CommandInterface, CommandExecutor, TabCompl
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         List<String> suggestions = new ArrayList<>();
-        if(args.length >= 1) {
-            for(SubCommandInterface subCommandInterface : subCommands) {
-                if(subCommandInterface.can(sender, false)) {
-                    if(subCommandInterface.getName().equalsIgnoreCase(args[0])) {
+        if (args.length >= 1) {
+            // If first arg matches a subcommand, delegate to it
+            for (SubCommandInterface subCommandInterface : subCommands) {
+                if (subCommandInterface.can(sender, false)) {
+                    if (subCommandInterface.getName().equalsIgnoreCase(args[0])) {
                         return subCommandInterface.tabComplete(sender, args);
-                    } else if(subCommandInterface.getName().startsWith(args[0])) {
-                        suggestions.add(subCommandInterface.getName());
+                    }
+                }
+            }
+            // Otherwise suggest subcommand names and (if allowed) own home names
+            String prefix = args[0].toLowerCase();
+            for (SubCommandInterface subCommandInterface : subCommands) {
+                if (subCommandInterface.can(sender, false)) {
+                    String name = subCommandInterface.getName();
+                    if (name.toLowerCase().startsWith(prefix)) {
+                        suggestions.add(name);
+                    }
+                }
+            }
+            if (sender instanceof Player player && sender.hasPermission("furious.homes.teleport")) {
+                for (String home : plugin.homesService.getHomesNames(player.getUniqueId())) {
+                    if (home.toLowerCase().startsWith(prefix)) {
+                        suggestions.add(home);
                     }
                 }
             }

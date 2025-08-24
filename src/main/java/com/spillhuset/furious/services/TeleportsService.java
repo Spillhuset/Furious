@@ -102,6 +102,12 @@ public class TeleportsService {
             Components.sendErrorMessage(sender, target.getName() + " is not accepting teleport requests.");
             return false;
         }
+        // Prevent sending if target already has a pending incoming request
+        TpRequest existingIncoming = incomingByTarget.get(tId);
+        if (existingIncoming != null && !existingIncoming.sender.equals(sId)) {
+            Components.sendErrorMessage(sender, target.getName() + " already has a pending teleport request.");
+            return false;
+        }
         // Charge cost
         double cost = requestCost();
         if (cost > 0) {
@@ -309,6 +315,14 @@ public class TeleportsService {
             Components.sendErrorMessage(player, "Invalid target location.");
             return;
         }
+        // Ops bypass the teleport queue: teleport instantly
+        try {
+            if (player.isOp()) {
+                player.teleportAsync(target);
+                Components.sendSuccess(player, Components.t("Teleported."));
+                return;
+            }
+        } catch (Throwable ignored) {}
         // Cancel any existing queue first
         if (isQueued(player)) {
             cancelQueue(player, "new teleport started");

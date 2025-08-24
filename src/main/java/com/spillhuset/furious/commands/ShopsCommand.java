@@ -27,6 +27,7 @@ public class ShopsCommand implements CommandInterface, CommandExecutor, TabCompl
                 new CreateCommand(plugin),
                 new DeleteCommand(plugin),
                 new SpawnCommand(plugin),
+                new UnspawnCommand(plugin),
                 new com.spillhuset.furious.commands.ShopsCommands.TeleportCommand(plugin),
                 new ClaimCommand(plugin),
                 new UnclaimCommand(plugin),
@@ -35,6 +36,7 @@ public class ShopsCommand implements CommandInterface, CommandExecutor, TabCompl
                 new SetBuyPriceCommand(plugin),
                 new StockCommand(plugin),
                 new RestockCommand(plugin),
+                new OpenCommand(plugin),
                 // player commands
                 new ListCommand(plugin),
                 new AddItemCommand(plugin),

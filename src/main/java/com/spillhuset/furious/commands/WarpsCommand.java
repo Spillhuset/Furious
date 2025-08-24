@@ -29,6 +29,8 @@ public class WarpsCommand implements CommandInterface, CommandExecutor, TabCompl
                 new SetPasswordCommand(plugin),
                 new RemoveCommand(plugin),
                 new ConnectPortalCommand(plugin),
+                new PortalClaimCommand(plugin),
+                new PortalClearCommand(plugin),
                 new com.spillhuset.furious.commands.WarpsCommands.TeleportCommand(plugin)
         ));
     }

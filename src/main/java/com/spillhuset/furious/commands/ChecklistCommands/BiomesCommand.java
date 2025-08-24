@@ -6,8 +6,6 @@ import com.spillhuset.furious.utils.SubCommandInterface;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.Registry;
-import org.bukkit.block.Biome;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -21,22 +19,11 @@ public class BiomesCommand implements SubCommandInterface {
         this.plugin = plugin.getInstance();
     }
 
-    @SuppressWarnings("deprecation")
-    private Collection<Biome> allBiomes() {
+    private List<String> allBiomeKeysLower() {
         try {
-            Biome[] arr = Biome.class.getEnumConstants();
-            if (arr != null && arr.length > 0) return Arrays.asList(arr);
+            if (plugin.registryCache != null) return plugin.registryCache.getBiomeKeysLower();
         } catch (Throwable ignored) {}
-        // Fallback to registry iteration on servers where Biome is not a true enum
-        try {
-            Iterable<Biome> reg = Registry.BIOME;
-            if (reg != null) {
-                List<Biome> list = new ArrayList<>();
-                for (Biome b : reg) list.add(b);
-                if (!list.isEmpty()) return list;
-            }
-        } catch (Throwable ignored) {}
-        return Collections.emptyList();
+        return java.util.Collections.emptyList();
     }
 
     @Override
@@ -55,10 +42,9 @@ public class BiomesCommand implements SubCommandInterface {
                     suggestions.add(op.getName());
                 }
             }
-            // suggest biome names (both namespaced and simple value)
-            for (Biome b : allBiomes()) {
-                String keyNs = b.key().asString().toLowerCase(Locale.ROOT);
-                String keySimple = b.key().value().toLowerCase(Locale.ROOT);
+            // suggest biome keys (both namespaced and simple value)
+            for (String keyNs : allBiomeKeysLower()) {
+                String keySimple = keyNs.contains(":") ? keyNs.substring(keyNs.indexOf(':') + 1) : keyNs;
                 if (keyNs.startsWith(partial)) suggestions.add(keyNs);
                 else if (keySimple.startsWith(partial)) suggestions.add(keySimple);
             }
@@ -120,13 +106,13 @@ public class BiomesCommand implements SubCommandInterface {
             return true;
         }
 
-        // Try resolve as biome
-        Biome biome = resolveBiome(target);
-        if (biome == null) {
+        // Try resolve as biome key
+        String biomeKey = resolveBiomeKey(target);
+        if (biomeKey == null) {
             Components.sendErrorMessage(sender, "Unknown player or biome: " + target);
             return true;
         }
-        showPlayersForBiome(sender, biome);
+        showPlayersForBiome(sender, biomeKey);
         return true;
     }
 
@@ -141,32 +127,26 @@ public class BiomesCommand implements SubCommandInterface {
         return null;
     }
 
-    private Biome resolveBiome(String name) {
+    private String resolveBiomeKey(String name) {
         String in = name.toLowerCase(Locale.ROOT);
-        Collection<Biome> all = allBiomes();
-        for (Biome b : all) {
-            String keyNs = b.key().asString().toLowerCase(Locale.ROOT);
-            String keySimple = b.key().value().toLowerCase(Locale.ROOT);
-            if (in.equals(keyNs) || in.equals(keySimple)) return b;
-        }
-        // Fallback: try match legacy enum constant string without calling name()
-        for (Biome b : all) {
-            if (b.toString().equalsIgnoreCase(name)) return b;
+        List<String> all = allBiomeKeysLower();
+        for (String keyNs : all) {
+            String keySimple = keyNs.contains(":") ? keyNs.substring(keyNs.indexOf(':') + 1) : keyNs;
+            if (in.equals(keyNs) || in.equals(keySimple)) return keyNs;
         }
         return null;
     }
 
     private void showChecklist(CommandSender sender, UUID playerId, String displayName) {
         Set<String> visited = plugin.biomesService.getVisited(playerId);
-        List<Biome> all = new ArrayList<>(allBiomes());
+        List<String> all = new ArrayList<>(allBiomeKeysLower());
         // Sort by biome key (namespaced)
-        all = all.stream().sorted(Comparator.comparing(b -> b.key().asString())).collect(Collectors.toList());
+        all.sort(Comparator.naturalOrder());
 
         Components.sendInfo(sender, Components.t("Biomes visited by "), Components.playerComp(displayName));
         int perLine = 1; // one biome per line for clarity
         int count = 0;
-        for (Biome b : all) {
-            String biomeKey = b.key().asString().toLowerCase(Locale.ROOT);
+        for (String biomeKey : all) {
             boolean has = visited.contains(biomeKey);
             String mark = has ? "✔" : "✘";
             NamedTextColor color = has ? NamedTextColor.GREEN : NamedTextColor.RED;
@@ -185,15 +165,16 @@ public class BiomesCommand implements SubCommandInterface {
                 String n = Optional.ofNullable(plugin.getServer().getOfflinePlayer(server).getName()).orElse(server.toString());
                 suffix = ": server-first " + n;
             }
+            String simple = biomeKey.contains(":") ? biomeKey.substring(biomeKey.indexOf(':') + 1) : biomeKey;
             if (suffix == null) {
                 Components.sendColored(sender, NamedTextColor.YELLOW,
                         Components.t("["), Components.t(mark, color), Components.t("] "),
-                        Components.t(b.key().value().toLowerCase(Locale.ROOT), NamedTextColor.GOLD)
+                        Components.t(simple.toLowerCase(Locale.ROOT), NamedTextColor.GOLD)
                 );
             } else {
                 Components.sendColored(sender, NamedTextColor.YELLOW,
                         Components.t("["), Components.t(mark, color), Components.t("] "),
-                        Components.t(b.key().value().toLowerCase(Locale.ROOT), NamedTextColor.GOLD),
+                        Components.t(simple.toLowerCase(Locale.ROOT), NamedTextColor.GOLD),
                         Components.t("" + suffix, NamedTextColor.YELLOW)
                 );
             }
@@ -202,9 +183,10 @@ public class BiomesCommand implements SubCommandInterface {
         Components.sendInfo(sender, Components.t("Total biomes: "), Components.valueComp(String.valueOf(all.size())), Components.t(" | Visited: "), Components.valueComp(String.valueOf(visited.size())));
     }
 
-    private void showPlayersForBiome(CommandSender sender, Biome biome) {
-        String key = biome.key().asString().toLowerCase(Locale.ROOT);
-        Components.sendInfo(sender, Components.t("Firsts for "), Components.t(biome.key().value().toLowerCase(Locale.ROOT), NamedTextColor.GOLD), Components.t(":"));
+    private void showPlayersForBiome(CommandSender sender, String biomeKey) {
+        String key = biomeKey.toLowerCase(Locale.ROOT);
+        String simple = key.contains(":") ? key.substring(key.indexOf(':') + 1) : key;
+        Components.sendInfo(sender, Components.t("Firsts for "), Components.t(simple.toLowerCase(Locale.ROOT), NamedTextColor.GOLD), Components.t(":"));
         UUID server = plugin.biomesService.getServerFirst(key);
         UUID year = plugin.biomesService.getYearFirst(key);
         UUID month = plugin.biomesService.getMonthFirst(key);

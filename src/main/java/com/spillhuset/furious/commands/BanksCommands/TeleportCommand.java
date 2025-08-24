@@ -13,6 +13,7 @@ import java.util.List;
 /**
  * Teleport to a bank's claimed location.
  * Usage: /banks teleport <bankName> [player]
+ * Note: This command is op-only.
  */
 public class TeleportCommand implements SubCommandInterface {
     private final Furious plugin;
@@ -27,8 +28,11 @@ public class TeleportCommand implements SubCommandInterface {
         if (args.length == 2) {
             list.addAll(plugin.banksService.suggestBankNames(args[1]));
         } else if (args.length == 3) {
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.getName().toLowerCase().startsWith(args[2].toLowerCase())) list.add(p.getName());
+            // Only suggest player names if sender can target others (op or has specific permission)
+            if (sender.isOp() || sender.hasPermission(getPermission() + ".others")) {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    if (p.getName().toLowerCase().startsWith(args[2].toLowerCase())) list.add(p.getName());
+                }
             }
         }
         return list;
@@ -36,6 +40,11 @@ public class TeleportCommand implements SubCommandInterface {
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
+        // Enforce op-only usage regardless of generic permissions
+        if (!sender.isOp()) {
+            Components.sendErrorMessage(sender, "This command is op-only.");
+            return true;
+        }
         if (args.length < 2) {
             Components.sendErrorMessage(sender, "Usage: /banks teleport <bankName> [player]");
             return true;
@@ -43,6 +52,11 @@ public class TeleportCommand implements SubCommandInterface {
         String bankName = args[1];
         Player target;
         if (args.length >= 3) {
+            // Additional permission check for teleporting others
+            if (!(sender.isOp() || sender.hasPermission(getPermission() + ".others"))) {
+                Components.sendErrorMessage(sender, "You don't have permission to teleport others.");
+                return true;
+            }
             target = Bukkit.getPlayerExact(args[2]);
             if (target == null) {
                 Components.sendErrorMessage(sender, "Player not found.");
@@ -67,5 +81,15 @@ public class TeleportCommand implements SubCommandInterface {
     @Override
     public String getPermission() {
         return "furious.banks.teleport";
+    }
+
+    // Override can() to ensure op-only access in menus and dispatcher checks
+    @Override
+    public boolean can(CommandSender sender, boolean feedback) {
+        if (!sender.isOp()) {
+            if (feedback) Components.sendErrorMessage(sender, "This command is op-only.");
+            return false;
+        }
+        return SubCommandInterface.super.can(sender, feedback);
     }
 }

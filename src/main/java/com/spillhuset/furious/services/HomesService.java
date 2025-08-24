@@ -29,6 +29,8 @@ public class HomesService {
     private final Furious plugin;
     //          homeUUID, home
     private final Map<UUID, Home> homes = new HashMap<>();
+    //          playerUUID, last homes teleport epoch millis (in-memory only)
+    private final Map<UUID, Long> lastHomesTeleport = new HashMap<>();
     //          location, homeUUID
     private final Map<Location, UUID> locations = new HashMap<>();
     //          playerUUID, purchased
@@ -44,6 +46,7 @@ public class HomesService {
     public int DEFAULT_HOMES_COUNT;
     public double DEFAULT_HOMES_COST;
     public double HOMES_MULTIPLIER;
+    public int TELEPORT_COOLDOWN_SECONDS;
 
     // batching fields
     private final Object configIoLock = new Object(); // guard config read/writes against async save
@@ -55,6 +58,7 @@ public class HomesService {
         DEFAULT_HOMES_COUNT = instance.getConfig().getInt("homes.default", 5);
         DEFAULT_HOMES_COST = instance.getConfig().getDouble("homes.cost", 5000.0);
         HOMES_MULTIPLIER = instance.getConfig().getDouble("homes.multiplier", 1.5);
+        TELEPORT_COOLDOWN_SECONDS = instance.getConfig().getInt("homes.teleport-cooldown-seconds", 1800);
     }
 
     public void load() {
@@ -347,6 +351,7 @@ public class HomesService {
                     try {
                         org.bukkit.entity.Entity ent = plugin.getServer().getEntity(id);
                         if (ent instanceof org.bukkit.entity.ArmorStand stand) {
+                            try { stand.setCustomNameVisible(true); } catch (Throwable ignored) {}
                             for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
                                 if (viewer.isOp()) {
                                     viewer.showEntity(plugin, stand);
@@ -396,9 +401,9 @@ public class HomesService {
         setWorldEnabled(worldId, enable);
         save();
         if (enable) {
-            Components.sendSuccess(commandSender, Components.t("World "), Components.valueComp(world.getName()), Components.t(" enabled", NamedTextColor.GREEN), Components.t("."));
+            Components.sendSuccess(commandSender, Components.t("World "), Components.valueComp(world.getName()), Components.t(" enabled", NamedTextColor.GREEN), Components.t(" for homes."));
         } else {
-            Components.sendSuccess(commandSender, Components.t("World "), Components.valueComp(world.getName()), Components.t(" disabled", NamedTextColor.RED), Components.t("."));
+            Components.sendSuccess(commandSender, Components.t("World "), Components.valueComp(world.getName()), Components.t(" disabled", NamedTextColor.RED), Components.t(" for homes."));
         }
     }
 
@@ -537,6 +542,7 @@ public class HomesService {
                 if (asId == null) continue;
                 Entity ent = plugin.getServer().getEntity(asId);
                 if (ent instanceof ArmorStand stand) {
+                    try { stand.setCustomNameVisible(true); } catch (Throwable ignored) {}
                     if (viewer.isOp()) {
                         viewer.showEntity(plugin, stand);
                     } else {
@@ -576,6 +582,18 @@ public class HomesService {
         }
     }
 
+    private String formatDuration(long totalSeconds) {
+        if (totalSeconds <= 0) return "0s";
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        StringBuilder sb = new StringBuilder();
+        if (hours > 0) sb.append(hours).append("h ");
+        if (minutes > 0) sb.append(minutes).append("m ");
+        if (seconds > 0 || sb.length() == 0) sb.append(seconds).append("s");
+        return sb.toString().trim();
+    }
+
     public void teleportHome(Player commandSender, UUID uuid, String homeName) {
         Set<UUID> playerHomes = players.getOrDefault(uuid, new HashSet<>());
         for (UUID homeUUID : playerHomes) {
@@ -585,6 +603,18 @@ public class HomesService {
                 if (loc == null || loc.getWorld() == null) {
                     Components.sendErrorMessage(commandSender, "Home location is invalid.");
                     return;
+                }
+                // Enforce teleport cooldown for non-ops
+                if (!commandSender.isOp()) {
+                    long now = System.currentTimeMillis();
+                    long last = lastHomesTeleport.getOrDefault(commandSender.getUniqueId(), 0L);
+                    long waitMs = (long) TELEPORT_COOLDOWN_SECONDS * 1000L - (now - last);
+                    if (waitMs > 0) {
+                        long remainingSec = (waitMs + 999) / 1000; // ceil to seconds
+                        Components.sendErrorMessage(commandSender, "You must wait " + formatDuration(remainingSec) + " before using /homes teleport again.");
+                        return;
+                    }
+                    lastHomesTeleport.put(commandSender.getUniqueId(), now);
                 }
                 plugin.teleportsService.queueTeleport(commandSender, loc, "Home: " + homeName);
                 return;
@@ -630,43 +660,143 @@ public class HomesService {
         return false;
     }
 
+    /**
+     * Attempt to adopt an unreferenced, managed ArmorStand into a matching Home.
+     * A match is considered if the stand is in the same world and near the stored home location.
+     * On adoption, updates the home UUID reference, registers with ArmorStandManager, applies visibility, and saves.
+     * Returns true if adopted, false otherwise.
+     */
+    public boolean adoptArmorStand(org.bukkit.entity.ArmorStand stand) {
+        if (stand == null || stand.getWorld() == null) return false;
+        org.bukkit.Location sLoc = stand.getLocation();
+        try {
+            for (Home h : new java.util.ArrayList<>(homes.values())) {
+                org.bukkit.Location hLoc = h.getLocation(plugin);
+                if (hLoc == null || hLoc.getWorld() == null) continue;
+                if (!hLoc.getWorld().equals(sLoc.getWorld())) continue;
+                // Within ~2 blocks considered the same anchor spot
+                if (hLoc.distanceSquared(sLoc) <= 4.0) {
+                    java.util.UUID currentId = h.getArmorStandUuid();
+                    // If already pointing to this stand, consider it adopted
+                    if (stand.getUniqueId().equals(currentId)) return true;
+                    // If the home already references an existing ArmorStand entity, do NOT adopt another one.
+                    // This prevents flip-flopping between two nearby stands; the sanitizer will remove the extra.
+                    if (currentId != null) {
+                        org.bukkit.entity.Entity curEnt = plugin.getServer().getEntity(currentId);
+                        if (curEnt instanceof org.bukkit.entity.ArmorStand) {
+                            return false;
+                        }
+                    }
+                    // Update reference and register (only if no existing entity is present)
+                    h.setArmorStandUuid(stand.getUniqueId());
+                    try { plugin.armorStandManager.register(stand.getUniqueId(), () -> removeByArmorStand(stand.getUniqueId())); } catch (Throwable ignored) {}
+                    // Ensure name visibility and per-player ops-only visibility
+                    try { stand.setCustomNameVisible(true); } catch (Throwable ignored) {}
+                    try {
+                        for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
+                            if (viewer.isOp()) viewer.showEntity(plugin, stand); else viewer.hideEntity(plugin, stand);
+                        }
+                    } catch (Throwable ignored) {}
+                    // Persist update
+                    save();
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    // Helper: check if an ArmorStand is managed by this plugin via PDC tag
+    private boolean isManagedStand(org.bukkit.entity.ArmorStand stand) {
+        if (stand == null) return false;
+        try {
+            org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(plugin, "managed");
+            java.lang.Byte b = stand.getPersistentDataContainer().get(key, org.bukkit.persistence.PersistentDataType.BYTE);
+            return b != null && b == (byte)1;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    // Helper: find any managed ArmorStand near a location within the given radius (blocks)
+    private org.bukkit.entity.ArmorStand findNearbyManagedStand(org.bukkit.Location loc, double radius) {
+        if (loc == null || loc.getWorld() == null) return null;
+        double r = Math.max(0.0, radius);
+        try {
+            java.util.Collection<org.bukkit.entity.Entity> ents = loc.getWorld().getNearbyEntities(loc, r, r, r);
+            for (org.bukkit.entity.Entity e : ents) {
+                if (e instanceof org.bukkit.entity.ArmorStand st && isManagedStand(st)) {
+                    return st;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     public void ensureArmorStands() {
         // For each home, ensure the ArmorStand exists and is named/visible correctly
         for (Home home : new java.util.ArrayList<>(homes.values())) {
             java.util.UUID asId = home.getArmorStandUuid();
+            org.bukkit.Location location = home.getLocation(plugin);
+            if (location == null || location.getWorld() == null) continue;
             org.bukkit.entity.Entity ent = (asId != null) ? plugin.getServer().getEntity(asId) : null;
-            if (!(ent instanceof org.bukkit.entity.ArmorStand stand)) {
-                // Spawn a new armor stand
-                Location location = home.getLocation(plugin);
-                if (location == null || location.getWorld() == null) continue;
-                try {
-                    String playerName = plugin.getServer().getOfflinePlayer(home.getPlayer()).getName();
-                    String asName = "Home " + home.getName() + " by " + (playerName != null ? playerName : home.getPlayer().toString());
-                    java.util.UUID id = plugin.armorStandManager.create(location, asName);
-                    if (id != null) {
-                        home.setArmorStandUuid(id);
-                        try { plugin.armorStandManager.register(id, () -> removeByArmorStand(id)); } catch (Throwable ignored) {}
-                        // Per-player visibility: ops only
-                        try {
-                            org.bukkit.entity.Entity ent2 = plugin.getServer().getEntity(id);
-                            if (ent2 instanceof org.bukkit.entity.ArmorStand newStand) {
-                                for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
-                                    if (viewer.isOp()) viewer.showEntity(plugin, newStand); else viewer.hideEntity(plugin, newStand);
-                                }
-                            }
-                        } catch (Throwable ignored) {}
-                    }
-                } catch (Throwable t) {
-                    plugin.getLogger().warning("Failed to respawn ArmorStand for home: " + t.getMessage());
-                }
-            } else {
-                // Ensure registered with manager and update visibility for existing stand
+            if (ent instanceof org.bukkit.entity.ArmorStand stand) {
+                // Already present: ensure registered and visibility
                 try { plugin.armorStandManager.register(stand.getUniqueId(), () -> removeByArmorStand(stand.getUniqueId())); } catch (Throwable ignored) {}
                 try {
+                    try { stand.setCustomNameVisible(true); } catch (Throwable ignored) {}
                     for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
                         if (viewer.isOp()) viewer.showEntity(plugin, stand); else viewer.hideEntity(plugin, stand);
                     }
                 } catch (Throwable ignored) {}
+                continue;
+            }
+            // No entity currently accessible for the stored UUID. If the chunk isn't loaded, skip to avoid duplicating.
+            boolean chunkLoaded;
+            try {
+                int cx = location.getBlockX() >> 4; int cz = location.getBlockZ() >> 4;
+                chunkLoaded = location.getWorld().isChunkLoaded(cx, cz);
+            } catch (Throwable ignored) {
+                chunkLoaded = true; // be permissive if API not available
+            }
+            if (!chunkLoaded) continue;
+            // Try to reuse an existing managed ArmorStand near the home location before creating a new one
+            org.bukkit.entity.ArmorStand nearby = findNearbyManagedStand(location, 2.5);
+            if (nearby != null) {
+                if (!nearby.getUniqueId().equals(asId)) {
+                    home.setArmorStandUuid(nearby.getUniqueId());
+                    save();
+                }
+                try { plugin.armorStandManager.register(nearby.getUniqueId(), () -> removeByArmorStand(nearby.getUniqueId())); } catch (Throwable ignored) {}
+                try {
+                    try { nearby.setCustomNameVisible(true); } catch (Throwable ignored) {}
+                    for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
+                        if (viewer.isOp()) viewer.showEntity(plugin, nearby); else viewer.hideEntity(plugin, nearby);
+                    }
+                } catch (Throwable ignored) {}
+                continue;
+            }
+            // Spawn a new armor stand as a last resort
+            try {
+                String playerName = plugin.getServer().getOfflinePlayer(home.getPlayer()).getName();
+                String asName = "Home " + home.getName() + " by " + (playerName != null ? playerName : home.getPlayer().toString());
+                java.util.UUID id = plugin.armorStandManager.create(location, asName);
+                if (id != null) {
+                    home.setArmorStandUuid(id);
+                    try { plugin.armorStandManager.register(id, () -> removeByArmorStand(id)); } catch (Throwable ignored) {}
+                    // Per-player visibility: ops only
+                    try {
+                        org.bukkit.entity.Entity ent2 = plugin.getServer().getEntity(id);
+                        if (ent2 instanceof org.bukkit.entity.ArmorStand newStand) {
+                            try { newStand.setCustomNameVisible(true); } catch (Throwable ignored) {}
+                            for (org.bukkit.entity.Player viewer : plugin.getServer().getOnlinePlayers()) {
+                                if (viewer.isOp()) viewer.showEntity(plugin, newStand); else viewer.hideEntity(plugin, newStand);
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            } catch (Throwable t) {
+                plugin.getLogger().warning("Failed to respawn ArmorStand for home: " + t.getMessage());
             }
         }
     }

@@ -61,6 +61,23 @@ public class WarpsService {
                     String password = ws.getString("password", null);
                     String portal = ws.getString("portal", null);
                     Warp warp = new Warp(name, world, x, y, z, yaw, pitch, cost, password, portal);
+                    // Load optional portal region
+                    ConfigurationSection pr = ws.getConfigurationSection("portalRegion");
+                    if (pr != null) {
+                        try {
+                            String pWorldStr = pr.getString("world");
+                            Integer x1 = pr.getInt("x1");
+                            Integer y1 = pr.getInt("y1");
+                            Integer z1 = pr.getInt("z1");
+                            Integer x2 = pr.getInt("x2");
+                            Integer y2 = pr.getInt("y2");
+                            Integer z2 = pr.getInt("z2");
+                            if (pWorldStr != null) {
+                                UUID pWorld = UUID.fromString(pWorldStr);
+                                warp.setPortalRegion(pWorld, x1, y1, z1, x2, y2, z2);
+                            }
+                        } catch (Exception ignored) {}
+                    }
                     String armorStr = ws.getString("armorStand", null);
                     if (armorStr != null) {
                         try {
@@ -91,6 +108,16 @@ public class WarpsService {
             if (warp.getPassword() != null) ws.set("password", warp.getPassword());
             if (warp.getPortalTarget() != null) ws.set("portal", warp.getPortalTarget());
             if (warp.getArmorStandUuid() != null) ws.set("armorStand", warp.getArmorStandUuid().toString());
+            if (warp.hasPortalRegion()) {
+                ConfigurationSection pr = ws.createSection("portalRegion");
+                pr.set("world", warp.getPortalWorld().toString());
+                pr.set("x1", warp.getpMinX());
+                pr.set("y1", warp.getpMinY());
+                pr.set("z1", warp.getpMinZ());
+                pr.set("x2", warp.getpMaxX());
+                pr.set("y2", warp.getpMaxY());
+                pr.set("z2", warp.getpMaxZ());
+            }
         }
         warpsConfig = out;
         try {
@@ -278,6 +305,48 @@ public class WarpsService {
         }
     }
 
+    public void claimPortalRegion(@NotNull CommandSender sender, @NotNull String name, java.util.UUID playerId) {
+        Warp warp = getWarp(name);
+        if (warp == null) {
+            Components.sendError(sender, Components.t("Warp not found: "), Components.valueComp(name));
+            return;
+        }
+        org.bukkit.Location p1 = plugin.guildService.getSelectionPos1(playerId);
+        org.bukkit.Location p2 = plugin.guildService.getSelectionPos2(playerId);
+        if (p1 == null || p2 == null || p1.getWorld() == null || p2.getWorld() == null) {
+            Components.sendErrorMessage(sender, "You must select two points first (wooden axe).");
+            return;
+        }
+        if (!p1.getWorld().equals(p2.getWorld())) {
+            Components.sendErrorMessage(sender, "Selection points must be in the same world.");
+            return;
+        }
+        warp.setPortalRegion(p1.getWorld().getUID(), p1.getBlockX(), p1.getBlockY(), p1.getBlockZ(), p2.getBlockX(), p2.getBlockY(), p2.getBlockZ());
+        save();
+        Components.sendSuccess(sender, Components.t("Portal region set for "), Components.valueComp(name));
+    }
+
+    public void clearPortalRegion(@NotNull CommandSender sender, @NotNull String name) {
+        Warp warp = getWarp(name);
+        if (warp == null) {
+            Components.sendError(sender, Components.t("Warp not found: "), Components.valueComp(name));
+            return;
+        }
+        warp.clearPortalRegion();
+        save();
+        Components.sendSuccess(sender, Components.t("Portal region cleared for "), Components.valueComp(name));
+    }
+
+    public @Nullable Warp findPortalAt(org.bukkit.Location loc) {
+        if (loc == null) return null;
+        for (Warp w : new java.util.ArrayList<>(warps.values())) {
+            if (w.getPortalTarget() != null && !w.getPortalTarget().isBlank() && w.hasPortalRegion()) {
+                if (w.isInsidePortalRegion(loc)) return w;
+            }
+        }
+        return null;
+    }
+
     public void removeWarp(@NotNull CommandSender sender, @NotNull String name) {
         Warp warp = getWarp(name);
         if (warp == null) {
@@ -350,6 +419,30 @@ public class WarpsService {
         for (Warp w : new java.util.ArrayList<>(warps.values())) {
             if (armorStandId.equals(w.getArmorStandUuid())) return true;
         }
+        return false;
+    }
+
+    /**
+     * Attempt to adopt an unreferenced, managed ArmorStand into a matching Warp by proximity.
+     */
+    public boolean adoptArmorStand(org.bukkit.entity.ArmorStand stand) {
+        if (stand == null || stand.getWorld() == null) return false;
+        org.bukkit.Location sLoc = stand.getLocation();
+        try {
+            for (Warp w : new java.util.ArrayList<>(warps.values())) {
+                org.bukkit.Location wLoc = w.toLocation(plugin);
+                if (wLoc == null || wLoc.getWorld() == null) continue;
+                if (!wLoc.getWorld().equals(sLoc.getWorld())) continue;
+                if (wLoc.distanceSquared(sLoc) <= 4.0) {
+                    if (stand.getUniqueId().equals(w.getArmorStandUuid())) return true;
+                    w.setArmorStandUuid(stand.getUniqueId());
+                    try { plugin.armorStandManager.register(stand.getUniqueId(), () -> removeByArmorStand(stand.getUniqueId())); } catch (Throwable ignored) {}
+                    applyArmorStandNameAndVisibility(w);
+                    save();
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {}
         return false;
     }
 

@@ -17,15 +17,39 @@ commands:
   shops:
     description: Shops command
   teleport:
-    description: Teleport request command
+    description: Teleport command
+    aliases: [tp, tpa, tpaccept, tpdecline, tpdeny, tppos, tpall]
   tombstones:
     description: Tombstones administration command
   locks:
     description: Locks command
   checklist:
     description: Checklist command
+  auctions:
+    description: Auctions command
+  invsee:
+    description: View and edit a player's inventory (op only)
+  endersee:
+    description: View and edit a player's ender chest (op only)
+  heal:
+    description: Heal yourself or other players
+  feed:
+    description: Feed yourself or other players
 
 permissions:
+  furious.auctions:
+    default: true
+  furious.auctions.claim:
+    default: op
+  furious.auctions.unclaim:
+    default: op
+  furious.auctions.open:
+    default: op
+  furious.auctions.spawn:
+    default: op
+  furious.auctions.teleport:
+    default: op
+
   furious.locks:
     default: true
   furious.locks.worlds:
@@ -182,6 +206,10 @@ permissions:
     default: op
   furious.warps.connectportal:
     default: op
+  furious.warps.portalclaim:
+    default: op
+  furious.warps.portalclear:
+    default: op
   furious.warps.teleport:
     default: true
   furious.warps.list:
@@ -213,6 +241,24 @@ permissions:
     default: true
   furious.banks.list:
     default: true
+  furious.banks.open:
+    default: op
+  furious.banks.spawn:
+    default: op
+  furious.banks.teleport:
+    default: op
+  furious.banks.teleport.others:
+    default: op
+  furious.banks.balances:
+    default: true
+  furious.banks.balances.others:
+    default: op
+  furious.banks.summary:
+    default: true
+  furious.banks.summary.others:
+    default: op
+  furious.banks.audit:
+    default: op
 
   furious.shops:
     default: true
@@ -250,6 +296,8 @@ permissions:
     default: op
   furious.shops.type:
     default: op
+  furious.shops.open:
+    default: op
 
   furious.teleport:
     default: true
@@ -264,6 +312,13 @@ permissions:
   furious.teleport.deny:
     default: true
 
+  furious.teleport.position:
+    default: op
+  furious.teleport.all:
+    default: op
+  furious.teleport.teleport:
+    default: op
+
   furious.checklist:
     default: true
   furious.checklist.biomes:
@@ -277,4 +332,19 @@ permissions:
   furious.checklist.taming:
     default: true
   furious.checklist.taming.others:
+    default: op
+
+  furious.invsee:
+    default: op
+  furious.endersee:
+    default: op
+
+  furious.heal:
+    default: op
+  furious.heal.others:
+    default: op
+
+  furious.feed:
+    default: op
+  furious.feed.others:
     default: op

@@ -1,18 +1,13 @@
 package com.spillhuset.furious.utils;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class Shop {
     private final UUID id;
     private String name;
 
-    // Claimed chunk anchor
-    private UUID worldId;
-    private int chunkX;
-    private int chunkZ;
-    private boolean claimed;
+    // Multiple claimed chunk anchors (backward-compat first-claim getters provided)
+    private final List<Claim> claims = new ArrayList<>();
 
     // Global buy/sell toggles (can be used as defaults)
     private boolean buyEnabled;
@@ -34,6 +29,9 @@ public class Shop {
     // Type of shop (player or guild)
     private ShopType type = ShopType.PLAYER;
 
+    // Operational state: whether the shop is open for business
+    private boolean open = true;
+
     // Per-item configuration
     private final Map<String, ItemEntry> items = new HashMap<>();
 
@@ -46,69 +44,42 @@ public class Shop {
         this.sellPrice = 0d;
     }
 
-    public UUID getId() {
-        return id;
-    }
+    public UUID getId() { return id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getName() {
-        return name;
-    }
+    // Legacy-compatible accessors (first claim)
+    public boolean isClaimed() { return !claims.isEmpty(); }
+    public UUID getWorldId() { return isClaimed() ? claims.get(0).worldId : null; }
+    public Integer getChunkX() { return isClaimed() ? claims.get(0).chunkX : null; }
+    public Integer getChunkZ() { return isClaimed() ? claims.get(0).chunkZ : null; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    // Legacy methods map to multi-claim
+    public void claim(UUID worldId, int chunkX, int chunkZ) { addClaim(worldId, chunkX, chunkZ); }
+    public void unclaim() { claims.clear(); }
 
-    public boolean isClaimed() {
-        return claimed;
+    // Multi-claim API
+    public void addClaim(UUID worldId, int chunkX, int chunkZ) {
+        if (worldId == null) return;
+        Claim c = new Claim(worldId, chunkX, chunkZ);
+        if (!claims.contains(c)) claims.add(c);
     }
+    public boolean hasClaimAt(UUID worldId, int chunkX, int chunkZ) {
+        if (worldId == null) return false;
+        for (Claim c : claims) {
+            if (c.worldId.equals(worldId) && c.chunkX == chunkX && c.chunkZ == chunkZ) return true;
+        }
+        return false;
+    }
+    public List<Claim> getClaims() { return new ArrayList<>(claims); }
 
-    public UUID getWorldId() {
-        return worldId;
-    }
+    public boolean isBuyEnabled() { return buyEnabled; }
+    public boolean isSellEnabled() { return sellEnabled; }
+    public double getBuyPrice() { return buyPrice; }
+    public double getSellPrice() { return sellPrice; }
 
-    public int getChunkX() {
-        return chunkX;
-    }
-
-    public int getChunkZ() {
-        return chunkZ;
-    }
-
-    public void claim(UUID worldId, int chunkX, int chunkZ) {
-        this.worldId = worldId;
-        this.chunkX = chunkX;
-        this.chunkZ = chunkZ;
-        this.claimed = true;
-    }
-
-    public void unclaim() {
-        this.claimed = false;
-        this.worldId = null;
-    }
-
-    public boolean isBuyEnabled() {
-        return buyEnabled;
-    }
-
-    public boolean isSellEnabled() {
-        return sellEnabled;
-    }
-
-    public double getBuyPrice() {
-        return buyPrice;
-    }
-
-    public double getSellPrice() {
-        return sellPrice;
-    }
-
-    public void setBuyDisabled() {
-        this.buyEnabled = false;
-    }
-
-    public void setSellDisabled() {
-        this.sellEnabled = false;
-    }
+    public void setBuyDisabled() { this.buyEnabled = false; }
+    public void setSellDisabled() { this.sellEnabled = false; }
 
     public void setBuyPrice(double price) {
         this.buyEnabled = true;
@@ -120,34 +91,18 @@ public class Shop {
         this.sellPrice = Math.max(0d, price);
     }
 
+    // Open/closed state
+    public boolean isOpen() { return open; }
+    public void setOpen(boolean open) { this.open = open; }
+
     // Spawn getters/setters
-    public boolean hasSpawn() {
-        return spawnWorldId != null && spawnX != null;
-    }
-
-    public UUID getSpawnWorldId() {
-        return spawnWorldId;
-    }
-
-    public Double getSpawnX() {
-        return spawnX;
-    }
-
-    public Double getSpawnY() {
-        return spawnY;
-    }
-
-    public Double getSpawnZ() {
-        return spawnZ;
-    }
-
-    public Float getSpawnYaw() {
-        return spawnYaw;
-    }
-
-    public Float getSpawnPitch() {
-        return spawnPitch;
-    }
+    public boolean hasSpawn() { return spawnWorldId != null && spawnX != null; }
+    public UUID getSpawnWorldId() { return spawnWorldId; }
+    public Double getSpawnX() { return spawnX; }
+    public Double getSpawnY() { return spawnY; }
+    public Double getSpawnZ() { return spawnZ; }
+    public Float getSpawnYaw() { return spawnYaw; }
+    public Float getSpawnPitch() { return spawnPitch; }
 
     public void setSpawn(UUID worldId, double x, double y, double z, float yaw, float pitch) {
         this.spawnWorldId = worldId;
@@ -167,29 +122,16 @@ public class Shop {
         this.spawnPitch = null;
     }
 
-    public UUID getArmorStandUuid() {
-        return armorStandUuid;
-    }
-
-    public void setArmorStandUuid(UUID armorStandUuid) {
-        this.armorStandUuid = armorStandUuid;
-    }
+    public UUID getArmorStandUuid() { return armorStandUuid; }
+    public void setArmorStandUuid(UUID armorStandUuid) { this.armorStandUuid = armorStandUuid; }
 
     public ShopType getType() { return type; }
     public void setType(ShopType type) { if (type != null) this.type = type; }
 
     // Items map
-    public Map<String, ItemEntry> getItems() {
-        return items;
-    }
-
-    public ItemEntry getOrCreateItem(String key) {
-        return items.computeIfAbsent(key.toUpperCase(), k -> new ItemEntry());
-    }
-
-    public void removeItem(String key) {
-        if (key != null) items.remove(key.toUpperCase());
-    }
+    public Map<String, ItemEntry> getItems() { return items; }
+    public ItemEntry getOrCreateItem(String key) { return items.computeIfAbsent(key.toUpperCase(), k -> new ItemEntry()); }
+    public void removeItem(String key) { if (key != null) items.remove(key.toUpperCase()); }
 
     public static class ItemEntry {
         private int stock;
@@ -198,46 +140,32 @@ public class Shop {
         private double buyPrice;
         private double sellPrice;
 
-        public int getStock() {
-            return stock;
-        }
+        public int getStock() { return stock; }
+        public void setStock(int stock) { this.stock = Math.max(0, stock); }
+        public boolean isBuyEnabled() { return buyEnabled; }
+        public boolean isSellEnabled() { return sellEnabled; }
+        public double getBuyPrice() { return buyPrice; }
+        public double getSellPrice() { return sellPrice; }
+        public void setBuyDisabled() { this.buyEnabled = false; }
+        public void setSellDisabled() { this.sellEnabled = false; }
+        public void setBuyPrice(double price) { this.buyEnabled = true; this.buyPrice = Math.max(0d, price); }
+        public void setSellPrice(double price) { this.sellEnabled = true; this.sellPrice = Math.max(0d, price); }
+    }
 
-        public void setStock(int stock) {
-            this.stock = Math.max(0, stock);
+    public static class Claim {
+        public final UUID worldId;
+        public final int chunkX;
+        public final int chunkZ;
+        public Claim(UUID worldId, int chunkX, int chunkZ) {
+            this.worldId = worldId;
+            this.chunkX = chunkX;
+            this.chunkZ = chunkZ;
         }
-
-        public boolean isBuyEnabled() {
-            return buyEnabled;
+        @Override public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof Claim c)) return false;
+            return chunkX == c.chunkX && chunkZ == c.chunkZ && Objects.equals(worldId, c.worldId);
         }
-
-        public boolean isSellEnabled() {
-            return sellEnabled;
-        }
-
-        public double getBuyPrice() {
-            return buyPrice;
-        }
-
-        public double getSellPrice() {
-            return sellPrice;
-        }
-
-        public void setBuyDisabled() {
-            this.buyEnabled = false;
-        }
-
-        public void setSellDisabled() {
-            this.sellEnabled = false;
-        }
-
-        public void setBuyPrice(double price) {
-            this.buyEnabled = true;
-            this.buyPrice = Math.max(0d, price);
-        }
-
-        public void setSellPrice(double price) {
-            this.sellEnabled = true;
-            this.sellPrice = Math.max(0d, price);
-        }
+        @Override public int hashCode() { return Objects.hash(worldId, chunkX, chunkZ); }
     }
 }

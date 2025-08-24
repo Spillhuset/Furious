@@ -30,6 +30,7 @@ public class ArmorStandManager {
         try { if (plugin.warpsService != null) plugin.warpsService.ensureArmorStands(); } catch (Throwable ignored) {}
         try { if (plugin.shopsService != null) plugin.shopsService.ensureArmorStands(); } catch (Throwable ignored) {}
         try { if (plugin.banksService != null) plugin.banksService.ensureArmorStands(); } catch (Throwable ignored) {}
+        try { if (plugin.auctionsService != null) plugin.auctionsService.ensureArmorStands(); } catch (Throwable ignored) {}
     }
 
     /**

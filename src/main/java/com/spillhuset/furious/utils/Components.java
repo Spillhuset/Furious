@@ -9,6 +9,8 @@ public class Components {
     public static void sendColored(CommandSender s, NamedTextColor base, Component... parts) {
         Component c = compose(base, parts);
         s.sendMessage(c);
+        // Audit the response
+        try { AuditLog.logResponse(s, c); } catch (Throwable ignored) {}
     }
 
     public static Component compose(NamedTextColor base, Component... parts) {

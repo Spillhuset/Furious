@@ -23,6 +23,7 @@ public class Furious extends JavaPlugin {
     public BanksService banksService;
     public TeleportsService teleportsService;
     public ShopsService shopsService;
+    public AuctionsService auctionsService;
     public ArmorStandManager armorStandManager;
     public TombstoneService tombstoneService;
     public LocksService locksService;
@@ -62,9 +63,14 @@ public class Furious extends JavaPlugin {
 
         banksService = new BanksService(instance);
         banksService.load();
+        // Start scheduled bank interest accrual task
+        banksService.startInterestScheduler();
 
         shopsService = new ShopsService(instance);
         shopsService.load();
+
+        auctionsService = new AuctionsService(instance);
+        auctionsService.load();
 
         teleportsService = new TeleportsService(instance);
         armorStandManager = new ArmorStandManager(instance);
@@ -126,6 +132,13 @@ public class Furious extends JavaPlugin {
             cmd.setTabCompleter(sc);
         }
 
+        cmd = getCommand("auctions");
+        if (cmd != null) {
+            AuctionsCommand ac = new AuctionsCommand(instance);
+            cmd.setExecutor(ac);
+            cmd.setTabCompleter(ac);
+        }
+
         cmd = getCommand("teleport");
         if (cmd != null) {
             TeleportCommand tc = new TeleportCommand(instance);
@@ -154,11 +167,42 @@ public class Furious extends JavaPlugin {
             cmd.setTabCompleter(clc);
         }
 
+        cmd = getCommand("invsee");
+        if (cmd != null) {
+            InvseeCommand ic = new InvseeCommand(instance);
+            cmd.setExecutor(ic);
+            cmd.setTabCompleter(ic);
+        }
+
+        cmd = getCommand("endersee");
+        if (cmd != null) {
+            EnderseeCommand ec = new EnderseeCommand(instance);
+            cmd.setExecutor(ec);
+            cmd.setTabCompleter(ec);
+        }
+
+        cmd = getCommand("heal");
+        if (cmd != null) {
+            HealCommand hc2 = new HealCommand(instance);
+            cmd.setExecutor(hc2);
+            cmd.setTabCompleter(hc2);
+        }
+
+        cmd = getCommand("feed");
+        if (cmd != null) {
+            FeedCommand fc = new FeedCommand(instance);
+            cmd.setExecutor(fc);
+            cmd.setTabCompleter(fc);
+        }
+
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(instance), instance);
         // Ensure ops are hidden from non-ops on join and when op/deop changes
         getServer().getPluginManager().registerEvents(new OpVisibilityListener(instance), instance);
         getServer().getPluginManager().registerEvents(new SelectionListener(instance), instance);
         getServer().getPluginManager().registerEvents(new TeleportsListener(instance), instance);
+        // Audit command usage
+        com.spillhuset.furious.utils.AuditLog.init(instance);
+        getServer().getPluginManager().registerEvents(new CommandAuditListener(), instance);
 
         getServer().getPluginManager().registerEvents(new ArmorStandListener(instance), instance);
         getServer().getPluginManager().registerEvents(new TombstoneListener(instance), instance);
@@ -170,6 +214,8 @@ public class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LocksListener(instance), instance);
         // Cleanup orphans and recreate missing ArmorStands on chunk load
         getServer().getPluginManager().registerEvents(new ChunkArmorStandSanitizer(instance), instance);
+        // Auto-teleport when entering portal regions
+        getServer().getPluginManager().registerEvents(new PortalsListener(instance), instance);
         // Track visited biomes
         getServer().getPluginManager().registerEvents(new BiomeTrackListener(instance), instance);
         // Track removed monsters
@@ -194,8 +240,9 @@ public class Furious extends JavaPlugin {
         if (guildService != null) guildService.save();
         if (guildHomesService != null) guildHomesService.save();
         if (warpsService != null) warpsService.save();
-        if (banksService != null) banksService.save();
+        if (banksService != null) { banksService.shutdown(); banksService.save(); }
         if (shopsService != null) shopsService.save();
+        if (auctionsService != null) auctionsService.shutdown();
         if (locksService != null) locksService.save();
         if (biomesService != null) biomesService.save();
         if (monstersService != null) monstersService.save();

@@ -76,9 +76,16 @@ Warps:
 - Set cost: `/warps setcost <name> <amount>`
 - Set password: `/warps setpassword <name> <password>`
 - Remove: `/warps remove <name>`
-- Connect a Nether portal: `/warps connectportal <name>`
+- Link portal between warps: `/warps connectportal <from> <to>` or `/warps connectportal <from> clear`
+- Define a portal region using wooden-axe selection: `/warps portalclaim <warp>`; clear with `/warps portalclear <warp>`
 - Teleport to warp: `/warps teleport <name>`
 - List warps: `/warps list`
+
+Portal modes:
+- Configure in `config.yml` under `portals.mode`:
+  - `custom` (default): entering a claimed portal region teleports the player.
+  - `nether`: teleport triggers only when the player stands in Nether Portal blocks within a claimed region.
+  In both modes, you use `/warps portalclaim` to mark the area that belongs to the warp and `/warps connectportal` to link to the target warp.
 
 Banks:
 - Create / rename / delete bank: `/banks create <name>`, `/banks rename <old> <new>`, `/banks delete <name>`

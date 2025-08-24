@@ -34,7 +34,12 @@ public class BanksCommand implements CommandInterface, CommandExecutor, TabCompl
                 new WithdrawCommand(plugin),
                 new DeleteAccountCommand(plugin),
                 new SpawnCommand(plugin),
-                new com.spillhuset.furious.commands.BanksCommands.TeleportCommand(plugin)
+                new UnspawnCommand(plugin),
+                new OpenCommand(plugin),
+                new com.spillhuset.furious.commands.BanksCommands.TeleportCommand(plugin),
+                new BalancesCommand(plugin),
+                new SummaryCommand(plugin),
+                new AuditCommand(plugin)
         ));
     }
 

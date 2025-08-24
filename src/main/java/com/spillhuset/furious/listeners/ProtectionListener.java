@@ -33,7 +33,9 @@ import net.kyori.adventure.text.Component;
 
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Enforces protections for SAFE-type guild claims:
@@ -49,6 +51,7 @@ public class ProtectionListener implements Listener {
     private static final String MSG_OWNED_OUTSIDER = "You cannot do that here. Claimed land";
     private static final String MSG_OWNED_ROLE = "Only Moderators/Admins of this guild can build here";
     private final Furious plugin;
+    private final Map<UUID, Long> lastPurgeAt = new ConcurrentHashMap<>();
 
     public ProtectionListener(Furious plugin) {
         this.plugin = plugin.getInstance();
@@ -177,6 +180,10 @@ public class ProtectionListener implements Listener {
                 // Prevent lava-caused ignitions inside OWNED territories
                 event.setCancelled(true);
             }
+            case LIGHTNING, EXPLOSION, ENDER_CRYSTAL -> {
+                // Prevent lightning/explosion-based ignitions inside OWNED territories
+                event.setCancelled(true);
+            }
             case FLINT_AND_STEEL -> {
                 // Allow only owning guild MODERATOR/ADMIN (or ops)
                 if (event.getPlayer() == null) {
@@ -295,17 +302,23 @@ public class ProtectionListener implements Listener {
 
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
-        if (isInSafeGuild(event.getLocation()) || isInWarGuild(event.getLocation())) {
-            // Cancel explosion effects entirely in SAFE and prevent destruction in WAR
+        if (isInSafeGuild(event.getLocation())) {
+            // Cancel explosion effects entirely in SAFE
             event.setCancelled(true);
+            event.blockList().clear();
+        } else if (isInWarGuild(event.getLocation())) {
+            // In WAR, prevent terrain damage but allow explosion entity effects
             event.blockList().clear();
         }
     }
 
     @EventHandler
     public void onBlockExplode(BlockExplodeEvent event) {
-        if (isInSafeGuild(event.getBlock().getLocation()) || isInWarGuild(event.getBlock().getLocation())) {
+        if (isInSafeGuild(event.getBlock().getLocation())) {
             event.setCancelled(true);
+            event.blockList().clear();
+        } else if (isInWarGuild(event.getBlock().getLocation())) {
+            // In WAR, prevent terrain damage but allow explosion entity effects
             event.blockList().clear();
         }
     }
@@ -320,15 +333,8 @@ public class ProtectionListener implements Listener {
     @EventHandler
     public void onPotentiallyHarmfulEntitySpawn(EntitySpawnEvent event) {
         Entity ent = event.getEntity();
-        if (!(ent instanceof Enemy)) {
-            // Not a mob or not hostile; only apply TNT safeguard in SAFE
-            if (isInSafeGuild(ent.getLocation()) && ent instanceof TNTPrimed) {
-                event.setCancelled(true);
-            }
-            return;
-        }
-        // For hostile mobs: block if in SAFE or OWNED
-        if (isInSafeGuild(ent.getLocation()) || isInOwnedGuild(ent.getLocation())) {
+        // Only handle non-creature spawns that are dangerous in SAFE; rely on CreatureSpawnEvent for mobs
+        if (ent instanceof TNTPrimed && isInSafeGuild(ent.getLocation())) {
             event.setCancelled(true);
         }
     }
@@ -459,6 +465,10 @@ public class ProtectionListener implements Listener {
             Material.STONE_PRESSURE_PLATE, Material.LIGHT_WEIGHTED_PRESSURE_PLATE, Material.HEAVY_WEIGHTED_PRESSURE_PLATE, Material.OAK_PRESSURE_PLATE, Material.SPRUCE_PRESSURE_PLATE, Material.BIRCH_PRESSURE_PLATE, Material.JUNGLE_PRESSURE_PLATE, Material.ACACIA_PRESSURE_PLATE, Material.DARK_OAK_PRESSURE_PLATE, Material.MANGROVE_PRESSURE_PLATE, Material.CHERRY_PRESSURE_PLATE, Material.BAMBOO_PRESSURE_PLATE, Material.CRIMSON_PRESSURE_PLATE, Material.WARPED_PRESSURE_PLATE,
             Material.NOTE_BLOCK, Material.REPEATER, Material.COMPARATOR, Material.CHEST, Material.TRAPPED_CHEST, Material.ENDER_CHEST, Material.BARREL, Material.FURNACE, Material.BLAST_FURNACE, Material.SMOKER, Material.CRAFTING_TABLE,
             Material.HOPPER, Material.DROPPER, Material.DISPENSER, Material.BELL,
+            // Utility/workstation UIs
+            Material.BEACON, Material.ANVIL, Material.CHIPPED_ANVIL, Material.DAMAGED_ANVIL,
+            Material.SMITHING_TABLE, Material.ENCHANTING_TABLE, Material.GRINDSTONE, Material.STONECUTTER,
+            Material.LOOM, Material.CARTOGRAPHY_TABLE, Material.LECTERN,
             // Shulker boxes (all colors)
             Material.SHULKER_BOX, Material.WHITE_SHULKER_BOX, Material.LIGHT_GRAY_SHULKER_BOX, Material.GRAY_SHULKER_BOX, Material.BLACK_SHULKER_BOX,
             Material.BROWN_SHULKER_BOX, Material.RED_SHULKER_BOX, Material.ORANGE_SHULKER_BOX, Material.YELLOW_SHULKER_BOX, Material.LIME_SHULKER_BOX,
@@ -549,22 +559,34 @@ public class ProtectionListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
-        // Only act when changing chunks to reduce checks
+        // Guard against null 'to' location during certain teleport/move edge-cases
+        Location to = event.getTo();
+        if (to == null) return;
+        // Only act when changing chunks in the same world to reduce checks
         Chunk fromChunk = event.getFrom().getChunk();
-        Chunk toChunk = event.getTo().getChunk();
-        if (fromChunk.getX() == toChunk.getX() && fromChunk.getZ() == toChunk.getZ() &&
-                event.getFrom().getWorld() != null && event.getFrom().getWorld().equals(event.getTo().getWorld())) {
+        Chunk toChunk = to.getChunk();
+        World fromWorld = event.getFrom().getWorld();
+        World toWorld = to.getWorld();
+        if (fromWorld != null && fromWorld.equals(toWorld)
+                && fromChunk.getX() == toChunk.getX()
+                && fromChunk.getZ() == toChunk.getZ()) {
             return;
         }
         // If player is now in SAFE or OWNED, purge nearby hostile mobs that are inside same protected territory
-        Location to = event.getTo();
         boolean inSafe = isInSafeGuild(to);
         boolean inOwned = !inSafe && isInOwnedGuild(to);
         if (!inSafe && !inOwned) return;
-        World world = to.getWorld();
-        if (world == null) return;
+        if (toWorld == null) return;
+        // Cooldown per player to reduce frequent scans on busy servers
+        UUID pid = event.getPlayer().getUniqueId();
+        long now = System.currentTimeMillis();
+        Long last = lastPurgeAt.get(pid);
+        if (last != null && (now - last) < 1000L) {
+            return;
+        }
+        lastPurgeAt.put(pid, now);
         // Reasonable radius to cover adjacent entries while limiting cost
-        for (Entity e : world.getNearbyEntities(to, 32, 16, 32)) {
+        for (Entity e : toWorld.getNearbyEntities(to, 32, 16, 32)) {
             if (e instanceof LivingEntity le && e instanceof Enemy) {
                 if ((inSafe && isInSafeGuild(le.getLocation())) || (inOwned && isInOwnedGuild(le.getLocation()))) {
                     try {

@@ -123,13 +123,13 @@ public class LocksService {
                     Components.t("World "),
                     Components.valueComp(world.getName()),
                     Components.t(" enabled", NamedTextColor.GREEN),
-                    Components.t("."));
+                    Components.t(" for locks."));
         } else {
             Components.sendSuccess(sender,
                     Components.t("World "),
                     Components.valueComp(world.getName()),
                     Components.t(" disabled", NamedTextColor.RED),
-                    Components.t("."));
+                    Components.t(" for locks."));
         }
     }
 
