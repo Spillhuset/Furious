@@ -35,6 +35,10 @@ commands:
     description: Heal yourself or other players
   feed:
     description: Feed yourself or other players
+  worldspawn:
+    description: Teleport to the current world's spawn (ops only)
+  setworldspawn:
+    description: Set the current world's spawn to your location (ops only)
 
 permissions:
   furious.auctions:
@@ -347,4 +351,13 @@ permissions:
   furious.feed:
     default: op
   furious.feed.others:
+    default: op
+
+  furious.worldspawn:
+    default: true
+  furious.worldspawn.teleport:
+    default: op
+  furious.worldspawn.teleport.others:
+    default: op
+  furious.worldspawn.set:
     default: op

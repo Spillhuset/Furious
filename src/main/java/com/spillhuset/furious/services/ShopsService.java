@@ -788,6 +788,88 @@ public class ShopsService {
         return true;
     }
 
+    public boolean setItemBuyPrice(CommandSender sender, String shopName, String matName, String priceStr) {
+        Shop s = ensureShop(shopName);
+        String key;
+        if (s.getType() == ShopType.GUILD) {
+            try {
+                key = ShopGuildItem.valueOf(matName.toUpperCase()).name();
+            } catch (IllegalArgumentException ex) {
+                Components.sendErrorMessage(sender, "Unknown guild item: " + matName + ". Valid: " + java.util.Arrays.toString(ShopGuildItem.values()));
+                return false;
+            }
+        } else {
+            Material mat = parseMaterial(matName);
+            if (mat == null) {
+                Components.sendErrorMessage(sender, "Unknown material: " + matName);
+                return false;
+            }
+            key = mat.name();
+        }
+        Shop.ItemEntry e = s.getOrCreateItem(key);
+        if (priceStr.equals("-")) {
+            e.setBuyDisabled();
+            Components.sendSuccess(sender, Components.t("Buy disabled for item "), Components.valueComp(key), Components.t(" in shop "), Components.valueComp(s.getName()));
+            save();
+            return true;
+        }
+        try {
+            double price = Double.parseDouble(priceStr);
+            if (price < 0) {
+                Components.sendErrorMessage(sender, "Price must be >= 0 or '-' to disable.");
+                return false;
+            }
+            e.setBuyPrice(price);
+            Components.sendSuccess(sender, Components.t("Buy price for item "), Components.valueComp(key), Components.t(" in shop "), Components.valueComp(s.getName()), Components.t(" set to "), Components.valueComp(String.valueOf(price)));
+            save();
+            return true;
+        } catch (NumberFormatException e1) {
+            Components.sendErrorMessage(sender, "Invalid price. Use a number, 0 for free, or '-' to disable.");
+            return false;
+        }
+    }
+
+    public boolean setItemSellPrice(CommandSender sender, String shopName, String matName, String priceStr) {
+        Shop s = ensureShop(shopName);
+        String key;
+        if (s.getType() == ShopType.GUILD) {
+            try {
+                key = ShopGuildItem.valueOf(matName.toUpperCase()).name();
+            } catch (IllegalArgumentException ex) {
+                Components.sendErrorMessage(sender, "Unknown guild item: " + matName + ". Valid: " + java.util.Arrays.toString(ShopGuildItem.values()));
+                return false;
+            }
+        } else {
+            Material mat = parseMaterial(matName);
+            if (mat == null) {
+                Components.sendErrorMessage(sender, "Unknown material: " + matName);
+                return false;
+            }
+            key = mat.name();
+        }
+        Shop.ItemEntry e = s.getOrCreateItem(key);
+        if (priceStr.equals("-")) {
+            e.setSellDisabled();
+            Components.sendSuccess(sender, Components.t("Sell disabled for item "), Components.valueComp(key), Components.t(" in shop "), Components.valueComp(s.getName()));
+            save();
+            return true;
+        }
+        try {
+            double price = Double.parseDouble(priceStr);
+            if (price < 0) {
+                Components.sendErrorMessage(sender, "Price must be >= 0 or '-' to disable.");
+                return false;
+            }
+            e.setSellPrice(price);
+            Components.sendSuccess(sender, Components.t("Sell price for item "), Components.valueComp(key), Components.t(" in shop "), Components.valueComp(s.getName()), Components.t(" set to "), Components.valueComp(String.valueOf(price)));
+            save();
+            return true;
+        } catch (NumberFormatException e1) {
+            Components.sendErrorMessage(sender, "Invalid price. Use a number, 0 for free, or '-' to disable.");
+            return false;
+        }
+    }
+
     public boolean removeItem(CommandSender sender, String shopName, String matName) {
         Shop s = getShopByName(shopName);
         if (s == null) {

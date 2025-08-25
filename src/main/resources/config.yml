@@ -21,6 +21,8 @@ homes:
   cost: 5000.0
   # Price multiplier applied per additional slot
   multiplier: 1.5
+  # Cooldown between using /homes teleport (seconds) for non-ops
+  teleport-cooldown-seconds: 1800
   # Enabled world UUIDs for homes features (empty = all worlds allowed)
   enabled-worlds: []
 

@@ -14,7 +14,9 @@ public class UnclaimCommand implements SubCommandInterface {
 
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
-        return new ArrayList<>();
+        List<String> list = new ArrayList<>();
+        if (args.length == 2) list.addAll(plugin.shopsService.suggestShopNames(args[1]));
+        return list;
     }
 
     @Override

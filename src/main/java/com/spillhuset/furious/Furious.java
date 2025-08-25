@@ -32,6 +32,7 @@ public class Furious extends JavaPlugin {
     public TamingService tamingService;
     public com.spillhuset.furious.utils.RegistryCache registryCache;
     public com.spillhuset.furious.utils.MessageThrottle messageThrottle;
+    public WeeklyWorldResetService weeklyWorldResetService;
 
     @Override
     public void onEnable() {
@@ -86,6 +87,10 @@ public class Furious extends JavaPlugin {
 
         tamingService = new TamingService(instance);
         tamingService.load();
+
+        // Start weekly Nether/End world reset scheduler
+        weeklyWorldResetService = new WeeklyWorldResetService(instance);
+        weeklyWorldResetService.startScheduler();
 
         PluginCommand cmd;
 
@@ -193,6 +198,20 @@ public class Furious extends JavaPlugin {
             FeedCommand fc = new FeedCommand(instance);
             cmd.setExecutor(fc);
             cmd.setTabCompleter(fc);
+        }
+
+        cmd = getCommand("worldspawn");
+        if (cmd != null) {
+            WorldSpawnCommand wsp = new WorldSpawnCommand(instance);
+            cmd.setExecutor(wsp);
+            cmd.setTabCompleter(wsp);
+        }
+
+        cmd = getCommand("setworldspawn");
+        if (cmd != null) {
+            SetWorldSpawnCommand sws = new SetWorldSpawnCommand(instance);
+            cmd.setExecutor(sws);
+            cmd.setTabCompleter(sws);
         }
 
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(instance), instance);

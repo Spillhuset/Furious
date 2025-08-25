@@ -120,6 +120,12 @@ Locks:
 Teleports (P2P):
 - Staff generally does not need special teleport powers here; use vanilla `/tp` for admin control. The request system is for players: `/teleport request|accept|decline|cancel|deny`.
 
+World Spawn:
+- Teleport to current world's spawn: `/worldspawn` (permission: `furious.worldspawn.teleport`, default op)
+- Teleport to a specific world spawn: `/worldspawn <world>` (permission: `furious.worldspawn.teleport`, default op; console not allowed without players)
+- Teleport players to a world spawn: `/worldspawn <world> <player...>` (permission: `furious.worldspawn.teleport.others`, default op)
+- Set current world's spawn to your location: `/setworldspawn` (permission: `furious.worldspawn.set`, default op)
+
 Wallet:
 - Player: `/wallet balance`, `/wallet pay <player> <amount>`
 - Staff economy moderation:
@@ -144,3 +150,12 @@ Wallet:
 - plugin.yml — authoritative list of commands and permissions.
 - This guide — docs/OP_GUIDE.md
 - Player guide — docs/PLAYER_GUIDE.md
+
+## Weekly Nether/End Reset
+- The plugin can automatically reset Nether and End once per week by deleting and recreating them with a fresh seed.
+- Configure in plugins/Furious/config.yml under `worldreset`:
+  - `enabled` (true/false)
+  - `day-of-week` (e.g., MONDAY)
+  - `time` (HH:mm, server local time, e.g., "04:00")
+  - `worlds` (default: ["world_nether","world_the_end"])
+  - `broadcast` (true/false)

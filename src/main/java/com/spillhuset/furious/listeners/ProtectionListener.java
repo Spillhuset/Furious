@@ -480,6 +480,55 @@ public class ProtectionListener implements Listener {
         return INTERACTABLES.contains(type);
     }
 
+    // Subset: containers and block UIs that expose inventory or items; used to guard SAFE territory access
+    private static final Set<Material> CONTAINERS = Set.of(
+            Material.CHEST, Material.TRAPPED_CHEST, Material.BARREL, Material.ENDER_CHEST,
+            Material.HOPPER, Material.DROPPER, Material.DISPENSER,
+            Material.FURNACE, Material.BLAST_FURNACE, Material.SMOKER,
+            Material.BREWING_STAND,
+            // Shulker boxes (all colors)
+            Material.SHULKER_BOX, Material.WHITE_SHULKER_BOX, Material.LIGHT_GRAY_SHULKER_BOX, Material.GRAY_SHULKER_BOX, Material.BLACK_SHULKER_BOX,
+            Material.BROWN_SHULKER_BOX, Material.RED_SHULKER_BOX, Material.ORANGE_SHULKER_BOX, Material.YELLOW_SHULKER_BOX, Material.LIME_SHULKER_BOX,
+            Material.GREEN_SHULKER_BOX, Material.CYAN_SHULKER_BOX, Material.LIGHT_BLUE_SHULKER_BOX, Material.BLUE_SHULKER_BOX, Material.PURPLE_SHULKER_BOX,
+            Material.MAGENTA_SHULKER_BOX, Material.PINK_SHULKER_BOX
+    );
+
+    private boolean isContainer(Material type) {
+        return CONTAINERS.contains(type);
+    }
+
+    // Block opening/using containers in SAFE territory for all non-ops
+    @EventHandler
+    public void onInteractSafeContainers(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) return; // main hand only
+        if (event.getClickedBlock() == null) return;
+        Location loc = event.getClickedBlock().getLocation();
+        if (!isInSafeGuild(loc)) return;
+        if (event.getPlayer().isOp()) return; // ops bypass
+        Material type = event.getClickedBlock().getType();
+        if (isContainer(type)) {
+            event.setCancelled(true);
+            notifyDenied(event.getPlayer(), MSG_SAFE);
+            return;
+        }
+    }
+
+    // Block opening entity containers in SAFE territory for all non-ops
+    @EventHandler
+    public void onInteractEntitySafeContainers(PlayerInteractAtEntityEvent event) {
+        Entity entity = event.getRightClicked();
+        Location loc = entity.getLocation();
+        if (!isInSafeGuild(loc)) return;
+        if (event.getPlayer().isOp()) return;
+        boolean isEntityContainer = (entity instanceof org.bukkit.entity.minecart.StorageMinecart)
+                || (entity instanceof org.bukkit.entity.minecart.HopperMinecart)
+                || (entity instanceof org.bukkit.entity.ChestBoat);
+        if (isEntityContainer) {
+            event.setCancelled(true);
+            notifyDenied(event.getPlayer(), MSG_SAFE);
+        }
+    }
+
     @EventHandler
     public void onInteractOwned(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return; // only main hand relevance here
