@@ -61,6 +61,15 @@ public class WarpsService {
                     String password = ws.getString("password", null);
                     String portal = ws.getString("portal", null);
                     Warp warp = new Warp(name, world, x, y, z, yaw, pitch, cost, password, portal);
+                    // Load multi-target portals (new)
+                    try {
+                        java.util.List<String> portals = ws.getStringList("portals");
+                        if (portals != null && !portals.isEmpty()) {
+                            warp.setPortalTargets(portals);
+                        } else if (portal != null && !portal.isBlank()) {
+                            // legacy single portal already applied via constructor
+                        }
+                    } catch (Throwable ignored) {}
                     // Load optional portal region
                     ConfigurationSection pr = ws.getConfigurationSection("portalRegion");
                     if (pr != null) {
@@ -106,7 +115,14 @@ public class WarpsService {
             ws.set("pitch", warp.getPitch());
             ws.set("cost", warp.getCost());
             if (warp.getPassword() != null) ws.set("password", warp.getPassword());
-            if (warp.getPortalTarget() != null) ws.set("portal", warp.getPortalTarget());
+            java.util.List<String> targets = new java.util.ArrayList<>(warp.getPortalTargets());
+            if (!targets.isEmpty()) {
+                if (targets.size() == 1) {
+                    ws.set("portal", targets.get(0)); // legacy single field
+                } else {
+                    ws.set("portals", targets);
+                }
+            }
             if (warp.getArmorStandUuid() != null) ws.set("armorStand", warp.getArmorStandUuid().toString());
             if (warp.hasPortalRegion()) {
                 ConfigurationSection pr = ws.createSection("portalRegion");
@@ -286,22 +302,33 @@ public class WarpsService {
         }
     }
 
-    public void connectPortal(@NotNull CommandSender sender, @NotNull String name, @Nullable String target) {
+    public void connectPortal(@NotNull CommandSender sender, @NotNull String name, @Nullable java.util.List<String> targets) {
         Warp warp = getWarp(name);
         if (warp == null) {
-            Components.sendError(sender, Components.t("Warp not found: " ),Components.valueComp( name));
+            Components.sendError(sender, Components.t("Warp not found: "), Components.valueComp(name));
             return;
         }
-        if (target != null && getWarp(target) == null) {
-            Components.sendError(sender, Components.t("Target warp not found: " ),Components.valueComp( target));
-            return;
+        if (targets != null) {
+            // Validate targets exist
+            java.util.List<String> valid = new java.util.ArrayList<>();
+            for (String t : targets) {
+                if (t == null || t.isBlank()) continue;
+                if (getWarp(t) == null) {
+                    Components.sendError(sender, Components.t("Target warp not found: "), Components.valueComp(t));
+                    return;
+                }
+                valid.add(t);
+            }
+            warp.setPortalTargets(valid);
+        } else {
+            // clear
+            warp.setPortalTargets(java.util.Collections.emptyList());
         }
-        warp.setPortalTarget(target);
         save();
-        if (target == null) {
+        if (warp.getPortalTargets().isEmpty()) {
             Components.sendSuccess(sender, Components.t("Portal connection cleared for "), Components.valueComp(name));
         } else {
-            Components.sendSuccess(sender, Components.t("Portal connected from "), Components.valueComp(name), Components.t(" to "), Components.valueComp(target));
+            Components.sendSuccess(sender, Components.t("Portal connected from "), Components.valueComp(name), Components.t(" to "), Components.valueComp(String.join(", ", warp.getPortalTargets())));
         }
     }
 
@@ -340,7 +367,7 @@ public class WarpsService {
     public @Nullable Warp findPortalAt(org.bukkit.Location loc) {
         if (loc == null) return null;
         for (Warp w : new java.util.ArrayList<>(warps.values())) {
-            if (w.getPortalTarget() != null && !w.getPortalTarget().isBlank() && w.hasPortalRegion()) {
+            if (w.hasPortalTargets() && w.hasPortalRegion()) {
                 if (w.isInsidePortalRegion(loc)) return w;
             }
         }
@@ -382,7 +409,13 @@ public class WarpsService {
             if (w == null) continue;
             boolean costSet = Math.max(0, w.getCost()) > 0.0d;
             boolean passSet = w.getPassword() != null && !w.getPassword().isBlank();
-            boolean portalSet = w.getPortalTarget() != null && !w.getPortalTarget().isBlank();
+            boolean portalSet = w.hasPortalTargets();
+            String portalDesc = "";
+            if (portalSet) {
+                java.util.List<String> targets = new java.util.ArrayList<>(w.getPortalTargets());
+                if (targets.size() == 1) portalDesc = targets.get(0);
+                else portalDesc = String.join(", ", targets);
+            }
             Components.sendInfo(
                     sender,
                     Components.t("Warp "), Components.valueComp(name),
@@ -396,7 +429,7 @@ public class WarpsService {
                     (passSet ? Components.t(")") : Components.t("")),
                     Components.t(" | portal: "), Components.t(portalSet ? "YES" : "NO", portalSet ? NamedTextColor.GREEN:NamedTextColor.RED),
                     (portalSet ? Components.t(" (") : Components.t("")),
-                    (portalSet ? Components.valueComp(w.getPortalTarget()) : Components.t("")),
+                    (portalSet ? Components.valueComp(portalDesc) : Components.t("")),
                     (portalSet ? Components.t(")") : Components.t(""))
             );
         }

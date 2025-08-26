@@ -52,6 +52,15 @@ portals:
   # - custom: stepping into a claimed portal region triggers teleport
   # - nether: only when standing inside Nether Portal blocks and inside a claimed region
   mode: custom
+  custom:
+    visualize:
+      enabled: true
+      # Interval in ticks between particle renders (20 ticks = 1 second)
+      tick-interval: 20
+      # Draw a center fill plane inside the region volume to mimic a portal surface
+      fill-enabled: true
+      # Particle color for frame/fill (RGB 0-255)
+      frame-color: {r: 128, g: 0, b: 255}
 
 # Tombstone behavior on player death
 # Note: these keys are consumed by TombstoneService

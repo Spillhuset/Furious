@@ -16,8 +16,9 @@ public class ConnectPortalCommand implements SubCommandInterface {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 2 || args.length == 3) {
-            String prefix = args[args.length-1].toLowerCase();
+        if (args.length >= 2) {
+            String prefix = args[args.length - 1].toLowerCase();
+            // Suggest warp names for any target argument
             for (String name : plugin.warpsService.getWarpNames()) {
                 if (name.startsWith(prefix)) out.add(name);
             }
@@ -37,9 +38,20 @@ public class ConnectPortalCommand implements SubCommandInterface {
             return true;
         }
         String name = args[1];
-        String target = null;
-        if (args.length >= 3 && !args[2].equalsIgnoreCase("clear")) target = args[2];
-        plugin.warpsService.connectPortal(sender, name, target);
+        if (args.length >= 3 && args[2].equalsIgnoreCase("clear")) {
+            plugin.warpsService.connectPortal(sender, name, null);
+            return true;
+        }
+        List<String> targets = new ArrayList<>();
+        for (int i = 2; i < args.length; i++) {
+            targets.add(args[i]);
+        }
+        if (targets.isEmpty()) {
+            // No targets provided, show usage
+            Components.sendInfoMessage(sender, "Usage: /warps connectportal <name> <target...> | clear");
+            return true;
+        }
+        plugin.warpsService.connectPortal(sender, name, targets);
         return true;
     }
 

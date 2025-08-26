@@ -76,10 +76,22 @@ Warps:
 - Set cost: `/warps setcost <name> <amount>`
 - Set password: `/warps setpassword <name> <password>`
 - Remove: `/warps remove <name>`
-- Link portal between warps: `/warps connectportal <from> <to>` or `/warps connectportal <from> clear`
+- Link portal between warps: `/warps connectportal <from> <to...>` (supports multiple `<to>` targets) or `/warps connectportal <from> clear`
 - Define a portal region using wooden-axe selection: `/warps portalclaim <warp>`; clear with `/warps portalclear <warp>`
 - Teleport to warp: `/warps teleport <name>`
 - List warps: `/warps list`
+
+Examples (multi-target and random selection):
+- Many sources to one target (each side portal goes to Spawn):
+  - `/warps connectportal West Spawn`
+  - `/warps connectportal North Spawn`
+  - `/warps connectportal South Spawn`
+  - `/warps connectportal East Spawn`
+- One source to many targets (Spawn portal randomly goes to West/North/South/East):
+  - `/warps connectportal Spawn West North South East`
+  On use, a random destination from the list is chosen.
+- Clear connections for a portal (keep the claimed region):
+  - `/warps connectportal Spawn clear`
 
 Portal modes:
 - Configure in `config.yml` under `portals.mode`:

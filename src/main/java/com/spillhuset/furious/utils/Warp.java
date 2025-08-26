@@ -7,6 +7,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public class Warp {
@@ -19,7 +22,8 @@ public class Warp {
     private float pitch;
     private double cost;
     private @Nullable String password;
-    private @Nullable String portalTarget; // name of linked portal warp
+    // Multiple portal targets supported; legacy single target methods map to first element
+    private final List<String> portalTargets = new ArrayList<>();
     // Optional ArmorStand holder entity UUID used as the canonical location
     private @Nullable UUID armorStandUuid;
 
@@ -32,7 +36,6 @@ public class Warp {
         setLocation(loc);
         this.cost = 0.0d;
         this.password = null;
-        this.portalTarget = null;
     }
 
     public Warp(String name, UUID world, double x, double y, double z, float yaw, float pitch, double cost, @Nullable String password, @Nullable String portalTarget) {
@@ -45,7 +48,7 @@ public class Warp {
         this.pitch = pitch;
         this.cost = cost;
         this.password = password;
-        this.portalTarget = portalTarget;
+        if (portalTarget != null && !portalTarget.isBlank()) this.portalTargets.add(portalTarget);
     }
 
     public String getName() { return name; }
@@ -79,8 +82,24 @@ public class Warp {
     public @Nullable String getPassword() { return password; }
     public void setPassword(@Nullable String password) { this.password = (password == null || password.isBlank()) ? null : password; }
 
-    public @Nullable String getPortalTarget() { return portalTarget; }
-    public void setPortalTarget(@Nullable String portalTarget) { this.portalTarget = portalTarget; }
+    // Legacy single-target accessors mapped to first element
+    public @Nullable String getPortalTarget() { return portalTargets.isEmpty() ? null : portalTargets.get(0); }
+    public void setPortalTarget(@Nullable String portalTarget) {
+        portalTargets.clear();
+        if (portalTarget != null && !portalTarget.isBlank()) portalTargets.add(portalTarget);
+    }
+
+    // New multi-target API
+    public List<String> getPortalTargets() { return Collections.unmodifiableList(portalTargets); }
+    public void setPortalTargets(List<String> targets) {
+        portalTargets.clear();
+        if (targets != null) {
+            for (String t : targets) {
+                if (t != null && !t.isBlank()) portalTargets.add(t);
+            }
+        }
+    }
+    public boolean hasPortalTargets() { return !portalTargets.isEmpty(); }
 
     public @Nullable UUID getArmorStandUuid() { return armorStandUuid; }
     public void setArmorStandUuid(@Nullable UUID armorStandUuid) { this.armorStandUuid = armorStandUuid; }
