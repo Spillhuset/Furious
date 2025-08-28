@@ -420,7 +420,12 @@ public class AuctionsService {
     private boolean isPlayerInAuctions(Player player) {
         if (player == null) return false;
         Location l = player.getLocation();
-        if (l.getWorld() == null) return false;
+        return isLocationInAuctions(l);
+    }
+
+    // Public helper for subclaim detection by location
+    public boolean isLocationInAuctions(Location l) {
+        if (l == null || l.getWorld() == null) return false;
         Chunk c = l.getChunk();
         return claims.contains(new ChunkKey(l.getWorld().getUID(), c.getX(), c.getZ()));
     }

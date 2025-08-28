@@ -22,7 +22,7 @@ homes:
   # Price multiplier applied per additional slot
   multiplier: 1.5
   # Cooldown between using /homes teleport (seconds) for non-ops
-  teleport-cooldown-seconds: 1800
+  teleport-cooldown-seconds: 900
   # Enabled world UUIDs for homes features (empty = all worlds allowed)
   enabled-worlds: []
 
@@ -102,3 +102,24 @@ rewards:
   this-month-first-per-Taming: 500
   50%-Taming: 2000
   complete-Taming: 10000
+
+# Professions points defaults
+professions:
+  points:
+    base:
+      miner: 1
+      lumberjack: 1
+      farmer: 1
+      fisher: 1
+      butcher: 1
+    bonus:
+      miner:
+        ore: 2
+      lumberjack:
+        plant: 2
+      farmer:
+        till: 2
+      fisher:
+        treasure: 3
+      butcher:
+        smoker: 2

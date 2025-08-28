@@ -39,6 +39,8 @@ commands:
     description: Teleport to the current world's spawn (ops only)
   setworldspawn:
     description: Set the current world's spawn to your location (ops only)
+  profession:
+    description: View and set your professions
 
 permissions:
   furious.auctions:
@@ -360,4 +362,16 @@ permissions:
   furious.worldspawn.teleport.others:
     default: op
   furious.worldspawn.set:
+    default: op
+
+  furious.profession:
+    default: true
+  furious.profession.others:
+    default: op
+
+  furious.profession.veinminer:
+    description: Allows mining entire connected ore veins when breaking an ore with a pickaxe
+    default: op
+  furious.profession.treechopper:
+    description: Allows chopping entire connected trees (logs) when breaking a log with an axe
     default: op

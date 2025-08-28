@@ -32,6 +32,8 @@ public class OpVisibilityListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player joining = event.getPlayer();
         applyVisibilityFor(joining);
+        // Ensure sleeping check is ignored for ops
+        applySleepingFlagFor(joining);
 
         // Also ensure the joining player's view of already-online ops is correct
         for (Player other : Bukkit.getOnlinePlayers()) {
@@ -84,6 +86,10 @@ public class OpVisibilityListener implements Listener {
         if (parts.length < 2) {
             // No specific target provided; just re-apply globally
             applyVisibilityAll();
+            // Also apply sleeping ignore flags globally
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                applySleepingFlagFor(p);
+            }
             return;
         }
         String targetName = parts[1];
@@ -91,6 +97,8 @@ public class OpVisibilityListener implements Listener {
         // If target is online, apply visibility rules considering new op status
         if (target != null) {
             applyVisibilityFor(target);
+            // Ensure sleeping check is ignored for ops
+            applySleepingFlagFor(target);
             // Also ensure everyone else's visibility towards target is correct and vice versa
             for (Player other : Bukkit.getOnlinePlayers()) {
                 if (other.equals(target)) continue;
@@ -102,8 +110,9 @@ public class OpVisibilityListener implements Listener {
         } else {
             // Target offline or not found; re-apply globally for safety
             applyVisibilityAll();
-            // Also update ArmorStand visibility for all online players
+            // Also apply sleeping ignore flags globally and update ArmorStand visibility
             for (Player p : Bukkit.getOnlinePlayers()) {
+                applySleepingFlagFor(p);
                 applyArmorStandVisibilityForViewer(p);
             }
         }
@@ -179,6 +188,13 @@ public class OpVisibilityListener implements Listener {
                     }
                 }
             }
+        } catch (Throwable ignored) {}
+    }
+
+    // Ensure ops are excluded from sleep requirement; non-ops follow normal rules
+    private void applySleepingFlagFor(Player p) {
+        try {
+            p.setSleepingIgnored(p.isOp());
         } catch (Throwable ignored) {}
     }
 }

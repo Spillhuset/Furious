@@ -8,6 +8,7 @@ import com.spillhuset.furious.services.Checklist.BiomesService;
 import com.spillhuset.furious.services.Checklist.MonstersService;
 import com.spillhuset.furious.services.Checklist.TamingService;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.logging.Level;
@@ -33,6 +34,7 @@ public class Furious extends JavaPlugin {
     public com.spillhuset.furious.utils.RegistryCache registryCache;
     public com.spillhuset.furious.utils.MessageThrottle messageThrottle;
     public WeeklyWorldResetService weeklyWorldResetService;
+    public com.spillhuset.furious.services.ProfessionService professionService;
 
     @Override
     public void onEnable() {
@@ -87,6 +89,10 @@ public class Furious extends JavaPlugin {
 
         tamingService = new TamingService(instance);
         tamingService.load();
+
+        // Professions
+        professionService = new com.spillhuset.furious.services.ProfessionService(instance);
+        professionService.load();
 
         // Start weekly Nether/End world reset scheduler
         weeklyWorldResetService = new WeeklyWorldResetService(instance);
@@ -214,9 +220,21 @@ public class Furious extends JavaPlugin {
             cmd.setTabCompleter(sws);
         }
 
+        // Profession command
+        cmd = getCommand("profession");
+        if (cmd != null) {
+            ProfessionCommand pc = new ProfessionCommand(instance);
+            cmd.setExecutor(pc);
+            cmd.setTabCompleter(pc);
+        }
+
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(instance), instance);
         // Ensure ops are hidden from non-ops on join and when op/deop changes
         getServer().getPluginManager().registerEvents(new OpVisibilityListener(instance), instance);
+        // Ensure ops do not affect sleep checks at startup (also handled on join/op change)
+        for (Player p : getServer().getOnlinePlayers()) {
+            try { p.setSleepingIgnored(p.isOp()); } catch (Throwable ignored) {}
+        }
         getServer().getPluginManager().registerEvents(new SelectionListener(instance), instance);
         getServer().getPluginManager().registerEvents(new TeleportsListener(instance), instance);
         // Audit command usage
@@ -241,6 +259,8 @@ public class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MonsterTrackListener(instance), instance);
         // Track tamed animals
         getServer().getPluginManager().registerEvents(new TamingTrackListener(instance), instance);
+        // Track professions actions
+        getServer().getPluginManager().registerEvents(new ProfessionListener(instance), instance);
 
         // Ensure all marker ArmorStands are present after startup (centralized)
         try {
@@ -266,6 +286,7 @@ public class Furious extends JavaPlugin {
         if (biomesService != null) biomesService.save();
         if (monstersService != null) monstersService.save();
         if (tamingService != null) tamingService.save();
+        if (professionService != null) professionService.save();
         getLogger().info("Furious disabled!");
     }
 
