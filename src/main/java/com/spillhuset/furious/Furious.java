@@ -35,12 +35,28 @@ public class Furious extends JavaPlugin {
     public com.spillhuset.furious.utils.MessageThrottle messageThrottle;
     public WeeklyWorldResetService weeklyWorldResetService;
     public com.spillhuset.furious.services.ProfessionService professionService;
+    public com.spillhuset.furious.db.DatabaseManager databaseManager;
+    public com.spillhuset.furious.services.BanService banService;
 
     @Override
     public void onEnable() {
         instance = this;
         // Ensure default config.yml is available for rewards and wallet settings
         saveDefaultConfig();
+        // Copy missing defaults from the bundled resource into the active config without overwriting existing values
+        try {
+            java.io.InputStream in = getResource("config.yml");
+            if (in != null) {
+                org.bukkit.configuration.file.YamlConfiguration def = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+                getConfig().setDefaults(def);
+                getConfig().options().copyDefaults(true);
+                saveConfig();
+            }
+        } catch (Throwable ignored) {}
+
+        // Initialize database pool (disabled by default via config)
+        databaseManager = new com.spillhuset.furious.db.DatabaseManager(instance);
+        databaseManager.init();
 
         // Build registry cache once to avoid repeated traversal during gameplay
         registryCache = new com.spillhuset.furious.utils.RegistryCache(instance);
@@ -97,6 +113,10 @@ public class Furious extends JavaPlugin {
         // Start weekly Nether/End world reset scheduler
         weeklyWorldResetService = new WeeklyWorldResetService(instance);
         weeklyWorldResetService.startScheduler();
+
+        // Init custom ban service
+        banService = new com.spillhuset.furious.services.BanService(instance);
+        banService.load();
 
         PluginCommand cmd;
 
@@ -206,6 +226,13 @@ public class Furious extends JavaPlugin {
             cmd.setTabCompleter(fc);
         }
 
+        cmd = getCommand("repair");
+        if (cmd != null) {
+            RepairCommand rc = new RepairCommand(instance);
+            cmd.setExecutor(rc);
+            cmd.setTabCompleter(rc);
+        }
+
         cmd = getCommand("worldspawn");
         if (cmd != null) {
             WorldSpawnCommand wsp = new WorldSpawnCommand(instance);
@@ -220,6 +247,14 @@ public class Furious extends JavaPlugin {
             cmd.setTabCompleter(sws);
         }
 
+        // Register /world parent command
+        cmd = getCommand("world");
+        if (cmd != null) {
+            WorldCommand wc = new WorldCommand(instance);
+            cmd.setExecutor(wc);
+            cmd.setTabCompleter(wc);
+        }
+
         // Profession command
         cmd = getCommand("profession");
         if (cmd != null) {
@@ -228,7 +263,25 @@ public class Furious extends JavaPlugin {
             cmd.setTabCompleter(pc);
         }
 
+        // Moderation: ban
+        cmd = getCommand("ban");
+        if (cmd != null) {
+            BanCommand bc2 = new BanCommand(instance);
+            cmd.setExecutor(bc2);
+            cmd.setTabCompleter(bc2);
+        }
+
+        // Moderation: unban
+        cmd = getCommand("unban");
+        if (cmd != null) {
+            UnbanCommand ubc = new UnbanCommand(instance);
+            cmd.setExecutor(ubc);
+            cmd.setTabCompleter(ubc);
+        }
+
         getServer().getPluginManager().registerEvents(new PlayerJoinListener(instance), instance);
+        // Deny login for custom-banned players
+        getServer().getPluginManager().registerEvents(new com.spillhuset.furious.listeners.BanListener(instance), instance);
         // Ensure ops are hidden from non-ops on join and when op/deop changes
         getServer().getPluginManager().registerEvents(new OpVisibilityListener(instance), instance);
         // Ensure ops do not affect sleep checks at startup (also handled on join/op change)
@@ -287,6 +340,7 @@ public class Furious extends JavaPlugin {
         if (monstersService != null) monstersService.save();
         if (tamingService != null) tamingService.save();
         if (professionService != null) professionService.save();
+        if (banService != null) banService.save();
         getLogger().info("Furious disabled!");
     }
 

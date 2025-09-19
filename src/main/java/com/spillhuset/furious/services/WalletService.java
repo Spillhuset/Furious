@@ -54,6 +54,23 @@ public class WalletService {
         // Optional: make interval configurable
         flushIntervalTicks = instance.getConfig().getLong("wallet.flush-interval-ticks", flushIntervalTicks);
         flushThreshold = Math.max(1, instance.getConfig().getInt("wallet.flush-threshold", flushThreshold));
+
+        // Persist any missing wallet.* keys to the active config without overwriting existing values
+        ensureWalletDefaultsPersisted(instance);
+    }
+
+    private void ensureWalletDefaultsPersisted(Furious instance) {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = instance.getConfig();
+            boolean changed = false;
+            if (!cfg.isSet("wallet.symbol")) { cfg.set("wallet.symbol", SYMBOL != null ? SYMBOL : "⚙"); changed = true; }
+            if (!cfg.isSet("wallet.name")) { cfg.set("wallet.name", NAME != null ? NAME : "scrap"); changed = true; }
+            if (!cfg.isSet("wallet.name_plural")) { cfg.set("wallet.name_plural", NAME_PLURAL != null ? NAME_PLURAL : "scraps"); changed = true; }
+            if (!cfg.isSet("wallet.initial-balance")) { cfg.set("wallet.initial-balance", INIT_BALANCE > 0 ? INIT_BALANCE : 1000.0); changed = true; }
+            if (!cfg.isSet("wallet.flush-interval-ticks")) { cfg.set("wallet.flush-interval-ticks", flushIntervalTicks > 0 ? flushIntervalTicks : 100L); changed = true; }
+            if (!cfg.isSet("wallet.flush-threshold")) { cfg.set("wallet.flush-threshold", Math.max(1, flushThreshold)); changed = true; }
+            if (changed) instance.saveConfig();
+        } catch (Throwable ignored) {}
     }
 
     public List<OfflinePlayer> getAccountNames() {

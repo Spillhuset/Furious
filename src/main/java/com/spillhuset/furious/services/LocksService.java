@@ -37,6 +37,7 @@ public class LocksService {
 
     public void load() {
         loadEnabledWorldsFromConfig();
+        ensureLocksDefaultsPersisted();
         locksFile = new File(plugin.getDataFolder(), "locks.yml");
         try {
             if (!locksFile.exists()) {
@@ -265,5 +266,19 @@ public class LocksService {
             map.remove(key(b.getLocation()));
         }
         return true;
+    }
+
+    private void ensureLocksDefaultsPersisted() {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = plugin.getConfig();
+            boolean changed = false;
+            if (!cfg.isSet("locks.enabled-worlds")) {
+                java.util.List<String> list = new java.util.ArrayList<>();
+                for (java.util.UUID id : enabledWorlds) list.add(id.toString());
+                cfg.set("locks.enabled-worlds", list);
+                changed = true;
+            }
+            if (changed) plugin.saveConfig();
+        } catch (Throwable ignored) {}
     }
 }

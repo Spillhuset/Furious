@@ -31,6 +31,23 @@ public class TeleportsService {
 
     public TeleportsService(Furious plugin) {
         this.plugin = plugin.getInstance();
+        ensureTeleportDefaultsPersisted();
+    }
+
+    private void ensureTeleportDefaultsPersisted() {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = plugin.getConfig();
+            boolean changed = false;
+            int req = reqTimeoutSec();
+            int cd = cooldownSec();
+            double cost = requestCost();
+            int queue = queueSeconds();
+            if (!cfg.isSet("teleport.request-timeout-seconds")) { cfg.set("teleport.request-timeout-seconds", req); changed = true; }
+            if (!cfg.isSet("teleport.cooldown-seconds")) { cfg.set("teleport.cooldown-seconds", cd); changed = true; }
+            if (!cfg.isSet("teleport.cost")) { cfg.set("teleport.cost", cost); changed = true; }
+            if (!cfg.isSet("teleport.queue-seconds")) { cfg.set("teleport.queue-seconds", queue); changed = true; }
+            if (changed) plugin.saveConfig();
+        } catch (Throwable ignored) {}
     }
 
     // Configuration getters with defaults

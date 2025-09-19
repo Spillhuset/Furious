@@ -80,6 +80,7 @@ public class GuildService {
             outpostAllowance.clear();
             outpostCenters.clear();
         loadEnabledWorldsFromConfig();
+        ensureGuildDefaultsPersisted();
         // Load configuration values
         maxClaimsPerGuild = Math.max(1, plugin.getConfig().getInt("guild.max-claims-per-guild", 25));
         guildsFile = new File(plugin.getDataFolder(), "guilds.yml");
@@ -1411,5 +1412,20 @@ public class GuildService {
             lines.add(sb.toString());
         }
         return lines;
+    }
+
+    private void ensureGuildDefaultsPersisted() {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = plugin.getConfig();
+            boolean changed = false;
+            if (!cfg.isSet("guild.max-claims-per-guild")) { cfg.set("guild.max-claims-per-guild", Math.max(1, maxClaimsPerGuild)); changed = true; }
+            if (!cfg.isSet("guild.enabled-worlds")) {
+                java.util.List<String> list = new java.util.ArrayList<>();
+                for (java.util.UUID id : enabledWorlds) list.add(id.toString());
+                cfg.set("guild.enabled-worlds", list);
+                changed = true;
+            }
+            if (changed) plugin.saveConfig();
+        } catch (Throwable ignored) {}
     }
 }

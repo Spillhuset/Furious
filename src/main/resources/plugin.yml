@@ -35,12 +35,20 @@ commands:
     description: Heal yourself or other players
   feed:
     description: Feed yourself or other players
+  repair:
+    description: Repair items (hand or all). Optionally target a player
   worldspawn:
     description: Teleport to the current world's spawn (ops only)
   setworldspawn:
     description: Set the current world's spawn to your location (ops only)
+  world:
+    description: World utilities (setspawn, spawn, info)
   profession:
     description: View and set your professions
+  ban:
+    description: Ban a player (temporary or permanent)
+  unban:
+    description: Unban a player
 
 permissions:
   furious.auctions:
@@ -54,6 +62,15 @@ permissions:
   furious.auctions.spawn:
     default: op
   furious.auctions.teleport:
+    default: op
+
+  furious.repair:
+    default: op
+  furious.repair.self:
+    default: true
+  furious.repair.all:
+    default: op
+  furious.repair.others:
     default: op
 
   furious.locks:
@@ -78,6 +95,8 @@ permissions:
     default: true
   furious.homes.buy:
     default: true
+  furious.homes.migrate:
+    default: op
   furious.homes.worlds:
     default: op
   furious.homes.set.others:
@@ -265,6 +284,10 @@ permissions:
     default: op
   furious.banks.audit:
     default: op
+  furious.banks.exportdb:
+    default: op
+  furious.banks.migrate:
+    default: op
 
   furious.shops:
     default: true
@@ -364,6 +387,17 @@ permissions:
   furious.worldspawn.set:
     default: op
 
+  furious.world:
+    default: true
+  furious.world.setspawn:
+    default: op
+  furious.world.spawn:
+    default: op
+  furious.world.spawn.others:
+    default: op
+  furious.world.info:
+    default: op
+
   furious.profession:
     default: true
   furious.profession.others:
@@ -374,4 +408,9 @@ permissions:
     default: op
   furious.profession.treechopper:
     description: Allows chopping entire connected trees (logs) when breaking a log with an axe
+    default: op
+
+  furious.ban:
+    default: op
+  furious.unban:
     default: op

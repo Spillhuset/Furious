@@ -33,6 +33,21 @@ public class BanksService {
     }
 
     public void load() {
+        // If SQL database is enabled, load from DB; otherwise, use YAML file
+        if (plugin.databaseManager != null && plugin.databaseManager.isEnabled()) {
+            try {
+                com.spillhuset.furious.db.BanksRepository repo = new com.spillhuset.furious.db.BanksRepository(plugin.databaseManager.getDataSource());
+                repo.initSchema();
+                banksById.clear();
+                bankIdByName.clear();
+                accounts.clear();
+                lastAccrualByBank.clear();
+                repo.loadAll(banksById, bankIdByName, accounts, lastAccrualByBank);
+                return;
+            } catch (Exception e) {
+                try { plugin.getLogger().warning("Banks: failed to load from database, falling back to YAML: " + e.getMessage()); } catch (Throwable ignored) {}
+            }
+        }
         File dataFolder = plugin.getDataFolder();
         if (!dataFolder.exists()) dataFolder.mkdirs();
         banksFile = new File(dataFolder, "banks.yml");
@@ -123,6 +138,17 @@ public class BanksService {
     }
 
     public void save() {
+        // If SQL database is enabled, persist to DB snapshot and return; else use YAML
+        if (plugin.databaseManager != null && plugin.databaseManager.isEnabled()) {
+            try {
+                com.spillhuset.furious.db.BanksRepository repo = new com.spillhuset.furious.db.BanksRepository(plugin.databaseManager.getDataSource());
+                repo.saveAll(new ArrayList<>(banksById.values()), accounts, lastAccrualByBank);
+                return;
+            } catch (Exception e) {
+                try { plugin.getLogger().warning("Banks: failed to save to database: " + e.getMessage()); } catch (Throwable ignored) {}
+                // If save to DB fails, we still attempt YAML to not lose data
+            }
+        }
         banksCfg.set("banks", null);
         banksCfg.set("accounts", null);
         for (Bank bank : banksById.values()) {
@@ -801,7 +827,13 @@ public class BanksService {
         // run hourly to catch any full 24h periods elapsed
         try {
             if (interestTaskId != null) return; // already started
-            interestTaskId = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, this::accrueInterestNow, 20L * 60L * 5L, 20L * 60L * 60L);
+            // Schedule a lightweight sync task that immediately offloads the heavy work to async to avoid main-thread I/O
+            interestTaskId = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
+                try {
+                    plugin.getServer().getScheduler().runTaskAsynchronously(plugin, this::accrueInterestNow);
+                } catch (Throwable ignored) {
+                }
+            }, 20L * 60L * 5L, 20L * 60L * 60L);
         } catch (Throwable ignored) {
         }
     }

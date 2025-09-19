@@ -39,7 +39,9 @@ public class BanksCommand implements CommandInterface, CommandExecutor, TabCompl
                 new com.spillhuset.furious.commands.BanksCommands.TeleportCommand(plugin),
                 new BalancesCommand(plugin),
                 new SummaryCommand(plugin),
-                new AuditCommand(plugin)
+                new AuditCommand(plugin),
+                new ExportDbCommand(plugin),
+                new com.spillhuset.furious.commands.BanksCommands.MigrateCommand(plugin)
         ));
     }
 

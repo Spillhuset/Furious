@@ -103,6 +103,24 @@ rewards:
   50%-Taming: 2000
   complete-Taming: 10000
 
+database:
+  enabled: true
+  type: mysql
+  mysql:
+    host: localhost
+    port: 3306
+    database: furious
+    user: furious
+    password: secret
+    # Additional JDBC parameters appended to the URL
+    params: useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+  pool:
+    maximumPoolSize: 10
+    minimumIdle: 2
+    connectionTimeoutMs: 10000
+    idleTimeoutMs: 600000
+    maxLifetimeMs: 1800000
+
 # Professions points defaults
 professions:
   points:

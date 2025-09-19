@@ -55,6 +55,20 @@ public class TombstoneService {
         this.createWalletToken = cfg.getBoolean("tombstone.create_wallet", true);
         this.walletLossPercent = Math.max(0.0, Math.min(100.0, cfg.getDouble("tombstone.wallet_loss_percent", 0.0)));
         this.xpLossPercent = Math.max(0.0, Math.min(100.0, cfg.getDouble("tombstone.xp_loss_percent", 0.0)));
+        ensureTombstoneDefaultsPersisted();
+    }
+
+    private void ensureTombstoneDefaultsPersisted() {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = plugin.getConfig();
+            boolean changed = false;
+            if (!cfg.isSet("tombstone.expiration_minutes")) { cfg.set("tombstone.expiration_minutes", expirationMinutes); changed = true; }
+            if (!cfg.isSet("tombstone.create_scalp")) { cfg.set("tombstone.create_scalp", createScalp); changed = true; }
+            if (!cfg.isSet("tombstone.create_wallet")) { cfg.set("tombstone.create_wallet", createWalletToken); changed = true; }
+            if (!cfg.isSet("tombstone.wallet_loss_percent")) { cfg.set("tombstone.wallet_loss_percent", walletLossPercent); changed = true; }
+            if (!cfg.isSet("tombstone.xp_loss_percent")) { cfg.set("tombstone.xp_loss_percent", xpLossPercent); changed = true; }
+            if (changed) plugin.saveConfig();
+        } catch (Throwable ignored) {}
     }
 
     // Data for each tombstone

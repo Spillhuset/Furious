@@ -59,50 +59,66 @@ public class HomesService {
         DEFAULT_HOMES_COST = instance.getConfig().getDouble("homes.cost", 5000.0);
         HOMES_MULTIPLIER = instance.getConfig().getDouble("homes.multiplier", 1.5);
         TELEPORT_COOLDOWN_SECONDS = instance.getConfig().getInt("homes.teleport-cooldown-seconds", 1800);
+
+        ensureHomesDefaultsPersisted(instance);
+    }
+
+    private void ensureHomesDefaultsPersisted(Furious instance) {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = instance.getConfig();
+            boolean changed = false;
+            if (!cfg.isSet("homes.default")) { cfg.set("homes.default", DEFAULT_HOMES_COUNT); changed = true; }
+            if (!cfg.isSet("homes.cost")) { cfg.set("homes.cost", DEFAULT_HOMES_COST); changed = true; }
+            if (!cfg.isSet("homes.multiplier")) { cfg.set("homes.multiplier", HOMES_MULTIPLIER); changed = true; }
+            if (!cfg.isSet("homes.teleport-cooldown-seconds")) { cfg.set("homes.teleport-cooldown-seconds", TELEPORT_COOLDOWN_SECONDS); changed = true; }
+            if (!cfg.isSet("homes.enabled-worlds")) { cfg.set("homes.enabled-worlds", new java.util.ArrayList<String>()); changed = true; }
+            if (changed) instance.saveConfig();
+        } catch (Throwable ignored) {}
     }
 
     public void load() {
         loadEnabledWorldsFromConfig();
-        homesFile = new File(plugin.getDataFolder(), "homes.yml");
+        homes.clear();
+        locations.clear();
+        purchasedSlots.clear();
+        owned.clear();
+        players.clear();
 
+        // If database enabled, load from DB; otherwise from YAML
+        if (plugin.databaseManager != null && plugin.databaseManager.isEnabled()) {
+            try {
+                com.spillhuset.furious.db.HomesRepository repo = new com.spillhuset.furious.db.HomesRepository(plugin.databaseManager.getDataSource(), plugin.getServer());
+                repo.initSchema();
+                repo.loadAll(players, homes, locations, purchasedSlots);
+            } catch (Exception e) {
+                plugin.getLogger().severe("Failed to load homes from database: " + e.getMessage());
+            }
+            return;
+        }
+
+        // YAML path
+        homesFile = new File(plugin.getDataFolder(), "homes.yml");
         try {
             if (!homesFile.exists()) homesFile.createNewFile();
         } catch (IOException e) {
             plugin.getLogger().severe("Failed creating homes files: " + e.getMessage());
         }
-
         synchronized (configIoLock) {
             homesConfig = YamlConfiguration.loadConfiguration(homesFile);
-        }
-
-        homes.clear();
-        locations.clear();
-        purchasedSlots.clear();
-        owned.clear();
-
-        players.clear();
-        Set<String> keys;
-        synchronized (configIoLock) {
             ConfigurationSection section = homesConfig.getConfigurationSection("players");
             if (section == null) return;
-            keys = section.getKeys(false);
-
+            Set<String> keys = section.getKeys(false);
             for (String playerUID : keys) {
                 try {
                     UUID uuid = UUID.fromString(playerUID);
-                    // players.<playerUUID>
                     ConfigurationSection playerSection = section.getConfigurationSection(playerUID);
                     if (playerSection == null) continue;
                     purchasedSlots.put(uuid, playerSection.getInt("purchased", 0));
-
-                    // players.<playerUUID>.homes
                     ConfigurationSection homesSection = playerSection.getConfigurationSection("homes");
                     if (homesSection != null) {
                         for (String homeKey : homesSection.getKeys(false)) {
-                            // players.<playerUUID>.homes.<homeUID>
                             ConfigurationSection homeUID = homesSection.getConfigurationSection(homeKey);
                             if (homeUID == null) continue;
-
                             UUID homeUUID = UUID.fromString(homeUID.getName());
                             UUID worldUUID = UUID.fromString(Objects.requireNonNull(homeUID.getString("world")));
                             String name = homeUID.getString("name");
@@ -112,24 +128,14 @@ public class HomesService {
                             float yaw = (float) homeUID.getDouble("yaw");
                             float pitch = (float) homeUID.getDouble("pitch");
                             String armorStr = homeUID.getString("armorStand", null);
-
-                            // Create location
                             Location location = new Location(plugin.getServer().getWorld(worldUUID), x, y, z, yaw, pitch);
-                            // Create home
                             Home home = new Home(homeUUID, name, location, uuid);
                             if (armorStr != null) {
-                                try {
-                                    home.setArmorStandUuid(UUID.fromString(armorStr));
-                                } catch (IllegalArgumentException ignored) {
-                                }
+                                try { home.setArmorStandUuid(UUID.fromString(armorStr)); } catch (IllegalArgumentException ignored) {}
                             }
-                            // Put into player's homes'
                             players.computeIfAbsent(uuid, k -> new HashSet<>()).add(homeUUID);
-                            // Put into home list
                             homes.put(homeUUID, home);
-                            // Update owned count
                             owned.put(uuid, owned.getOrDefault(uuid, 0) + 1);
-                            // Put into location list
                             locations.put(location, homeUUID);
                         }
                     }
@@ -175,43 +181,49 @@ public class HomesService {
     }
 
     public void save() {
-        // Persist homes.yml atomically under a lock
-        synchronized (configIoLock) {
-            // Rebuild configuration to avoid stale entries
-            YamlConfiguration newConfig = new YamlConfiguration();
-
-            ConfigurationSection playersRoot = newConfig.createSection("players");
-            for (Map.Entry<UUID, Set<UUID>> playerEntry : players.entrySet()) {
-                UUID playerId = playerEntry.getKey();
-                ConfigurationSection playerSection = playersRoot.createSection(playerId.toString());
-                playerSection.set("purchased", purchasedSlots.getOrDefault(playerId, 0));
-
-                ConfigurationSection homesSection = playerSection.createSection("homes");
-                for (UUID homeId : playerEntry.getValue()) {
-                    Home home = homes.get(homeId);
-                    if (home == null) continue; // safety
-                    ConfigurationSection homeUID = homesSection.createSection(homeId.toString());
-                    homeUID.set("world", home.getWorld().toString());
-                    homeUID.set("name", home.getName());
-                    homeUID.set("x", home.getX());
-                    homeUID.set("y", home.getY());
-                    homeUID.set("z", home.getZ());
-                    homeUID.set("yaw", home.getYaw());
-                    homeUID.set("pitch", home.getPitch());
-                    if (home.getArmorStandUuid() != null) {
-                        homeUID.set("armorStand", home.getArmorStandUuid().toString());
+        if (plugin.databaseManager != null && plugin.databaseManager.isEnabled()) {
+            try {
+                com.spillhuset.furious.db.HomesRepository repo = new com.spillhuset.furious.db.HomesRepository(plugin.databaseManager.getDataSource(), plugin.getServer());
+                repo.initSchema();
+                repo.saveAll(players, homes, purchasedSlots);
+            } catch (Exception e) {
+                plugin.getLogger().severe("Failed to save homes to database: " + e.getMessage());
+            }
+        } else {
+            // Persist homes.yml atomically under a lock
+            synchronized (configIoLock) {
+                // Rebuild configuration to avoid stale entries
+                YamlConfiguration newConfig = new YamlConfiguration();
+                ConfigurationSection playersRoot = newConfig.createSection("players");
+                for (Map.Entry<UUID, Set<UUID>> playerEntry : players.entrySet()) {
+                    UUID playerId = playerEntry.getKey();
+                    ConfigurationSection playerSection = playersRoot.createSection(playerId.toString());
+                    playerSection.set("purchased", purchasedSlots.getOrDefault(playerId, 0));
+                    ConfigurationSection homesSection = playerSection.createSection("homes");
+                    for (UUID homeId : playerEntry.getValue()) {
+                        Home home = homes.get(homeId);
+                        if (home == null) continue; // safety
+                        ConfigurationSection homeUID = homesSection.createSection(homeId.toString());
+                        homeUID.set("world", home.getWorld().toString());
+                        homeUID.set("name", home.getName());
+                        homeUID.set("x", home.getX());
+                        homeUID.set("y", home.getY());
+                        homeUID.set("z", home.getZ());
+                        homeUID.set("yaw", home.getYaw());
+                        homeUID.set("pitch", home.getPitch());
+                        if (home.getArmorStandUuid() != null) {
+                            homeUID.set("armorStand", home.getArmorStandUuid().toString());
+                        }
                     }
                 }
-            }
-
-            homesConfig = newConfig;
-            try {
-                newConfig.save(homesFile);
-            } catch (IOException e) {
-                plugin.getLogger().severe("Failed to save homes.yml: " + e.getMessage());
+                homesConfig = newConfig;
+                try {
+                    newConfig.save(homesFile);
+                } catch (IOException e) {
+                    plugin.getLogger().severe("Failed to save homes.yml: " + e.getMessage());
+                }
             }
         }
-
         // Persist enabled worlds in plugin config
         List<String> worldIds = enabledWorlds.stream().map(UUID::toString).collect(Collectors.toList());
         plugin.getConfig().set("homes.enabled-worlds", worldIds);

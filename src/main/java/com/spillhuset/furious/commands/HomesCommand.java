@@ -31,7 +31,8 @@ public class HomesCommand implements CommandInterface, CommandExecutor, TabCompl
                 new RenameCommand(plugin),
                 new SetCommand(plugin),
                 new com.spillhuset.furious.commands.HomesCommands.TeleportCommand(plugin),
-                new WorldsCommand(plugin)
+                new WorldsCommand(plugin),
+                new com.spillhuset.furious.commands.HomesCommands.MigrateCommand(plugin)
         ));
     }
 

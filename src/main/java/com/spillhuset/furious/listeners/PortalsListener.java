@@ -22,8 +22,26 @@ public class PortalsListener implements Listener {
 
     public PortalsListener(Furious plugin) {
         this.plugin = plugin.getInstance();
+        ensurePortalsDefaultsPersisted();
         // Start visualization task (custom mode only, configurable)
         startVisualizationTask();
+    }
+
+    private void ensurePortalsDefaultsPersisted() {
+        try {
+            org.bukkit.configuration.file.FileConfiguration cfg = plugin.getConfig();
+            boolean changed = false;
+            String mode = String.valueOf(cfg.getString("portals.mode", "custom"));
+            if (!cfg.isSet("portals.mode")) { cfg.set("portals.mode", mode); changed = true; }
+            // visualize settings under custom
+            if (!cfg.isSet("portals.custom.visualize.enabled")) { cfg.set("portals.custom.visualize.enabled", true); changed = true; }
+            if (!cfg.isSet("portals.custom.visualize.tick-interval")) { cfg.set("portals.custom.visualize.tick-interval", 20); changed = true; }
+            if (!cfg.isSet("portals.custom.visualize.fill-enabled")) { cfg.set("portals.custom.visualize.fill-enabled", true); changed = true; }
+            if (!cfg.isSet("portals.custom.visualize.frame-color.r")) { cfg.set("portals.custom.visualize.frame-color.r", 128); changed = true; }
+            if (!cfg.isSet("portals.custom.visualize.frame-color.g")) { cfg.set("portals.custom.visualize.frame-color.g", 0); changed = true; }
+            if (!cfg.isSet("portals.custom.visualize.frame-color.b")) { cfg.set("portals.custom.visualize.frame-color.b", 255); changed = true; }
+            if (changed) plugin.saveConfig();
+        } catch (Throwable ignored) {}
     }
 
     @EventHandler
