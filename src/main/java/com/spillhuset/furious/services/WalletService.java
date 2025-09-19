@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WalletService {
     private final Furious plugin;
-    private final Map<UUID, Double> balances = new HashMap<>();
+    private final Map<UUID, Double> balances = new ConcurrentHashMap<>();
     public FileConfiguration accountsConfig;
     private FileConfiguration transactionsConfig;
     private File accountsFile;

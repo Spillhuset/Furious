@@ -824,13 +824,13 @@ public class BanksService {
     }
 
     public void startInterestScheduler() {
-        // run hourly to catch any full 24h periods elapsed
+        // Run hourly on the main thread to keep bank state single-threaded and thread-safe
         try {
             if (interestTaskId != null) return; // already started
-            // Schedule a lightweight sync task that immediately offloads the heavy work to async to avoid main-thread I/O
             interestTaskId = plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, () -> {
                 try {
-                    plugin.getServer().getScheduler().runTaskAsynchronously(plugin, this::accrueInterestNow);
+                    // All mutations happen on the main thread to avoid data races
+                    this.accrueInterestNow();
                 } catch (Throwable ignored) {
                 }
             }, 20L * 60L * 5L, 20L * 60L * 60L);
