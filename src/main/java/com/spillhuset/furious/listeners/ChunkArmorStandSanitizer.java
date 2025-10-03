@@ -96,6 +96,10 @@ public class ChunkArmorStandSanitizer implements Listener {
                     if (plugin.auctionsService != null) referenced = referenced || plugin.auctionsService.hasArmorStand(id);
                 } catch (Throwable ignored) {
                 }
+                try {
+                    if (plugin.tombstoneService != null) referenced = referenced || plugin.tombstoneService.hasArmorStand(id);
+                } catch (Throwable ignored) {
+                }
 
                 if (!referenced) {
                     // Try to adopt this stand into a matching object before removing

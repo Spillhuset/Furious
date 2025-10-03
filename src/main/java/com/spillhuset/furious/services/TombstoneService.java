@@ -415,6 +415,15 @@ public class TombstoneService {
         }
     }
 
+    /**
+     * Exposes whether an ArmorStand UUID is currently tracked as a tombstone.
+     * Used by sanitizers to avoid removing active tombstones while their timers are running.
+     */
+    public boolean hasArmorStand(java.util.UUID armorStandId) {
+        if (armorStandId == null) return false;
+        return tombs.containsKey(armorStandId);
+    }
+
     private ItemStack tagNoDrop(ItemStack item) {
         if (item == null) return null;
         try {

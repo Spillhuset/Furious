@@ -125,25 +125,13 @@ public class TeleportsService {
             Components.sendErrorMessage(sender, target.getName() + " already has a pending teleport request.");
             return false;
         }
-        // Charge cost
-        double cost = requestCost();
-        if (cost > 0) {
-            if (plugin.walletService == null || !plugin.walletService.subBalance(sId, cost, "Teleport request to " + tId)) {
-                if (plugin.walletService != null) {
-                    Components.sendErrorMessage(sender, "You need " + plugin.walletService.formatAmount(cost) + " to send a request.");
-                }
-                return false;
-            } else {
-                Components.sendGreyMessage(sender, "Charged " + plugin.walletService.formatAmount(cost) + " for teleport request.");
-            }
-        }
         // Cancel prior pending from this sender
         cancelOutgoing(sId, "new request");
         int timeout = reqTimeoutSec();
         TpRequest req = new TpRequest(sId, tId, now + timeout * 1000L);
         outgoingBySender.put(sId, req);
         incomingByTarget.put(tId, req);
-        cooldownBySender.put(sId, now + cooldownSec() * 1000L);
+        // cooldown starts after teleport completes
         // Schedule expiry
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             TpRequest curIn = incomingByTarget.get(tId);
@@ -201,8 +189,8 @@ public class TeleportsService {
         // Clean up
         incomingByTarget.remove(target.getUniqueId());
         outgoingBySender.remove(req.sender);
-        // Teleport sender to target via queued teleport
-        plugin.teleportsService.queueTeleport(sender, target.getLocation(), "to " + target.getName());
+        // Teleport sender to target via queued teleport (apply post actions after completion)
+        plugin.teleportsService.queueTeleport(sender, target.getLocation(), "to " + target.getName(), true);
         Components.sendSuccessMessage(target, "Accepted request from " + sender.getName() + ".");
         Components.sendSuccessMessage(sender, target.getName() + " accepted your request.");
         return true;
@@ -252,6 +240,10 @@ public class TeleportsService {
             } catch (Throwable ignored) {
             }
             clearEffects(player);
+            // Log aborted teleportation
+            try {
+                plugin.getLogger().info("Teleport aborted for " + player.getName() + " due to: " + reason);
+            } catch (Throwable ignored) {}
             Components.sendErrorMessage(player, "Teleport cancelled: " + reason);
         }
     }
@@ -328,6 +320,11 @@ public class TeleportsService {
      * @param label  label to show on the bar (e.g., Home: name)
      */
     public void queueTeleport(@NotNull Player player, @NotNull Location target, @NotNull String label) {
+        // Default behavior: no post-request actions
+        queueTeleport(player, target, label, false);
+    }
+
+    public void queueTeleport(@NotNull Player player, @NotNull Location target, @NotNull String label, boolean applyRequestPostActions) {
         if (target.getWorld() == null) {
             Components.sendErrorMessage(player, "Invalid target location.");
             return;
@@ -337,6 +334,21 @@ public class TeleportsService {
             if (player.isOp()) {
                 player.teleportAsync(target);
                 Components.sendSuccess(player, Components.t("Teleported."));
+                if (applyRequestPostActions) {
+                    // Start cooldown after completion
+                    cooldownBySender.put(player.getUniqueId(), System.currentTimeMillis() + cooldownSec() * 1000L);
+                    // Charge cost after completion
+                    double cost = requestCost();
+                    if (cost > 0 && plugin.walletService != null) {
+                        boolean ok = plugin.walletService.subBalance(player.getUniqueId(), cost, "Teleport to player (post-complete)");
+                        if (ok) {
+                            Components.sendGreyMessage(player, "Charged " + plugin.walletService.formatAmount(cost) + " for teleport.");
+                        } else {
+                            Components.sendErrorMessage(player, "Payment failed after teleport. Balance may be insufficient.");
+                            try { plugin.getLogger().warning("Teleport post-charge failed for " + player.getName() + " (insufficient funds?)"); } catch (Throwable ignored2) {}
+                        }
+                    }
+                }
                 return;
             }
         } catch (Throwable ignored) {}
@@ -384,6 +396,21 @@ public class TeleportsService {
                     clearEffects(p);
                     p.teleportAsync(target);
                     Components.sendSuccess(p, Components.t("Teleported."));
+                    if (applyRequestPostActions) {
+                        // Start cooldown after completion
+                        cooldownBySender.put(p.getUniqueId(), System.currentTimeMillis() + cooldownSec() * 1000L);
+                        // Charge cost after completion
+                        double cost = requestCost();
+                        if (cost > 0 && plugin.walletService != null) {
+                            boolean ok = plugin.walletService.subBalance(p.getUniqueId(), cost, "Teleport to player (post-complete)");
+                            if (ok) {
+                                Components.sendGreyMessage(p, "Charged " + plugin.walletService.formatAmount(cost) + " for teleport.");
+                            } else {
+                                Components.sendErrorMessage(p, "Payment failed after teleport. Balance may be insufficient.");
+                                try { plugin.getLogger().warning("Teleport post-charge failed for " + p.getName() + " (insufficient funds?)"); } catch (Throwable ignored2) {}
+                            }
+                        }
+                    }
                 }
                 remaining--;
             }

@@ -3,11 +3,14 @@ package com.spillhuset.furious.commands;
 import com.spillhuset.furious.Furious;
 import com.spillhuset.furious.commands.TeleportCommands.*;
 import com.spillhuset.furious.utils.CommandInterface;
+import com.spillhuset.furious.utils.Components;
 import com.spillhuset.furious.utils.SubCommandInterface;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -31,16 +34,16 @@ public class TeleportCommand implements CommandInterface, CommandExecutor, TabCo
     }
 
     private String mapAliasToDefaultSub(String label) {
-        switch (label.toLowerCase()) {
-            case "tpa": return "request";
-            case "tpaccept": return "accept";
-            case "tpdecline": return "decline";
-            case "tpdeny": return "deny";
-            case "tppos": return "position";
-            case "tpall": return "all";
-            case "tp": return "teleport";
-            default: return null;
-        }
+        return switch (label.toLowerCase()) {
+            case "tpa" -> "request";
+            case "tpaccept" -> "accept";
+            case "tpdecline" -> "decline";
+            case "tpdeny" -> "deny";
+            case "tppos" -> "position";
+            case "tpall" -> "all";
+            case "tp" -> "teleport";
+            default -> null;
+        };
     }
 
     @Override
@@ -88,37 +91,36 @@ public class TeleportCommand implements CommandInterface, CommandExecutor, TabCo
         // Permission should match the TpSubCommand permission
         final String perm = "furious.teleport.teleport";
         if (!sender.hasPermission(perm)) {
-            com.spillhuset.furious.utils.Components.sendErrorMessage(sender, "You don't have permission to use this.");
+            Components.sendErrorMessage(sender, "You don't have permission to use this.");
             return true;
         }
         if (args.length == 1) {
             // /tp <target> (sender must be a player)
-            if (!(sender instanceof org.bukkit.entity.Player)) {
-                com.spillhuset.furious.utils.Components.sendInfoMessage(sender, "Usage: /tp <playerA> <playerB>");
+            if (!(sender instanceof Player me)) {
+                Components.sendInfoMessage(sender, "Usage: /tp <playerA> <playerB>");
                 return true;
             }
-            org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayerExact(args[0]);
+            Player target = Bukkit.getPlayerExact(args[0]);
             if (target == null) {
-                com.spillhuset.furious.utils.Components.sendErrorMessage(sender, "Player not found or not online.");
+                Components.sendErrorMessage(sender, "Player not found or not online.");
                 return true;
             }
-            org.bukkit.entity.Player me = (org.bukkit.entity.Player) sender;
             me.teleport(target.getLocation());
-            com.spillhuset.furious.utils.Components.sendSuccessMessage(sender, "Teleported to " + target.getName() + ".");
+            Components.sendSuccessMessage(sender, "Teleported to " + target.getName() + ".");
             return true;
         } else if (args.length == 2) {
             // /tp <playerA> <playerB>
-            org.bukkit.entity.Player a = org.bukkit.Bukkit.getPlayerExact(args[0]);
-            org.bukkit.entity.Player b = org.bukkit.Bukkit.getPlayerExact(args[1]);
+            Player a = Bukkit.getPlayerExact(args[0]);
+            Player b = Bukkit.getPlayerExact(args[1]);
             if (a == null || b == null) {
-                com.spillhuset.furious.utils.Components.sendErrorMessage(sender, "Both players must be online.");
+                Components.sendErrorMessage(sender, "Both players must be online.");
                 return true;
             }
             a.teleport(b.getLocation());
-            com.spillhuset.furious.utils.Components.sendSuccessMessage(sender, "Teleported " + a.getName() + " to " + b.getName() + ".");
+            Components.sendSuccessMessage(sender, "Teleported " + a.getName() + " to " + b.getName() + ".");
             return true;
         } else {
-            com.spillhuset.furious.utils.Components.sendInfoMessage(sender, "Usage: /tp <player> OR /tp <playerA> <playerB>");
+            Components.sendInfoMessage(sender, "Usage: /tp <player> OR /tp <playerA> <playerB>");
             return true;
         }
     }
@@ -138,7 +140,7 @@ public class TeleportCommand implements CommandInterface, CommandExecutor, TabCo
         if (label.equalsIgnoreCase("tp")) {
             if (args.length == 1 || args.length == 2) {
                 String prefix = args[args.length - 1].toLowerCase();
-                for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                for (Player p : Bukkit.getOnlinePlayers()) {
                     if (p.getName().toLowerCase().startsWith(prefix)) sugg.add(p.getName());
                 }
             }

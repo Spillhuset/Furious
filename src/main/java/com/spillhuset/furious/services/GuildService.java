@@ -1224,7 +1224,7 @@ public class GuildService {
                 UUID gid = ze.getValue();
                 if (!guildId.equals(gid)) continue;
                 if (x == removeX && z == removeZ) continue;
-                positions.add((((long) x) << 32) ^ (z & 0xffffffffL));
+                positions.add(key(x, z));
             }
         }
         int size = positions.size();
@@ -1237,14 +1237,14 @@ public class GuildService {
         dq.add(start);
         visited.add(start);
         while (!dq.isEmpty()) {
-            long key = dq.removeFirst();
-            int x = (int) (key >> 32);
-            int z = (int) key;
+            long cur = dq.removeFirst();
+            int x = kx(cur);
+            int z = kz(cur);
             long[] neighbors = new long[]{
-                    (((long) (x + 1)) << 32) ^ (long) (z),
-                    (((long) (x - 1)) << 32) ^ (long) (z),
-                    (((long) (x)) << 32) ^ (long) (z + 1),
-                    (((long) (x)) << 32) ^ (long) (z - 1)
+                    key(x + 1, z),
+                    key(x - 1, z),
+                    key(x, z + 1),
+                    key(x, z - 1)
             };
             for (long nb : neighbors) {
                 if (positions.contains(nb) && !visited.contains(nb)) {

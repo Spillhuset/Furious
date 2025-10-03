@@ -214,6 +214,8 @@ permissions:
     default: op
   furious.guild.list:
     default: true
+  furious.guild.info:
+    default: true
 
   furious.warps:
     default: true

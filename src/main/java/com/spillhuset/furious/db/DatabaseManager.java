@@ -59,7 +59,7 @@ public class DatabaseManager {
             String password = mysql.getString("password", "");
             String params = mysql.getString("params", "useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC");
 
-            String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + database + (params == null || params.isBlank() ? "" : ("?" + params));
+            String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + database + (params.isBlank() ? "" : "?" + params);
 
             ConfigurationSection pool = db.getConfigurationSection("pool");
             int maximumPoolSize = 10;

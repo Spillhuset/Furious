@@ -217,20 +217,36 @@ public class LocksListener implements Listener {
             }
             Block pair = findPairedDoor(doorBlock, door);
             if (pair == null) return;
-            if (pair.getBlockData() instanceof Door d2) {
-                if (d2.isOpen() != open) {
-                    d2.setOpen(open);
-                    // ensure we modify the bottom half (Bukkit applies to both halves based on half)
-                    Block toSet = pair;
-                    if (d2.getHalf() == Bisected.Half.TOP) {
-                        toSet = pair.getRelative(BlockFace.DOWN);
-                        if (toSet.getBlockData() instanceof Door d3) {
-                            d3.setOpen(open);
-                            toSet.setBlockData(d3, false);
-                            return;
-                        }
+
+            // Normalize to bottom half of the paired door
+            Block bottom = pair;
+            Door dBottom = null;
+            if (bottom.getBlockData() instanceof Door d2) {
+                if (d2.getHalf() == Bisected.Half.TOP) {
+                    Block maybeBottom = bottom.getRelative(BlockFace.DOWN);
+                    if (maybeBottom.getBlockData() instanceof Door d3) {
+                        bottom = maybeBottom;
+                        dBottom = d3;
+                    } else {
+                        dBottom = d2; // fallback
                     }
-                    toSet.setBlockData(d2, false);
+                } else {
+                    dBottom = d2;
+                }
+            } else {
+                return;
+            }
+
+            // Apply to bottom and top explicitly to avoid desync where only one half updates
+            if (dBottom.isOpen() != open) {
+                dBottom.setOpen(open);
+                bottom.setBlockData(dBottom, false);
+            }
+            Block top = bottom.getRelative(BlockFace.UP);
+            if (top.getBlockData() instanceof Door dTop) {
+                if (dTop.isOpen() != open) {
+                    dTop.setOpen(open);
+                    top.setBlockData(dTop, false);
                 }
             }
         });
