@@ -210,11 +210,23 @@ permissions:
     default: op
   furious.guild.join:
     default: true
+  furious.guild.leave:
+    default: true
   furious.guild.worlds:
     default: op
   furious.guild.list:
     default: true
   furious.guild.info:
+    default: true
+  furious.guild.homes:
+    default: true
+  furious.guild.invites:
+    default: true
+  furious.guild.requests:
+    default: true
+  furious.guild.connectivity:
+    default: true
+  furious.guild.outpost:
     default: true
 
   furious.warps:

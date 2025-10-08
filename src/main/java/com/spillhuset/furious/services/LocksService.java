@@ -212,8 +212,30 @@ public class LocksService {
         return set;
     }
 
+    private boolean isInClaimedGuildChunk(Block block) {
+        if (block == null) return false;
+        try {
+            World w = block.getWorld();
+            if (w == null) return false;
+            if (plugin.guildService == null) return false;
+            UUID worldId = w.getUID();
+            int cx = block.getChunk().getX();
+            int cz = block.getChunk().getZ();
+            UUID ownerGuild = plugin.guildService.getClaimOwner(worldId, cx, cz);
+            return ownerGuild != null;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public UUID getOwner(Block block) {
         if (block == null) return null;
+        // Special case: Ender chests should never be considered locked inside claimed guild chunks
+        try {
+            if (block.getType() == Material.ENDER_CHEST && isInClaimedGuildChunk(block)) {
+                return null;
+            }
+        } catch (Throwable ignored) {}
         Location loc = block.getLocation();
         World world = loc.getWorld();
         if (world == null) return null;
@@ -230,6 +252,12 @@ public class LocksService {
 
     public boolean lockBlock(UUID playerId, Block block) {
         if (block == null) return false;
+        // Do not allow locking ender chests in claimed guild chunks
+        try {
+            if (block.getType() == Material.ENDER_CHEST && isInClaimedGuildChunk(block)) {
+                return false;
+            }
+        } catch (Throwable ignored) {}
         World world = block.getWorld();
         locks.computeIfAbsent(world.getUID(), k -> new ConcurrentHashMap<>());
         Map<String, UUID> map = locks.get(world.getUID());

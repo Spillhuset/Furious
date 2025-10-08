@@ -36,6 +36,7 @@ public class GuildCommand implements CommandInterface, CommandExecutor, TabCompl
                 new UnclaimsCommand(plugin),
                 new SetOpenCommand(plugin),
                 new JoinCommand(plugin),
+                new LeaveCommand(plugin),
                 new WorldsCommand(plugin),
                 new com.spillhuset.furious.commands.GuildCommands.HomesCommand(plugin),
                 new InfoCommand(plugin),

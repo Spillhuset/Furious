@@ -302,6 +302,8 @@ public class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ProtectionListener(instance), instance);
         // Enforce simple block locks
         getServer().getPluginManager().registerEvents(new LocksListener(instance), instance);
+        // Enforce guild-owned chunk locks for entities and specific blocks
+        getServer().getPluginManager().registerEvents(new GuildLocksListener(instance), instance);
         // Cleanup orphans and recreate missing ArmorStands on chunk load
         getServer().getPluginManager().registerEvents(new ChunkArmorStandSanitizer(instance), instance);
         // Auto-teleport when entering portal regions
@@ -314,6 +316,8 @@ public class Furious extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TamingTrackListener(instance), instance);
         // Track professions actions
         getServer().getPluginManager().registerEvents(new ProfessionListener(instance), instance);
+        // Log item movements when ops use /invsee
+        getServer().getPluginManager().registerEvents(new InvseeAuditListener(getLogger()), instance);
 
         // Ensure all marker ArmorStands are present after startup (centralized)
         try {

@@ -319,6 +319,28 @@ public class GuildService {
         return guildIdByMember.get(player);
     }
 
+    /**
+     * Allows a member to leave their current guild. Owners cannot leave (must transfer ownership or delete).
+     * @param member the player UUID
+     * @return true if the member left the guild; false if not in a guild or was owner
+     */
+    public boolean leave(UUID member) {
+        if (member == null) return false;
+        UUID gid = guildIdByMember.get(member);
+        if (gid == null) return false;
+        Guild guild = guildsById.get(gid);
+        if (guild == null) return false;
+        // Prevent owner from leaving; they must delete or transfer ownership (not supported yet)
+        if (member.equals(guild.getOwner())) {
+            return false;
+        }
+        // Remove from members and index
+        guild.getMembers().remove(member);
+        guildIdByMember.remove(member);
+        save();
+        return true;
+    }
+
     public boolean renameGuildByMember(UUID member, String newName) {
         if (newName == null || newName.isBlank()) return false;
         UUID gid = guildIdByMember.get(member);
