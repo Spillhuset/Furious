@@ -33,10 +33,11 @@ public class Furious extends JavaPlugin {
     public TamingService tamingService;
     public com.spillhuset.furious.utils.RegistryCache registryCache;
     public com.spillhuset.furious.utils.MessageThrottle messageThrottle;
-    public WeeklyWorldResetService weeklyWorldResetService;
+    public WorldResetService worldResetService;
     public com.spillhuset.furious.services.ProfessionService professionService;
     public com.spillhuset.furious.db.DatabaseManager databaseManager;
     public com.spillhuset.furious.services.BanService banService;
+    public com.spillhuset.furious.services.ApiService apiService;
 
     @Override
     public void onEnable() {
@@ -110,13 +111,17 @@ public class Furious extends JavaPlugin {
         professionService = new com.spillhuset.furious.services.ProfessionService(instance);
         professionService.load();
 
-        // Start weekly Nether/End world reset scheduler
-        weeklyWorldResetService = new WeeklyWorldResetService(instance);
-        weeklyWorldResetService.startScheduler();
+        // Start Nether/End world reset scheduler
+        worldResetService = new WorldResetService(instance);
+        worldResetService.startScheduler();
 
         // Init custom ban service
         banService = new com.spillhuset.furious.services.BanService(instance);
         banService.load();
+
+        // Init API service
+        apiService = new com.spillhuset.furious.services.ApiService(instance);
+        apiService.start();
 
         PluginCommand cmd;
 
@@ -331,6 +336,7 @@ public class Furious extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (apiService != null) apiService.stop();
         if (walletService != null) walletService.save();
         if (homesService != null) homesService.save();
         if (guildService != null) guildService.save();

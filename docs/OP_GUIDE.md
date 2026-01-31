@@ -163,11 +163,12 @@ Wallet:
 - This guide — docs/OP_GUIDE.md
 - Player guide — docs/PLAYER_GUIDE.md
 
-## Weekly Nether/End Reset
-- The plugin can automatically reset Nether and End once per week by deleting and recreating them with a fresh seed.
+## World Reset
+- The plugin can automatically reset specific worlds (like Nether and End) on a scheduled basis by deleting and recreating them with a fresh seed.
 - Configure in plugins/Furious/config.yml under `worldreset`:
   - `enabled` (true/false)
-  - `day-of-week` (e.g., MONDAY)
-  - `time` (HH:mm, server local time, e.g., "04:00")
-  - `worlds` (default: ["world_nether","world_the_end"])
   - `broadcast` (true/false)
+  - `worlds`: A section containing individual world settings:
+    - `<world_name>`:
+      - `day-of-month` (1-31, e.g., 1 for the first day of the month)
+      - `time` (HH:mm, server local time, e.g., "04:00")

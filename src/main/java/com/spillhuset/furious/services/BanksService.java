@@ -813,6 +813,8 @@ public class BanksService {
                     changed = true;
                 }
             }
+            // Record history
+            bank.addInterestHistory(ratePct);
             lastAccrualByBank.put(bank.getId(), now - (elapsed % INTEREST_PERIOD_MILLIS));
         }
         if (changed) save();

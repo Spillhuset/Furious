@@ -49,6 +49,13 @@ public class BanksRepository {
                     "PRIMARY KEY (player_id, bank_id), " +
                     "FOREIGN KEY (bank_id) REFERENCES banks(id) ON DELETE CASCADE" +
                     ")");
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS bank_interest_history (" +
+                    "bank_id VARCHAR(36) NOT NULL, " +
+                    "rate DOUBLE NOT NULL, " +
+                    "idx INT NOT NULL, " +
+                    "PRIMARY KEY (bank_id, idx), " +
+                    "FOREIGN KEY (bank_id) REFERENCES banks(id) ON DELETE CASCADE" +
+                    ")");
         }
     }
 
@@ -117,6 +124,23 @@ public class BanksRepository {
                     }
                 }
             }
+            // Load interest history
+            try (PreparedStatement ps = conn.prepareStatement("SELECT bank_id, rate, idx FROM bank_interest_history ORDER BY bank_id, idx ASC")) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    Map<UUID, List<Double>> historyMap = new HashMap<>();
+                    while (rs.next()) {
+                        UUID bid = UUID.fromString(rs.getString(1));
+                        double rate = rs.getDouble(2);
+                        historyMap.computeIfAbsent(bid, k -> new ArrayList<>()).add(rate);
+                    }
+                    for (Map.Entry<UUID, List<Double>> entry : historyMap.entrySet()) {
+                        Bank bank = banksById.get(entry.getKey());
+                        if (bank != null) {
+                            bank.setInterestHistory(entry.getValue());
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -128,6 +152,7 @@ public class BanksRepository {
             try (Statement st = conn.createStatement()) {
                 st.executeUpdate("DELETE FROM bank_accounts");
                 st.executeUpdate("DELETE FROM bank_claims");
+                st.executeUpdate("DELETE FROM bank_interest_history");
                 st.executeUpdate("DELETE FROM banks");
             }
             // Insert banks
@@ -171,6 +196,20 @@ public class BanksRepository {
                         ps.setString(1, pid.toString());
                         ps.setString(2, acct.getBankId().toString());
                         ps.setDouble(3, acct.getBalance());
+                        ps.addBatch();
+                    }
+                }
+                ps.executeBatch();
+            }
+            // Insert interest history
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO bank_interest_history(bank_id, rate, idx) VALUES(?,?,?)")) {
+                for (Bank bank : banks) {
+                    List<Double> history = bank.getInterestHistory();
+                    for (int i = 0; i < history.size(); i++) {
+                        ps.setString(1, bank.getId().toString());
+                        ps.setDouble(2, history.get(i));
+                        ps.setInt(3, i);
                         ps.addBatch();
                     }
                 }

@@ -16,6 +16,7 @@ public class Bank {
     private UUID armorStandUuid; // nullable
     // Operational state: whether the bank is open for business
     private boolean open = true;
+    private final List<Double> interestHistory = new ArrayList<>();
 
     public Bank(UUID id, String name) {
         this.id = id;
@@ -69,6 +70,24 @@ public class Bank {
 
     public boolean isOpen() { return open; }
     public void setOpen(boolean open) { this.open = open; }
+
+    public List<Double> getInterestHistory() {
+        return new ArrayList<>(interestHistory);
+    }
+
+    public void addInterestHistory(double rate) {
+        interestHistory.add(0, rate);
+        while (interestHistory.size() > 10) {
+            interestHistory.remove(interestHistory.size() - 1);
+        }
+    }
+
+    public void setInterestHistory(List<Double> history) {
+        this.interestHistory.clear();
+        if (history != null) {
+            this.interestHistory.addAll(history.subList(0, Math.min(history.size(), 10)));
+        }
+    }
 
     public static class Claim {
         public final UUID worldId;
